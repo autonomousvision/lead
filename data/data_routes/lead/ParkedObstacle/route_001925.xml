@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="route_001925" town="Town06">
+    <weathers>
+      <weather route_percentage="0" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="170.0" sun_altitude_angle="45.0" fog_density="3.0" fog_distance="0.75" fog_falloff="0.9" scattering_intensity="1.0" mie_scattering_scale="0.03" />
+      <weather route_percentage="100" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="170.0" sun_altitude_angle="45.0" fog_density="3.0" fog_distance="0.75" fog_falloff="0.9" scattering_intensity="1.0" mie_scattering_scale="0.03" />
+    </weathers>
+    <waypoints>
+      <position x="-239.44" y="145.58" z="0.0" />
+      <position x="-249.44" y="145.55" z="0.0" />
+      <position x="-259.44" y="145.53" z="0.0" />
+      <position x="-269.44" y="145.51" z="0.0" />
+      <position x="-280.35" y="145.21" z="0.0" />
+      <position x="-292.18" y="142.4" z="0.0" />
+      <position x="-302.94" y="136.75" z="0.0" />
+      <position x="-311.97" y="128.61" z="0.0" />
+      <position x="-318.7" y="118.48" z="0.0" />
+      <position x="-322.72" y="107.0" z="0.0" />
+      <position x="-323.76" y="94.91" z="0.0" />
+      <position x="-321.92" y="83.04" z="0.0" />
+      <position x="-317.4" y="71.91" z="0.0" />
+      <position x="-310.42" y="62.14" z="0.0" />
+      <position x="-301.38" y="54.23" z="0.0" />
+      <position x="-290.76" y="48.62" z="0.0" />
+      <position x="-279.13" y="45.62" z="0.0" />
+      <position x="-268.45" y="44.86" z="0.0" />
+      <position x="-258.47" y="44.3" z="0.0" />
+      <position x="-248.49" y="43.75" z="0.0" />
+      <position x="-238.5" y="43.19" z="0.0" />
+      <position x="-228.52" y="42.64" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="ParkedObstacle_20" type="ParkedObstacle">
+        <direction value="left" />
+        <trigger_point x="-244.44" y="145.57" z="0.00" yaw="180.1" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

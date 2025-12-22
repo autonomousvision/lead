@@ -9,6 +9,7 @@ from copy import deepcopy
 import carla
 import cv2
 import jaxtyping as jt
+import matplotlib
 import numpy as np
 import numpy.typing as npt
 import PIL
@@ -32,6 +33,8 @@ from lead.inference.config_closed_loop import ClosedLoopConfig
 from lead.training.config_training import TrainingConfig
 from lead.training.data_loader import carla_dataset_utils
 from lead.training.data_loader.carla_dataset_utils import rasterize_lidar
+
+matplotlib.use("Agg")  # non-GUI backend for headless servers
 
 setup_logging()
 LOG = logging.getLogger(__name__)

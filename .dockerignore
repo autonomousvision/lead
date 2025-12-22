@@ -1,0 +1,54 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Python cache
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Large output directories
+outputs/local_evaluation/*
+outputs/online_evaluation/*
+data/expert_debug/data/*
+data/expert_debug/results/*
+
+# CARLA binary (will be downloaded in container)
+3rd_party/CARLA_0915/CarlaUE4/
+
+# Conda lock files (already copied)
+.conda/
+
+# Documentation build
+docs/_build/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log

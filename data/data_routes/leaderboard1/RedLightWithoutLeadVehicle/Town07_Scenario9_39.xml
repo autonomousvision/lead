@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="39" town="Town07">
+    <waypoints>
+      <position x="26.935465" y="-0.100338" z="0.0" />
+      <position x="82.287468" y="30.154545" z="0.0" />
+    </waypoints>
+    <scenarios />
+  </route>
+</routes>

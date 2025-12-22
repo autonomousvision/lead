@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="48" town="Town10HD">
+    <waypoints>
+      <position x="-104.069702" y="73.936821" z="0.0" />
+      <position x="-59.200459" y="28.351618" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="SignalizedJunctionRightTurn_1" type="SignalizedJunctionRightTurn">
+        <trigger_point x="-94.06493377685547" y="28.466171264648438" yaw="-16.47093391418457" z="0.0" />
+      </scenario>
+      <scenario name="SignalizedJunctionRightTurn_2" type="SignalizedJunctionRightTurn">
+        <trigger_point x="-104.04447937011719" y="71.68696594238281" yaw="-89.3577651977539" z="0.0" />
+      </scenario>
+      <scenario name="SignalizedJunctionRightTurn_3" type="SignalizedJunctionRightTurn">
+        <trigger_point x="-104.01084899902344" y="68.68714904785156" yaw="-89.3577651977539" z="0.0" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

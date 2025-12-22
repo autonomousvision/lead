@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="route_000743" town="Town06">
+    <weathers>
+      <weather route_percentage="0" cloudiness="10.0" precipitation="0.0" precipitation_deposits="40.0" wetness="50.0" wind_intensity="20.0" sun_azimuth_angle="285.0" sun_altitude_angle="25.0" fog_density="10.0" fog_distance="60.0" fog_falloff="1.0" scattering_intensity="1.0" mie_scattering_scale="0.03" />
+      <weather route_percentage="100" cloudiness="10.0" precipitation="0.0" precipitation_deposits="40.0" wetness="50.0" wind_intensity="20.0" sun_azimuth_angle="285.0" sun_altitude_angle="25.0" fog_density="10.0" fog_distance="60.0" fog_falloff="1.0" scattering_intensity="1.0" mie_scattering_scale="0.03" />
+    </weathers>
+    <waypoints>
+      <position x="594.8" y="-10.0" z="0.0" />
+      <position x="580.6" y="-24.1" z="0.0" />
+    </waypoints>
+    <scenarios />
+  </route>
+</routes>

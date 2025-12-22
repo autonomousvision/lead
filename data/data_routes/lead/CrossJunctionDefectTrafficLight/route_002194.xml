@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="route_002194" town="Town10HD">
+    <weathers>
+      <weather route_percentage="0" cloudiness="20.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="10.0" sun_azimuth_angle="300.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.1" scattering_intensity="1.0" mie_scattering_scale="0.03" />
+      <weather route_percentage="100" cloudiness="20.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="10.0" sun_azimuth_angle="300.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.1" scattering_intensity="1.0" mie_scattering_scale="0.03" />
+    </weathers>
+    <waypoints>
+      <position x="-52.3" y="-7.2" z="0.0" />
+      <position x="-52.2" y="45.7" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="CrossJunctionDefectTrafficLight_1" type="CrossJunctionDefectTrafficLight">
+        <trigger_point x="-52.3" y="-7.2" z="0.0" yaw="89.84" />
+        <flow_speed value="8" />
+        <traffic_direction value="right" />
+        <source_dist_interval from="24" to="26" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

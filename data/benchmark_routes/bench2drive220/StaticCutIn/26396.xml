@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="26396" road_id="38" town="Town05">
+    <waypoints>
+      <position x="68.3" y="201.9" z="0.0" />
+      <position x="70.3" y="201.9" z="0.0" />
+      <position x="72.3" y="201.9" z="0.0" />
+      <position x="74.3" y="201.9" z="0.0" />
+      <position x="76.3" y="201.9" z="0.0" />
+      <position x="78.3" y="202.0" z="0.0" />
+      <position x="80.3" y="202.0" z="0.0" />
+      <position x="82.3" y="202.0" z="0.0" />
+      <position x="84.3" y="202.0" z="0.0" />
+      <position x="86.3" y="202.0" z="0.0" />
+      <position x="88.3" y="202.0" z="0.0" />
+      <position x="90.3" y="202.0" z="0.0" />
+      <position x="92.3" y="202.0" z="0.0" />
+      <position x="94.3" y="202.0" z="0.0" />
+      <position x="96.3" y="202.0" z="0.0" />
+      <position x="98.3" y="202.1" z="0.0" />
+      <position x="100.3" y="202.1" z="0.0" />
+      <position x="102.4" y="202.0" z="0.0" />
+      <position x="104.4" y="202.0" z="0.0" />
+      <position x="106.4" y="201.9" z="0.0" />
+      <position x="108.4" y="201.7" z="0.0" />
+      <position x="110.5" y="201.5" z="0.0" />
+      <position x="112.5" y="201.3" z="0.0" />
+      <position x="114.5" y="201.0" z="0.0" />
+      <position x="116.5" y="200.8" z="0.0" />
+      <position x="118.5" y="200.4" z="0.0" />
+      <position x="120.5" y="200.0" z="0.0" />
+      <position x="122.5" y="199.6" z="0.0" />
+      <position x="124.5" y="199.1" z="0.0" />
+      <position x="126.5" y="198.6" z="0.0" />
+      <position x="128.4" y="198.1" z="0.0" />
+      <position x="130.4" y="197.5" z="0.0" />
+      <position x="132.3" y="196.9" z="0.0" />
+      <position x="134.3" y="196.2" z="0.0" />
+      <position x="136.1" y="195.5" z="0.0" />
+      <position x="138.1" y="194.8" z="0.0" />
+      <position x="139.9" y="194.1" z="0.0" />
+      <position x="141.8" y="193.2" z="0.0" />
+      <position x="143.6" y="192.4" z="0.0" />
+      <position x="145.5" y="191.5" z="0.0" />
+      <position x="147.3" y="190.6" z="0.0" />
+      <position x="149.1" y="189.6" z="0.0" />
+      <position x="150.9" y="188.7" z="0.0" />
+      <position x="152.7" y="187.6" z="0.0" />
+      <position x="154.4" y="186.6" z="0.0" />
+      <position x="156.1" y="185.5" z="0.0" />
+      <position x="157.8" y="184.4" z="0.0" />
+      <position x="159.5" y="183.2" z="0.0" />
+      <position x="161.1" y="182.0" z="0.0" />
+      <position x="162.8" y="180.8" z="0.0" />
+      <position x="164.3" y="179.6" z="0.0" />
+      <position x="165.9" y="178.3" z="0.0" />
+      <position x="167.5" y="177.0" z="0.0" />
+      <position x="169.0" y="175.6" z="0.0" />
+      <position x="170.5" y="174.2" z="0.0" />
+      <position x="172.0" y="172.8" z="0.0" />
+      <position x="173.4" y="171.4" z="0.0" />
+      <position x="174.8" y="169.9" z="0.0" />
+      <position x="176.2" y="168.4" z="0.0" />
+      <position x="177.6" y="166.9" z="0.0" />
+      <position x="178.9" y="165.4" z="0.0" />
+      <position x="180.2" y="163.8" z="0.0" />
+      <position x="181.4" y="162.2" z="0.0" />
+      <position x="182.7" y="160.6" z="0.0" />
+      <position x="183.9" y="158.9" z="0.0" />
+      <position x="185.1" y="157.3" z="0.0" />
+      <position x="186.2" y="155.6" z="0.0" />
+      <position x="187.3" y="153.9" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="StaticCutIn_1" type="StaticCutIn">
+        <distance value="41" />
+        <direction value="right" />
+        <trigger_point x="79.3" y="202.0" yaw="0.3" z="0.0" />
+      </scenario>
+    </scenarios>
+    <weathers>
+      <weather cloudiness="100.0" fog_density="10.0" precipitation="50.0" precipitation_deposits="100.0" route_percentage="0" sun_altitude_angle="45.0" sun_azimuth_angle="-1.0" wetness="80.0" wind_intensity="80.0" />
+      <weather cloudiness="100.0" fog_density="10.0" precipitation="50.0" precipitation_deposits="100.0" route_percentage="100" sun_altitude_angle="45.0" sun_azimuth_angle="-1.0" wetness="80.0" wind_intensity="80.0" />
+    </weathers>
+  </route>
+</routes>

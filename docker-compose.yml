@@ -1,0 +1,137 @@
+services:
+  # CARLA Simulator service
+  carla:
+    image: carlasim/carla:0.9.15
+    container_name: lead-carla
+    restart: unless-stopped
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - SDL_VIDEODRIVER=offscreen
+    ports:
+      - "2000-2002:2000-2002"  # CARLA ports
+      - "8000:8000"             # Traffic manager port
+    command: /bin/bash -c "./CarlaUE4.sh -quality-level=Epic -world-port=2000 -resx=800 -resy=600 -nosound -graphicsadapter=0 -carla-streaming-port=2001 -RenderOffScreen"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - lead-network
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/2000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Base evaluation service configuration
+  eval-base: &eval-base
+    build:
+      context: .
+      dockerfile: Dockerfile
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - LEAD_PROJECT_ROOT=/workspace/lead
+      - CARLA_ROOT=/workspace/lead/3rd_party/CARLA_0915
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./outputs:/workspace/lead/outputs
+      - ./data:/workspace/lead/data
+      - ./lead:/workspace/lead/lead
+      - ./scripts:/workspace/lead/scripts
+      - ./3rd_party:/workspace/lead/3rd_party
+    depends_on:
+      carla:
+        condition: service_healthy
+    networks:
+      - lead-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # Bench2Drive evaluation
+  eval-bench2drive:
+    <<: *eval-base
+    container_name: lead-eval-bench2drive
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - LEAD_PROJECT_ROOT=/workspace/lead
+      - CARLA_ROOT=/workspace/lead/3rd_party/CARLA_0915
+      - PYTHONUNBUFFERED=1
+    command: >
+      bash -c "
+        source /opt/conda/etc/profile.d/conda.sh &&
+        conda activate lead &&
+        source scripts/main.sh &&
+        bash scripts/eval_bench2drive.sh
+      "
+
+  # Longest6 evaluation
+  eval-longest6:
+    <<: *eval-base
+    container_name: lead-eval-longest6
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - LEAD_PROJECT_ROOT=/workspace/lead
+      - CARLA_ROOT=/workspace/lead/3rd_party/CARLA_0915
+      - PYTHONUNBUFFERED=1
+    command: >
+      bash -c "
+        source /opt/conda/etc/profile.d/conda.sh &&
+        conda activate lead &&
+        source scripts/main.sh &&
+        bash scripts/eval_longest6.sh
+      "
+
+  # Town13 evaluation
+  eval-town13:
+    <<: *eval-base
+    container_name: lead-eval-town13
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - LEAD_PROJECT_ROOT=/workspace/lead
+      - CARLA_ROOT=/workspace/lead/3rd_party/CARLA_0915
+      - PYTHONUNBUFFERED=1
+    command: >
+      bash -c "
+        source /opt/conda/etc/profile.d/conda.sh &&
+        conda activate lead &&
+        source scripts/main.sh &&
+        bash scripts/eval_town13.sh
+      "
+
+  # Expert evaluation
+  eval-expert:
+    <<: *eval-base
+    container_name: lead-eval-expert
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - LEAD_PROJECT_ROOT=/workspace/lead
+      - CARLA_ROOT=/workspace/lead/3rd_party/CARLA_0915
+      - PYTHONUNBUFFERED=1
+    command: >
+      bash -c "
+        source /opt/conda/etc/profile.d/conda.sh &&
+        conda activate lead &&
+        source scripts/main.sh &&
+        bash scripts/run_expert.sh
+      "
+
+networks:
+  lead-network:
+    driver: bridge

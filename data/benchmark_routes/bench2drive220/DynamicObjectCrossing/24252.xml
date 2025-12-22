@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="24252" road_id="315" town="Town11">
+    <waypoints>
+      <position x="-1418.2" y="-4031.6" z="164.7" />
+      <position x="-1418.3" y="-4029.6" z="164.7" />
+      <position x="-1418.5" y="-4027.6" z="164.6" />
+      <position x="-1418.6" y="-4025.6" z="164.6" />
+      <position x="-1418.7" y="-4023.6" z="164.6" />
+      <position x="-1418.9" y="-4021.6" z="164.6" />
+      <position x="-1419.0" y="-4019.6" z="164.6" />
+      <position x="-1419.1" y="-4017.6" z="164.6" />
+      <position x="-1419.2" y="-4015.6" z="164.6" />
+      <position x="-1419.2" y="-4013.5" z="164.6" />
+      <position x="-1419.3" y="-4011.5" z="164.6" />
+      <position x="-1419.4" y="-4009.5" z="164.6" />
+      <position x="-1419.4" y="-4007.6" z="164.6" />
+      <position x="-1419.5" y="-4005.5" z="164.6" />
+      <position x="-1419.5" y="-4003.5" z="164.6" />
+      <position x="-1419.6" y="-4001.5" z="164.6" />
+      <position x="-1419.6" y="-3999.5" z="164.7" />
+      <position x="-1419.6" y="-3997.5" z="164.7" />
+      <position x="-1419.6" y="-3995.5" z="164.7" />
+      <position x="-1419.6" y="-3993.5" z="164.7" />
+      <position x="-1419.6" y="-3991.5" z="164.7" />
+      <position x="-1419.6" y="-3989.5" z="164.7" />
+      <position x="-1419.6" y="-3987.5" z="164.7" />
+      <position x="-1419.6" y="-3985.5" z="164.8" />
+      <position x="-1419.5" y="-3983.4" z="164.8" />
+      <position x="-1419.5" y="-3981.4" z="164.8" />
+      <position x="-1419.4" y="-3979.4" z="164.8" />
+      <position x="-1419.4" y="-3977.4" z="164.9" />
+      <position x="-1419.3" y="-3975.4" z="164.9" />
+      <position x="-1419.2" y="-3973.4" z="164.9" />
+      <position x="-1419.1" y="-3971.4" z="165.0" />
+      <position x="-1419.0" y="-3969.4" z="165.0" />
+      <position x="-1418.9" y="-3967.4" z="165.1" />
+      <position x="-1418.8" y="-3965.4" z="165.1" />
+      <position x="-1418.7" y="-3963.4" z="165.1" />
+      <position x="-1418.6" y="-3961.4" z="165.2" />
+      <position x="-1418.5" y="-3959.4" z="165.3" />
+      <position x="-1418.3" y="-3957.4" z="165.3" />
+      <position x="-1418.2" y="-3955.4" z="165.4" />
+      <position x="-1418.0" y="-3953.4" z="165.4" />
+      <position x="-1417.8" y="-3951.4" z="165.5" />
+      <position x="-1417.7" y="-3949.4" z="165.5" />
+      <position x="-1417.5" y="-3947.4" z="165.6" />
+      <position x="-1417.3" y="-3945.4" z="165.6" />
+      <position x="-1417.1" y="-3943.4" z="165.7" />
+      <position x="-1416.9" y="-3941.4" z="165.7" />
+      <position x="-1416.7" y="-3939.4" z="165.8" />
+      <position x="-1416.5" y="-3937.4" z="165.8" />
+      <position x="-1416.2" y="-3935.4" z="165.9" />
+      <position x="-1416.0" y="-3933.4" z="165.9" />
+      <position x="-1415.7" y="-3931.4" z="166.0" />
+      <position x="-1415.5" y="-3929.4" z="166.0" />
+      <position x="-1415.2" y="-3927.5" z="166.0" />
+      <position x="-1415.0" y="-3925.5" z="166.1" />
+      <position x="-1414.7" y="-3923.5" z="166.1" />
+      <position x="-1414.4" y="-3921.5" z="166.1" />
+      <position x="-1414.1" y="-3919.5" z="166.2" />
+      <position x="-1413.8" y="-3917.5" z="166.2" />
+      <position x="-1413.5" y="-3915.5" z="166.2" />
+      <position x="-1413.2" y="-3913.5" z="166.2" />
+      <position x="-1412.9" y="-3911.6" z="166.3" />
+      <position x="-1412.5" y="-3909.6" z="166.3" />
+      <position x="-1412.2" y="-3907.6" z="166.3" />
+      <position x="-1411.8" y="-3905.6" z="166.3" />
+      <position x="-1411.5" y="-3903.7" z="166.3" />
+      <position x="-1411.1" y="-3901.7" z="166.3" />
+      <position x="-1410.7" y="-3899.7" z="166.4" />
+      <position x="-1410.4" y="-3897.7" z="166.4" />
+    </waypoints>
+    <scenarios>
+      <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
+        <distance value="50" />
+        <direction value="right" />
+        <blocker_model value="static.prop.container" />
+        <crossing_angle value="4" />
+        <trigger_point x="-1419.0" y="-4018.6" yaw="92.8" z="164.6" />
+      </scenario>
+    </scenarios>
+    <weathers>
+      <weather cloudiness="40.0" fog_density="7.0" precipitation="100.0" precipitation_deposits="90.0" route_percentage="0" sun_altitude_angle="0.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="100.0" />
+      <weather cloudiness="40.0" fog_density="7.0" precipitation="100.0" precipitation_deposits="90.0" route_percentage="100" sun_altitude_angle="0.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="100.0" />
+    </weathers>
+  </route>
+</routes>

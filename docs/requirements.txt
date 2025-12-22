@@ -1,0 +1,5 @@
+# Sphinx Documentation Requirements
+sphinx>=8.0
+sphinx-rtd-theme>=3.0
+sphinx-autodoc-typehints>=3.0
+myst-parser>=2.0

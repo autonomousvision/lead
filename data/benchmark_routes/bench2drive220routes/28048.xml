@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="28048" road_id="11" town="Town02">
+    <waypoints>
+      <position x="41.9" y="200.2" z="0.0" />
+      <position x="41.9" y="202.2" z="0.0" />
+      <position x="41.9" y="204.2" z="0.0" />
+      <position x="41.9" y="206.2" z="0.0" />
+      <position x="41.9" y="208.2" z="0.0" />
+      <position x="41.9" y="210.2" z="0.0" />
+      <position x="41.9" y="212.2" z="0.0" />
+      <position x="41.9" y="214.2" z="0.0" />
+      <position x="41.9" y="216.2" z="0.0" />
+      <position x="41.9" y="218.2" z="0.0" />
+      <position x="41.9" y="220.2" z="0.0" />
+      <position x="41.9" y="222.2" z="0.0" />
+      <position x="59.8" y="240.9" z="0.0" />
+      <position x="61.8" y="240.9" z="0.0" />
+      <position x="63.8" y="240.9" z="0.0" />
+      <position x="65.8" y="240.9" z="0.0" />
+      <position x="67.8" y="240.9" z="0.0" />
+      <position x="69.8" y="240.9" z="0.0" />
+      <position x="71.8" y="240.9" z="0.0" />
+      <position x="73.8" y="240.9" z="0.0" />
+      <position x="75.8" y="240.9" z="0.0" />
+      <position x="77.8" y="240.9" z="0.0" />
+      <position x="79.8" y="240.9" z="0.0" />
+      <position x="81.8" y="240.9" z="0.0" />
+      <position x="83.8" y="240.9" z="0.0" />
+      <position x="85.8" y="240.9" z="0.0" />
+      <position x="87.8" y="240.9" z="0.0" />
+      <position x="89.8" y="240.9" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="T_Junction_1" type="T_Junction">
+        <trigger_point x="41.9" y="227.2" yaw="90.0" z="0.0" />
+      </scenario>
+    </scenarios>
+    <weathers>
+      <weather cloudiness="100.0" fog_density="10.0" precipitation="50.0" precipitation_deposits="100.0" route_percentage="0" sun_altitude_angle="45.0" sun_azimuth_angle="-1.0" wetness="80.0" wind_intensity="80.0" />
+      <weather cloudiness="100.0" fog_density="10.0" precipitation="50.0" precipitation_deposits="100.0" route_percentage="100" sun_altitude_angle="45.0" sun_azimuth_angle="-1.0" wetness="80.0" wind_intensity="80.0" />
+    </weathers>
+  </route>
+</routes>

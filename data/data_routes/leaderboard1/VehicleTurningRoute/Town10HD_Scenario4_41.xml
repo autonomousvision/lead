@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="41" town="Town10HD">
+    <waypoints>
+      <position x="-107.569481" y="73.897591" z="0.0" />
+      <position x="-58.676182" y="24.520988" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="VehicleTurningRoute_1" type="VehicleTurningRoute">
+        <trigger_point x="-91.4709701538086" y="27.97876739501953" yaw="-4.812551021575928" z="0.0" />
+      </scenario>
+      <scenario name="VehicleTurningRoute_2" type="VehicleTurningRoute">
+        <trigger_point x="-104.01084899902344" y="68.68714904785156" yaw="-89.3577651977539" z="0.0" />
+      </scenario>
+      <scenario name="VehicleTurningRoute_3" type="VehicleTurningRoute">
+        <trigger_point x="-103.97722625732422" y="65.68733978271484" yaw="-89.3577651977539" z="0.0" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

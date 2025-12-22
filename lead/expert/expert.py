@@ -8,6 +8,7 @@ import carla
 import cv2
 import jaxtyping as jt
 import laspy
+import matplotlib
 import numpy as np
 import numpy.typing as npt
 import torch
@@ -29,6 +30,9 @@ from lead.common.constants import (
 )
 from lead.common.logging_config import setup_logging
 from lead.expert.expert_base import ExpertBase
+
+matplotlib.use("Agg")  # non-GUI backend for headless servers
+
 
 setup_logging()
 LOG = logging.getLogger(__name__)

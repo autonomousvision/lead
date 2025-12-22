@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="3717" road_id="664" town="Town13">
+    <waypoints>
+      <position x="3472.8" y="4053.7" z="174.3" />
+      <position x="3474.8" y="4053.3" z="174.2" />
+      <position x="3476.7" y="4052.8" z="174.1" />
+      <position x="3478.7" y="4052.3" z="174.0" />
+      <position x="3480.6" y="4051.8" z="173.9" />
+      <position x="3482.5" y="4051.4" z="173.8" />
+      <position x="3484.5" y="4050.9" z="173.7" />
+      <position x="3486.4" y="4050.4" z="173.6" />
+      <position x="3488.4" y="4050.0" z="173.5" />
+      <position x="3490.3" y="4049.5" z="173.4" />
+      <position x="3492.3" y="4049.0" z="173.3" />
+      <position x="3505.5" y="4028.9" z="172.3" />
+      <position x="3505.5" y="4026.9" z="172.3" />
+      <position x="3505.5" y="4024.9" z="172.3" />
+      <position x="3505.5" y="4022.9" z="172.2" />
+      <position x="3505.5" y="4020.9" z="172.2" />
+      <position x="3505.5" y="4018.9" z="172.2" />
+      <position x="3505.5" y="4016.9" z="172.2" />
+      <position x="3505.5" y="4014.9" z="172.1" />
+      <position x="3505.5" y="4012.9" z="172.1" />
+      <position x="3505.5" y="4010.9" z="172.1" />
+      <position x="3505.5" y="4008.9" z="172.0" />
+      <position x="3505.5" y="4006.9" z="172.0" />
+      <position x="3505.5" y="4004.9" z="172.0" />
+      <position x="3505.5" y="4002.9" z="171.9" />
+      <position x="3505.5" y="4000.9" z="171.9" />
+    </waypoints>
+    <scenarios>
+      <scenario name="VehicleTurningRoute_1" type="VehicleTurningRoute">
+        <trigger_point x="3474.8" y="4053.3" yaw="-13.6" z="174.2" />
+      </scenario>
+    </scenarios>
+    <weathers>
+      <weather cloudiness="60.0" fog_density="3.0" precipitation="30.0" precipitation_deposits="50.0" route_percentage="0" sun_altitude_angle="-90.0" sun_azimuth_angle="-1.0" wetness="60.0" wind_intensity="30.0" />
+      <weather cloudiness="60.0" fog_density="3.0" precipitation="30.0" precipitation_deposits="50.0" route_percentage="100" sun_altitude_angle="-90.0" sun_azimuth_angle="-1.0" wetness="60.0" wind_intensity="30.0" />
+    </weathers>
+  </route>
+</routes>

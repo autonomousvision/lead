@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="2" town="Town10HD">
+    <waypoints>
+      <position x="-45.353363" y="-13.342562" z="0.0" />
+      <position x="-98.275337" y="-57.864517" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="OppositeVehicleRunningRedLight_1" type="OppositeVehicleRunningRedLight">
+        <trigger_point x="-45.34852981567383" y="-15.791893005371094" yaw="270.2627258300781" z="0.0" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

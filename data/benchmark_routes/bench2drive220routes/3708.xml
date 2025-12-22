@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="3708" road_id="606" town="Town13">
+    <waypoints>
+      <position x="3150.1" y="5118.7" z="178.2" />
+      <position x="3150.0" y="5120.7" z="178.2" />
+      <position x="3150.0" y="5122.7" z="178.2" />
+      <position x="3149.9" y="5124.7" z="178.1" />
+      <position x="3149.9" y="5126.7" z="178.1" />
+      <position x="3149.9" y="5128.7" z="178.0" />
+      <position x="3149.8" y="5130.7" z="178.0" />
+      <position x="3149.8" y="5132.7" z="177.9" />
+      <position x="3149.7" y="5134.7" z="177.9" />
+      <position x="3149.7" y="5136.7" z="177.9" />
+      <position x="3149.6" y="5138.7" z="177.8" />
+      <position x="3136.5" y="5150.0" z="177.3" />
+      <position x="3134.5" y="5150.0" z="177.3" />
+      <position x="3132.5" y="5149.9" z="177.2" />
+      <position x="3130.5" y="5149.9" z="177.2" />
+      <position x="3128.5" y="5149.8" z="177.2" />
+      <position x="3126.5" y="5149.8" z="177.1" />
+      <position x="3124.5" y="5149.7" z="177.1" />
+      <position x="3122.5" y="5149.7" z="177.1" />
+      <position x="3120.5" y="5149.6" z="177.0" />
+      <position x="3118.5" y="5149.6" z="177.0" />
+      <position x="3116.5" y="5149.6" z="177.0" />
+      <position x="3114.5" y="5149.5" z="176.9" />
+      <position x="3112.5" y="5149.5" z="176.9" />
+      <position x="3110.5" y="5149.4" z="176.9" />
+    </waypoints>
+    <scenarios>
+      <scenario name="VehicleTurningRoute_1" type="VehicleTurningRoute">
+        <trigger_point x="3150.0" y="5119.7" yaw="91.2" z="178.2" />
+      </scenario>
+    </scenarios>
+    <weathers>
+      <weather cloudiness="100.0" fog_density="50.0" precipitation="60.0" precipitation_deposits="60.0" route_percentage="0" sun_altitude_angle="45.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="60.0" />
+      <weather cloudiness="100.0" fog_density="50.0" precipitation="60.0" precipitation_deposits="60.0" route_percentage="100" sun_altitude_angle="45.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="60.0" />
+    </weathers>
+  </route>
+</routes>

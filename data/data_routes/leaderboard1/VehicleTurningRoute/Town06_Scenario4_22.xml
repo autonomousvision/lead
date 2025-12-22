@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="22" town="Town06">
+    <waypoints>
+      <position x="-175.883667" y="149.227325" z="0.0" />
+      <position x="-247.240570" y="183.925003" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario type="VehicleTurningRoute" name="VehicleTurningRoute_1">
+        <trigger_point x="-180.88365173339844" y="149.21560668945312" z="0.0" yaw="180.13438415527344" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

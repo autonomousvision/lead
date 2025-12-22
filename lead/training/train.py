@@ -3,6 +3,7 @@ import os
 import warnings
 from itertools import islice
 
+import matplotlib
 import torch
 from beartype import beartype
 from torch.distributed.elastic.multiprocessing.errors import record
@@ -13,6 +14,8 @@ from lead.common.logging_config import setup_logging
 from lead.training import training_utils
 from lead.training.data_loader.waymo_e2e_dataset import evaluate_waymo_e2e
 from lead.training.logger import Logger
+
+matplotlib.use("Agg")  # non-GUI backend for headless servers
 
 setup_logging()
 LOG = logging.getLogger(__name__)

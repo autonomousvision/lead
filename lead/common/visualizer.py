@@ -3,7 +3,6 @@ import os
 from copy import deepcopy
 
 import cv2
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -25,8 +24,6 @@ from lead.training.config_training import TrainingConfig
 from lead.training.data_loader import carla_dataset_utils
 from lead.training.tfv6.center_net_decoder import PredictedBoundingBox
 from lead.training.tfv6.tfv6 import Prediction
-
-matplotlib.use("Agg")  # non-GUI backend for headless servers
 
 
 class Visualizer:

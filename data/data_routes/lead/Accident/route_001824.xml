@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="route_001824" town="Town06">
+    <weathers>
+      <weather route_percentage="0" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="170.0" sun_altitude_angle="45.0" fog_density="3.0" fog_distance="0.75" fog_falloff="0.9" scattering_intensity="1.0" mie_scattering_scale="0.03" />
+      <weather route_percentage="100" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="170.0" sun_altitude_angle="45.0" fog_density="3.0" fog_distance="0.75" fog_falloff="0.9" scattering_intensity="1.0" mie_scattering_scale="0.03" />
+    </weathers>
+    <waypoints>
+      <position x="253.12" y="136.97" z="0.0" />
+      <position x="263.12" y="137.01" z="0.0" />
+      <position x="273.11" y="137.05" z="0.0" />
+      <position x="283.11" y="137.09" z="0.0" />
+      <position x="293.11" y="137.13" z="0.0" />
+      <position x="303.11" y="137.17" z="0.0" />
+      <position x="313.11" y="137.21" z="0.0" />
+      <position x="323.11" y="137.25" z="0.0" />
+      <position x="333.11" y="137.29" z="0.0" />
+      <position x="343.11" y="137.34" z="0.0" />
+      <position x="353.11" y="137.38" z="0.0" />
+      <position x="363.11" y="137.42" z="0.0" />
+      <position x="373.11" y="137.46" z="0.0" />
+      <position x="383.11" y="137.5" z="0.0" />
+      <position x="393.11" y="137.54" z="0.0" />
+      <position x="403.11" y="137.58" z="0.0" />
+      <position x="413.11" y="137.62" z="0.0" />
+      <position x="423.11" y="137.66" z="0.0" />
+      <position x="433.11" y="137.7" z="0.0" />
+      <position x="443.11" y="137.74" z="0.0" />
+      <position x="453.11" y="137.79" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="Accident_9" type="Accident">
+        <distance value="60" />
+        <direction value="left" />
+        <trigger_point x="258.12" y="136.99" z="0.00" yaw="0.2" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

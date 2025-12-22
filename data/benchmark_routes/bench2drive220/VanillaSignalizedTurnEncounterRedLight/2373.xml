@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="2373" town="Town12">
+    <waypoints>
+      <position x="-183.1" y="5344.9" z="372.1" />
+      <position x="-183.9" y="5343.1" z="372.1" />
+      <position x="-184.7" y="5341.2" z="372.1" />
+      <position x="-210.6" y="5328.8" z="372.4" />
+      <position x="-212.5" y="5329.6" z="372.4" />
+      <position x="-214.3" y="5330.4" z="372.4" />
+      <position x="-216.1" y="5331.2" z="372.4" />
+      <position x="-218.0" y="5332.0" z="372.4" />
+      <position x="-219.8" y="5332.8" z="372.4" />
+      <position x="-221.7" y="5333.6" z="372.4" />
+      <position x="-223.5" y="5334.4" z="372.4" />
+      <position x="-225.3" y="5335.2" z="372.4" />
+      <position x="-227.2" y="5335.9" z="372.5" />
+      <position x="-229.0" y="5336.7" z="372.5" />
+      <position x="-230.8" y="5337.5" z="372.5" />
+      <position x="-232.7" y="5338.3" z="372.5" />
+      <position x="-234.5" y="5339.1" z="372.5" />
+      <position x="-236.4" y="5339.9" z="372.5" />
+    </waypoints>
+    <scenarios>
+      <scenario name="VanillaSignalizedTurnEncounterRedLight_1" type="VanillaSignalizedTurnEncounterRedLight">
+        <trigger_point x="-185.9" y="5338.5" yaw="246.3" z="372.1" />
+      </scenario>
+    </scenarios>
+    <weathers>
+      <weather cloudiness="5.0" fog_density="2.0" precipitation="0.0" precipitation_deposits="0.0" route_percentage="0" sun_altitude_angle="15.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="10.0" />
+      <weather cloudiness="5.0" fog_density="2.0" precipitation="0.0" precipitation_deposits="0.0" route_percentage="100" sun_altitude_angle="15.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="10.0" />
+    </weathers>
+  </route>
+</routes>

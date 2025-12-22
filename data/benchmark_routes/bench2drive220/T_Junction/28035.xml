@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="28035" road_id="24" town="Town01">
+    <waypoints>
+      <position x="177.7" y="326.6" z="0.0" />
+      <position x="175.7" y="326.6" z="0.0" />
+      <position x="173.7" y="326.6" z="0.0" />
+      <position x="171.7" y="326.6" z="0.0" />
+      <position x="169.7" y="326.6" z="0.0" />
+      <position x="167.7" y="326.6" z="0.0" />
+      <position x="165.7" y="326.6" z="0.0" />
+      <position x="163.7" y="326.6" z="0.0" />
+      <position x="161.7" y="326.6" z="0.0" />
+      <position x="159.7" y="326.6" z="0.0" />
+      <position x="157.7" y="326.6" z="0.0" />
+      <position x="92.4" y="312.1" z="0.0" />
+      <position x="92.4" y="310.1" z="0.0" />
+      <position x="92.4" y="308.1" z="0.0" />
+      <position x="92.4" y="306.1" z="0.0" />
+      <position x="92.4" y="304.1" z="0.0" />
+      <position x="92.4" y="302.1" z="0.0" />
+      <position x="92.4" y="300.1" z="0.0" />
+      <position x="92.4" y="298.1" z="0.0" />
+      <position x="92.4" y="296.1" z="0.0" />
+      <position x="92.4" y="294.1" z="0.0" />
+      <position x="92.4" y="292.1" z="0.0" />
+      <position x="92.4" y="290.1" z="0.0" />
+      <position x="92.4" y="288.1" z="0.0" />
+      <position x="92.4" y="286.1" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="T_Junction_1" type="T_Junction">
+        <trigger_point x="152.7" y="326.6" yaw="180.0" z="0.0" />
+      </scenario>
+    </scenarios>
+    <weathers>
+      <weather cloudiness="5.0" fog_density="2.0" precipitation="0.0" precipitation_deposits="0.0" route_percentage="0" sun_altitude_angle="15.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="10.0" />
+      <weather cloudiness="5.0" fog_density="2.0" precipitation="0.0" precipitation_deposits="0.0" route_percentage="100" sun_altitude_angle="15.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="10.0" />
+    </weathers>
+  </route>
+</routes>

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="2668" road_id="862" town="Town12">
+    <waypoints>
+      <position x="-3707.6" y="1042.5" z="345.5" />
+      <position x="-3706.8" y="1044.3" z="345.5" />
+      <position x="-3706.0" y="1046.2" z="345.6" />
+      <position x="-3705.2" y="1048.0" z="345.6" />
+      <position x="-3704.4" y="1049.8" z="345.7" />
+      <position x="-3703.6" y="1051.7" z="345.7" />
+      <position x="-3702.9" y="1053.5" z="345.8" />
+      <position x="-3702.1" y="1055.3" z="345.8" />
+      <position x="-3701.4" y="1057.2" z="345.9" />
+      <position x="-3700.7" y="1059.1" z="345.9" />
+      <position x="-3700.0" y="1060.9" z="346.0" />
+      <position x="-3699.2" y="1062.8" z="346.0" />
+      <position x="-3698.6" y="1064.6" z="346.1" />
+      <position x="-3697.9" y="1066.5" z="346.1" />
+      <position x="-3697.2" y="1068.4" z="346.2" />
+      <position x="-3696.5" y="1070.3" z="346.3" />
+      <position x="-3695.9" y="1072.1" z="346.3" />
+      <position x="-3695.2" y="1074.0" z="346.4" />
+      <position x="-3694.6" y="1075.9" z="346.4" />
+      <position x="-3694.0" y="1077.8" z="346.5" />
+      <position x="-3693.4" y="1079.7" z="346.5" />
+      <position x="-3692.8" y="1081.6" z="346.6" />
+      <position x="-3692.2" y="1083.5" z="346.7" />
+      <position x="-3691.6" y="1085.4" z="346.7" />
+      <position x="-3691.0" y="1087.3" z="346.8" />
+      <position x="-3690.5" y="1089.2" z="346.8" />
+      <position x="-3689.9" y="1091.1" z="346.9" />
+      <position x="-3689.4" y="1093.1" z="347.0" />
+      <position x="-3688.8" y="1095.0" z="347.0" />
+      <position x="-3688.3" y="1096.9" z="347.1" />
+      <position x="-3687.8" y="1098.8" z="347.2" />
+      <position x="-3687.3" y="1100.8" z="347.2" />
+      <position x="-3686.8" y="1102.7" z="347.3" />
+      <position x="-3686.4" y="1104.6" z="347.3" />
+      <position x="-3685.9" y="1106.6" z="347.4" />
+      <position x="-3685.5" y="1108.5" z="347.5" />
+      <position x="-3685.0" y="1110.4" z="347.5" />
+      <position x="-3684.6" y="1112.4" z="347.6" />
+      <position x="-3684.2" y="1114.3" z="347.7" />
+      <position x="-3683.7" y="1116.3" z="347.7" />
+      <position x="-3683.3" y="1118.2" z="347.8" />
+      <position x="-3683.0" y="1120.2" z="347.8" />
+      <position x="-3682.6" y="1122.1" z="347.9" />
+      <position x="-3682.2" y="1124.1" z="348.0" />
+      <position x="-3681.9" y="1126.1" z="348.0" />
+      <position x="-3681.5" y="1128.0" z="348.1" />
+      <position x="-3681.2" y="1130.0" z="348.2" />
+      <position x="-3680.9" y="1132.0" z="348.2" />
+      <position x="-3680.5" y="1133.9" z="348.3" />
+      <position x="-3680.2" y="1135.9" z="348.3" />
+      <position x="-3679.9" y="1137.9" z="348.4" />
+      <position x="-3679.7" y="1139.8" z="348.5" />
+      <position x="-3679.4" y="1141.8" z="348.5" />
+      <position x="-3679.1" y="1143.8" z="348.6" />
+      <position x="-3678.9" y="1145.8" z="348.6" />
+      <position x="-3678.7" y="1147.7" z="348.7" />
+      <position x="-3678.4" y="1149.7" z="348.7" />
+      <position x="-3678.2" y="1151.7" z="348.8" />
+    </waypoints>
+    <scenarios>
+      <scenario name="ParkedObstacleTwoWays_1" type="ParkedObstacleTwoWays">
+        <distance value="43" />
+        <frequency from="33" to="133" />
+        <trigger_point x="-3702.1" y="1055.3" yaw="68.2" z="345.8" />
+      </scenario>
+    </scenarios>
+    <weathers>
+      <weather cloudiness="40.0" fog_density="7.0" precipitation="100.0" precipitation_deposits="90.0" route_percentage="0" sun_altitude_angle="0.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="100.0" />
+      <weather cloudiness="40.0" fog_density="7.0" precipitation="100.0" precipitation_deposits="90.0" route_percentage="100" sun_altitude_angle="0.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="100.0" />
+    </weathers>
+  </route>
+</routes>

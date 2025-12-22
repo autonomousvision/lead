@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="route_001791" town="Town03">
+    <weathers>
+      <weather route_percentage="0" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="170.0" sun_altitude_angle="45.0" fog_density="3.0" fog_distance="0.75" fog_falloff="0.9" scattering_intensity="1.0" mie_scattering_scale="0.03" />
+      <weather route_percentage="100" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="170.0" sun_altitude_angle="45.0" fog_density="3.0" fog_distance="0.75" fog_falloff="0.9" scattering_intensity="1.0" mie_scattering_scale="0.03" />
+    </weathers>
+    <waypoints>
+      <position x="-99.56" y="-140.41" z="0.19" />
+      <position x="-109.86" y="-139.8" z="0.4" />
+      <position x="-119.82" y="-136.93" z="0.63" />
+      <position x="-128.9" y="-131.91" z="0.82" />
+      <position x="-136.62" y="-124.99" z="0.88" />
+      <position x="-142.66" y="-116.58" z="0.84" />
+      <position x="-146.77" y="-107.07" z="0.72" />
+      <position x="-148.77" y="-96.91" z="0.61" />
+      <position x="-148.96" y="-86.77" z="0.5" />
+      <position x="-148.97" y="-76.77" z="0.38" />
+      <position x="-148.97" y="-66.77" z="0.27" />
+      <position x="-148.98" y="-56.77" z="0.15" />
+      <position x="-148.98" y="-46.77" z="0.07" />
+      <position x="-148.99" y="-36.77" z="0.01" />
+      <position x="-148.99" y="-26.77" z="0.0" />
+      <position x="-149.0" y="-16.77" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="Accident_18" type="Accident">
+        <direction value="right" />
+        <trigger_point x="-104.69" y="-140.38" z="0.29" yaw="-183.2" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>
