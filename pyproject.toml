@@ -1,0 +1,43 @@
+[project]
+name = "lead"
+version = "0.0.1"
+description = "LEAD: Minimizing Learner-Expert Asymmetry in End-to-End Driving"
+requires-python = ">=3.10"
+dependencies = []
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["lead*", "slurm*"]
+exclude = ["data*", "outputs*", "notebooks*", "3rd_party*", "scripts*", "results_final*", "tests*", "docs*"]
+
+[tool.setuptools.package-data]
+lead = ["**/*"]
+
+[tool.ruff]
+line-length = 128
+
+# Only check these directories
+include = ["lead/**/*.py"]
+
+# Ignore specific directories/files
+exclude = [
+    "3rd_party",
+    "scripts"
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E722", "F722"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+# --- Pydoclint ---
+[tool.pydoclint]
+style="google"
+arg-type-hints-in-docstring=false
+exclude=["3rd_party/**", "scripts/**"]

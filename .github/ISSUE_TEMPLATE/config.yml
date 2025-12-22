@@ -1,0 +1,20 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Frequent Asked Questions
+    url: https://ln2697.github.io/lead/docs/faq
+    about: Find answers to common questions
+  - name: CARLA Garage
+    url: https://github.com/autonomousvision/carla_garage/issues
+    about: CARLA Garage issue tracker
+  - name: Bench2Drive
+    url: https://github.com/Thinklab-SJTU/Bench2Drive/issues
+    about: Bench2Drive issue tracker
+  - name: SimLingo
+    url: https://github.com/RenzKa/simlingo/issues
+    about: SimLingo issue tracker
+  - name: Documentation
+    url: https://ln2697.github.io/lead/docs
+    about: Check the documentation for setup and usage guides
+  - name: Project Page
+    url: https://ln2697.github.io/lead
+    about: Visit the project page for more information

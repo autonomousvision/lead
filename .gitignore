@@ -1,0 +1,295 @@
+/Scenario_Logs/
+/ros-bridge/
+/CARLA_Leaderboard_20/
+/.idea/leaderboard2_human_data.iml
+/.idea/modules.xml
+/.idea/vcs.xml
+/.idea/misc.xml
+/.idea/inspectionProfiles/profiles_settings.xml
+/videos/
+/scripts/validation_1/
+/scripts/validation_3/
+/scripts/database/
+/scripts/training_1/
+/scripts/training_3/
+/scripts/devtest_3/
+/scripts/devtest_1/
+/scripts/teamcode_v2/database/
+/EvaluateExpert/
+logs/
+test/
+*.sif
+*.png
+
+data/1_scenario_per_route_rm_unmanageable_v5/
+data/1_scenario_per_route_v5/
+data/no_scenario_v5/
+data/validation_split_v5/
+database/
+database_after_cvpr/
+results/
+.config/
+data_hdd
+ALL_ROUTES
+logsTD
+database_org
+outputs
+lidar*
+launch.json
+launch2.json
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+#   For a library or package, you might want to ignore these files since the code is
+#   intended to run in multiple environments; otherwise, check them in:
+# .python-version
+
+# pipenv
+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+#   install all needed dependencies.
+#Pipfile.lock
+
+# poetry
+#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+#   commonly ignored for libraries.
+#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+#poetry.lock
+
+# pdm
+#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
+#pdm.lock
+#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
+#   in version control.
+#   https://pdm.fming.dev/#use-with-ide
+.pdm.toml
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
+#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
+#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
+#  and can be added to the global gitignore or merged into this file.  For a more nuclear
+#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
+#.idea/
+.DS_Store
+
+/.idea/inspectionProfiles
+/team_code/model_ckpt
+/.idea/lead_cleanup.iml
+/team_code/birds_eye_view/maps_4ppm_cv/Town11.h5
+/team_code/birds_eye_view/maps_8ppm_cv/Town11.h5
+/team_code/birds_eye_view/maps_8ppm_cv/Town12.h5
+/team_code/birds_eye_view/maps_8ppm_cv/Town13.h5
+/evaluation
+.zshrc
+code
+maps
+wandb
+output.gif
+Bench2Drive/leaderboard/team_code
+leaderboard/team_code
+team_code/**/*.png
+!data/public_garage
+waymo_carla
+slurm-*.out
+waymo_open_dataset_end_to_end_camera_v_1_0_0*
+waymo_open_dataset_motion_v_1_3_0
+waymo_carla_dataset
+waymo_open_dataset_v_1_4_3
+waymo_open_dataset_v_2_0_1
+waymo_local_copy
+duplicate_routes.txt
+route_summary.csv
+waymo_open_dataset_end_to_end_camera_v_1_0_0_videos
+data/part_*
+data/part_1
+data/part_2
+data/bench2drive220routes
+waymo_open_dataset_end_to_end_camera_v_1_0_0_splits
+ml-depth-pro
+checkpoints
+InverseForm
+waymo_open_dataset_end_to_end_camera_v_1_0_0_val_2
+!tools/navsim
+waymo_open_dataset_v_1_4_3 copy
+transfuser_training_cache
+navmini
+!scripts/data/navsim
+carla
+!script/data/carla
+data/garage_v2_2025_04_13
+data/navsim_training_cache
+*.sh
+!scripts/**/*.sh
+!scripts/tools/data/carla
+!scripts/tools/data/navsim
+waymo_carla_town15
+data/navsim_training_cache_legacy/
+.ruff_cache
+.mypy_cache
+3rd_party/navsim_workspace/dataset
+3rd_party/navsim_workspace/exp
+data/carla_leaderboard2
+data/**/*
+team_code/binaries/mpc_trajectories/**/*
+3rd_party/Bench2Drive/leaderboard/team_code
+3rd_party/leaderboard/team_code
+carla_leaderboad2_v2
+!data/routes/Town15_Bench2Drive220
+3rd_party/CARLA_0915
+data.zip
+!data/routes/CustomRoutes
+!data/routes/DuplicatedRoutes
+launch.env
+test.json
+*.mp4
+*.json
+dist.txt
+91_load_town_in_carla.py
+3rd_party/CARLA_0.9.15.tar.gz
+*.csv
+3rd_party/CARLA_0916
+3rd_party/CARLA_0915
+3rd_party/CARLA_0916/CARLA_0916.tar.gz
+3rd_party/navsim_workspace
+!3rd_party/navsim_workspace/navsim
+!3rd_party/navsim_workspace/navsimv1.1
+!3rd_party/navsim_workspace/navsimv2.2
+scripts/compute_mean_score_composed.py
+92_reload_current_town.py
+43_start_carla_and_load_town.py
+3rd_party/miniconda3
+clean_carla
+random_free_port
+docs/build/
+!slurm/
+!slurm/**/*.sh
+token.pickle
+33_upload_video_to_drive.py
