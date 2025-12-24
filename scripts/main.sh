@@ -11,7 +11,7 @@ export PYTHONPATH=$LEAD_PROJECT_ROOT/3rd_party/scenario_runner_autopilot:$PYTHON
 
 # System paths
 export PATH=$LEAD_PROJECT_ROOT:$PATH
-export PATH=$LEAD_PROJECT_ROO/scripts/hotkeys:$PATH
+export PATH=$LEAD_PROJECT_ROOT/scripts/hotkeys:$PATH
 
 # NavSim
 export NUPLAN_MAP_VERSION="nuplan-maps-v1.0"

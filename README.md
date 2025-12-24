@@ -25,9 +25,9 @@
 
 ## Main Features
 
-LEAD is a model-agnostic entry point to end-to-end driving research in the CARLA simulator. It is built to make working with many
-parallel long-running experiments manageable, whether you are iterating on the model or data.
+LEAD is a model-agnostic entry point to end-to-end driving research in the CARLA simulator. It supports concurrent execution and evaluation of long-horizon CARLA experiments across multiple axes, including experimental configurations, seeds, routes, and benchmarks.
 
+Concretely, LEAD provides:
 - **Lean pipeline**: Pure PyTorch with minimal dependencies and lightweight implementation.
 - **Cross-dataset training**: Training and evaluation support for NAVSIM and Waymo datasets, with optional co-training on synthetic CARLA data.
 - **Data-centric infrastructure**:
@@ -74,6 +74,8 @@ cd lead
 
 **2. Setup environment variables**
 
+Set the project root directory and configure paths for CARLA, datasets, and dependencies.
+
 ```bash
 {
   echo
@@ -99,15 +101,46 @@ source ~/.zshrc
 
 </details>
 
-**3. Create python environment with [Miniconda](https://www.anaconda.com/docs/getting-started/miniconda/install)**
+**3. Create python environment**
+
+We use [Miniconda](https://www.anaconda.com/docs/getting-started/miniconda/install) for this project
 
 ```bash
+# Install conda-lock
 pip install conda-lock
+
+# Create Conda environment
 conda-lock install -n lead conda-lock.yml
+
+# Activate conda environment
 conda activate lead
-pip install -r requirements.txt
-pip install -e . # Install project
 ```
+
+Install dependencies with uv
+
+```bash
+# Install uv
+pip install uv
+
+# Install dependencies
+uv pip install -r requirements.txt
+
+# Install project
+uv pip install -e .
+```
+
+<details>
+<summary>Alternative: vanilla pip</summary>
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Install project
+pip install -e . 
+```
+
+</details>
 
 **4. Setup CARLA**
 
@@ -129,8 +162,11 @@ ln -s /your/carla/path $LEAD_PROJECT_ROOT/3rd_party/CARLA_0915
 **5. Further setup**
 
 ```bash
-pre-commit install # Git hooks
-conda install conda-forge::ffmpeg conda-forge::parallel conda-forge::tree # Misc
+# Set-up git hooks
+pre-commit install
+
+# Install other tools
+conda install conda-forge::ffmpeg conda-forge::parallel conda-forge::tree
 ```
 
 **Note**
@@ -183,9 +219,14 @@ See evaluation configuration at [config_closed_loop](lead/inference/config_close
 simply change prefix of two of the three seeds so only the first seed is loaded.
 
 ```bash
-bash scripts/start_carla.sh # Start CARLA server
-bash scripts/eval_bench2drive.sh # Evaluate one Bench2Drive route
-bash scripts/clean_carla.sh # Optional: clean CARLA server
+# Start CARLA server
+bash scripts/start_carla.sh
+
+# Evaluate one Bench2Drive route
+bash scripts/eval_bench2drive.sh
+
+# Optional: clean CARLA server
+bash scripts/clean_carla.sh
 ```
 
 <details>
@@ -209,8 +250,14 @@ outputs/local_evaluation
 Evaluate expert and collect data
 
 ```bash
-bash scripts/start_carla.sh # Start CARLA if not done already
-bash scripts/run_expert.sh # Run expert on one route
+# Start CARLA if not done already
+bash scripts/start_carla.sh
+
+# Run expert on one route
+bash scripts/run_expert.sh
+
+# Optional: clean CARLA server
+bash scripts/clean_carla.sh
 ```
 
 <details>
