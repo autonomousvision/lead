@@ -25,15 +25,19 @@
 
 ## Main Features
 
-LEAD is a model-agnostic entry point to end-to-end driving research in the CARLA simulator. It supports concurrent execution and evaluation of long-horizon CARLA experiments across multiple axes, including experimental configurations, seeds, routes, and benchmarks.
+LEAD is a model-agnostic entry point to end-to-end driving research in the CARLA simulator. It enables parallel experimentation across configurations, seeds, benchmarks and datasets.
 
 Concretely, LEAD provides:
-- **Lean pipeline**: Pure PyTorch with minimal dependencies and lightweight implementation.
-- **Cross-dataset training**: Training and evaluation support for NAVSIM and Waymo datasets, with optional co-training on synthetic CARLA data.
 - **Data-centric infrastructure**:
   - Always know what type and shape your tensors have, enforced with BearType and JaxTyping.
-  - Extensive visualizations make it easier to spot bugs in the data pipeline and during closed-loop evaluation.
+  - Extensive visualizations for debugging data pipelines and closed-loop evaluation.
   - Compact datasets with lower storage overhead (72h of driving fits in ~200GB).
+- **Scalable experiment management**:
+  - Built-in SLURM wrapper with unified naming across SLURM jobs, WandB runs, and output directories.
+  - Each training/evaluation is a versioned bash script, ensuring full reproducibility.
+- **Cross-dataset training**: 
+  - Training and evaluation support for NAVSIM and Waymo datasets. 
+  - Co-training on synthetic CARLA data.
 
 ## Table of Contents
 
@@ -50,8 +54,8 @@ Concretely, LEAD provides:
 
 ## Roadmap
 
-- [x] ✅ Checkpoints and inference code
-- [x] 🚧 Documentation, training pipeline and expert code
+- [x] ✅ Checkpoints and inference code (stable)
+- [x] 🚧 Documentation, training pipeline and expert code (partial release)
 - [ ] Full dataset release on HuggingFace
 - [ ] Cross-dataset training tools and documentation
 
@@ -294,15 +298,15 @@ We evaluate TFv6 on the [Bench2Drive](https://github.com/autonomousvision/Bench2
 
 <div align="center">
 
-| Method          | Venue    |    DS     |    SR     |   Merge   | Overtake  | EmgBrake  | Give Way  | Traffsign |
-| --------------- | -------- | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: |
-| TF++ (TFv5)     | ICCV23   |   84.21   |   67.27   |   58.75   |   57.77   |   83.33   |   40.00   |   82.11   |
-| SimLingo        | CVPR25   |   85.07   |   67.27   |   54.01   |   57.04   |   88.33   | **53.33** |   82.45   |
-| R2SE            | -        |   86.28   |   69.54   |   53.33   |   61.25   |   90.00   |   50.00   |   84.21   |
-| HiP-AD          | ICCV25   |   86.77   |   69.09   |   50.00   |   84.44   |   83.33   |   40.00   |   72.10   |
-| BridgeDrive     | -        |   86.87   |   72.27   |   63.50   |   57.77   |   83.33   |   40.00   |   82.11   |
-| DiffRefiner     | AAAI26   |   87.10   |   71.40   |   63.80   |   60.00   |   85.00   |   50.00   |   86.30   |
-| **TFv6 (Ours)** | -        | **95.28** | **86.80** | **72.50** | **97.77** | **91.66** |   40.00   | **89.47** |
+| Method          |    DS     |    SR     |   Merge   | Overtake  | EmgBrake  | Give Way  | Traffsign | Venue    |
+| --------------- | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | :-------: | -------- |
+| TF++ (TFv5)     |   84.21   |   67.27   |   58.75   |   57.77   |   83.33   |   40.00   |   82.11   | ICCV23   |
+| SimLingo        |   85.07   |   67.27   |   54.01   |   57.04   |   88.33   | **53.33** |   82.45   | CVPR25   |
+| R2SE            |   86.28   |   69.54   |   53.33   |   61.25   |   90.00   |   50.00   |   84.21   | -        |
+| HiP-AD          |   86.77   |   69.09   |   50.00   |   84.44   |   83.33   |   40.00   |   72.10   | ICCV25   |
+| BridgeDrive     |   86.87   |   72.27   |   63.50   |   57.77   |   83.33   |   40.00   |   82.11   | -        |
+| DiffRefiner     |   87.10   |   71.40   |   63.80   |   60.00   |   85.00   |   50.00   |   86.30   | AAAI26   |
+| **TFv6 (Ours)** | **95.28** | **86.80** | **72.50** | **97.77** | **91.66** |   40.00   | **89.47** | -        |
 
 <em>DS = Driving Score, SR = Success Rate; Metrics follow the CARLA Leaderboard 2.0 protocol. Higher is better.</em>
 
@@ -349,7 +353,7 @@ Long Nguyen led development of the project. Kashyap Chitta, Bernhard Jaeger, and
 
 ## Citation
 
-If you find this work useful, please consider give this repository a star ⭐. Also cite our work if you use it in your research:
+If you find this work useful, please consider giving this repository a star ⭐ and citing our work in your research:
 
 ```bibtex
 @article{Nguyen2025ARXIV,
