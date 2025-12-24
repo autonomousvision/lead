@@ -6,8 +6,8 @@
   <a href="https://ln2697.github.io/lead"><strong>Project Page</strong></a> ·
   <a href="https://ln2697.github.io/lead/docs"><strong>Documentation</strong></a> ·
   <a href="https://huggingface.co/ln2697/TFv6"><strong>Weights</strong></a> ·
-  <a href="https://arxiv.org/abs/XXXX.XXXXX"><strong>Paper</strong></a> ·
-  <a href="https://ln2697.github.io/assets/pdf/Nguyen2026LEADSUPP.pdf"><strong>Supplemental</strong></a>
+  <a href="https://arxiv.org/abs/2512.20563"><strong>Paper</strong></a> ·
+  <a href="https://ln2697.github.io/assets/pdf/Nguyen2026LEADSUPP.pdf"><strong>Supplementary Material</strong></a>
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
 </p>
 
-<p align="center">Official implementation of LEAD and TFv6, an expert-student policy pair for autonomous driving research in CARLA. Includes a complete pipeline for data collection, training, and closed-loop evaluation.</p>
+<p align="center">Official implementation of LEAD and TransFuser v6, an expert-student policy pair for autonomous driving research in CARLA. Includes a complete pipeline for data collection, training, and closed-loop evaluation.</p>
 
 <p align="center">
   <img src="docs/assets/banner.webp" alt="LEAD Banner" width="80%">
@@ -26,7 +26,7 @@
 ## Main Features
 
 LEAD is a model-agnostic entry point to end-to-end driving research in the CARLA simulator. It is built to make working with many
-parallel long-running experiments manageable, whether you are iterating on model or data.
+parallel long-running experiments manageable, whether you are iterating on the model or data.
 
 - **Lean pipeline**: Pure PyTorch with minimal dependencies and lightweight implementation.
 - **Cross-dataset training**: Training and evaluation support for NAVSIM and Waymo datasets, with optional co-training on synthetic CARLA data.
@@ -59,9 +59,7 @@ Status: Active development. Core code and checkpoints are released; remaining co
 
 ## Updates
 
-- `2025/12/23` Arxiv Paper Release
-
-- `2025/12/23` Code Release
+- `2025/12/24` Arxiv paper and code release
 
 ## Setup Project
 
@@ -265,7 +263,7 @@ We evaluate TFv6 on the [Bench2Drive](https://github.com/autonomousvision/Bench2
 
 ## Documentation and Resources
 
-For detailed training, data-collection, and large-scale instructions, see the [full documentation](https://ln2697.github.io/lead/docs). In particular, we provide:
+For detailed training, data-collection, and large-scale experiment instructions, see the [full documentation](https://ln2697.github.io/lead/docs). In particular, we provide:
 - [Tutorial Notebooks](https://ln2697.github.io/lead/docs/jupyter_notebooks.html)
 - [Cross-dataset Training](https://ln2697.github.io/lead/docs/cross_dataset_training.html)
 - [Frequently Asked Questions](https://ln2697.github.io/lead/docs/faq)
@@ -296,7 +294,7 @@ E2E self-driving research:
 
 ## Acknowledgements
 
-Special thanks to [carla_garage](https://github.com/autonomousvision/carla_garage) for the foundational codebase. We also thank the creators of the numerous open-source projects.
+Special thanks to [carla_garage](https://github.com/autonomousvision/carla_garage) for the foundational codebase. We also thank the creators of the numerous open-source projects we use.
 
 * [PDM-Lite](https://github.com/OpenDriveLab/DriveLM/blob/DriveLM-CARLA/pdm_lite/docs/report.pdf), [leaderboard](https://github.com/carla-simulator/leaderboard), [scenario_runner](https://github.com/carla-simulator/scenario_runner), [NAVSIM](https://github.com/autonomousvision/navsim), [Waymo Open Dataset](https://github.com/waymo-research/waymo-open-dataset)
 
@@ -307,11 +305,11 @@ Long Nguyen led development of the project. Kashyap Chitta, Bernhard Jaeger, and
 If you find this work useful, please consider give this repository a star ⭐. Also cite our work if you use it in your research:
 
 ```bibtex
-@article{nguyen2026lead,
+@article{Nguyen2025ARXIV,
   title={LEAD: Minimizing Learner-Expert Asymmetry in End-to-End Driving},
   author={Nguyen, Long and Fauth, Micha and Jaeger, Bernhard and Dauner, Daniel and Igl, Maximilian and Geiger, Andreas and Chitta, Kashyap},
-  journal={arXiv preprint},
-  year={2026}
+  journal={arXiv preprint arXiv:2512.20563},
+  year={2025}
 }
 ```
 
