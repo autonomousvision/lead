@@ -25,7 +25,7 @@
 
 ## Main Features
 
-LEAD provides a comprehensive framework for end-to-end driving research in the CARLA simulator, featuring TransFuser v6 - a simple yet state-of-the-art model.
+LEAD provides a comprehensive framework for end-to-end driving research in the CARLA simulator, featuring TransFuser v6 — a simple yet state-of-the-art model.
 
 Key highlights:
 - **Data-centric infrastructure**:
@@ -329,7 +329,6 @@ Useful documentations from other repositories:
 - [CARLA Coordinate Systems](https://github.com/autonomousvision/carla_garage/blob/leaderboard_2/docs/coordinate_systems.md)
 - [History of TransFuser](https://github.com/autonomousvision/carla_garage/blob/leaderboard_2/docs/history.md)
 - [Common Issues with CARLA](https://github.com/Thinklab-SJTU/Bench2Drive?tab=readme-ov-file#deal-with-carla)
-- [Some Useful Commands of CARLA](https://github.com/autonomousvision/CaRL/tree/main/CARLA#local-debugging)
 - [About Longest6 v2 Benchmark](https://github.com/autonomousvision/CaRL/tree/main/CARLA#longest6-v2)
 - [About Town13 Benchmark](https://github.com/autonomousvision/carla_garage?tab=readme-ov-file#carla-leaderboard-20-validation-routes)
 - [Random Scenario Generation](https://github.com/autonomousvision/CaRL/tree/main/CARLA#scenario-generation)
