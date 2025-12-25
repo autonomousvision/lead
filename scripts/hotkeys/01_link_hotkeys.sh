@@ -1,1 +1,0 @@
-ln -s scripts/hotkeys/* .
