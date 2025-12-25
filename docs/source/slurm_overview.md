@@ -18,7 +18,7 @@ Each experiment (pre-training, post-training, evaluation, etc.) corresponds to a
 
 ## Example
 
-Say we want to start a pre-training from scratch, as in `slurm/experiments/001_example/000_pretrain1_0.sh`
+Say we want to start a pre-training from scratch, as in [slurm/experiments/001_example/000_pretrain1_0.sh](https://github.com/autonomousvision/lead/blob/main/slurm/experiments/001_example/000_pretrain1_0.sh)
 
 ```bash
  #!/usr/bin/bash
@@ -32,11 +32,11 @@ train --cpus-per-task=32 --partition=a100-galvani --time=3-00:00:00 --gres=gpu:4
 
 The script is named with following convention `slurm/experiments/<number_id>_<experiment_name>/<another_number_id>_<experiment_step>_<seed>.sh`.
 
-The first line runs `slurm/init.sh`, which in turns create environment variables and define bash functions.
+The first line runs [slurm/init.sh](https://github.com/autonomousvision/lead/blob/main/slurm/init.sh), which in turns create environment variables and define bash functions.
 
-The second line defines environment variables for the Python training script. The same `image_architecture` and `lidar_architecture` options can be found in `lead/training/config_training.py`.
+The second line defines environment variables for the Python training script. The same `image_architecture` and `lidar_architecture` options can be found in [lead/training/config_training.py](https://github.com/autonomousvision/lead/blob/main/lead/training/config_training.py).
 
-The third line start the training, after defined the SLURM parameters. The function `train` can be found in `slurm/init.sh`.
+The third line start the training, after defined the SLURM parameters. The function `train` can be found in [slurm/init.sh](https://github.com/autonomousvision/lead/blob/main/slurm/init.sh).
 
 Simply by running this scripts, you can start a training which has an output directory at
 

@@ -20,11 +20,11 @@ bash scripts/run_expert.sh
 
 ## Inspect Collected Data
 
-Inspect data by using the notebook [notebooks/inspect_expert_output.ipynb](https://github.com/autonomousvision/lead/blob/leaderboard_2/notebooks/inspect_expert_output.ipynb).
+Inspect data by using the notebook [notebooks/inspect_expert_output.ipynb](https://github.com/autonomousvision/lead/blob/main/notebooks/inspect_expert_output.ipynb).
 
 ## About the Expert
 
-As can be seen in [lead/expert/expert.py](lead/expert/expert.py), LEAD:
+As can be seen in [lead/expert/expert.py](https://github.com/autonomousvision/lead/blob/main/lead/expert/expert.py), LEAD:
 
 - Proposes a shortest path by searching lane graph with A*.
 - Augment this shortest path to avoid collision with static obstacles.

@@ -4,7 +4,7 @@
 
 ## Overview
 
-We have a complete example pipeline for training and evaluating model at `slurm/experiments/001_example`.
+We have a complete example pipeline for training and evaluating model at [slurm/experiments/001_example](https://github.com/autonomousvision/lead/tree/main/slurm/experiments/001_example).
 
 ## Pre-training
 
@@ -40,7 +40,7 @@ train --cpus-per-task=64 --partition=L40Sday --time=4-00:00:00 --gres=gpu:4
 
 ## Resume crashed training
 
-As can be seen in `slurm/init.sh`, when a training crashes, we can restart it easily by adding a simple line to  `slurm/experiments/001_example/012_postrain32_2.sh`
+As can be seen in [slurm/init.sh](https://github.com/autonomousvision/lead/blob/main/slurm/init.sh), when a training crashes, we can restart it easily by adding a simple line to  [slurm/experiments/001_example/012_postrain32_2.sh](https://github.com/autonomousvision/lead/blob/main/slurm/experiments/001_example/012_postrain32_2.sh)
 
 ```bash
 #!/usr/bin/bash

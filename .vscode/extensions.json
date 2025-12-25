@@ -1,0 +1,9 @@
+{
+    "recommendations": [
+        "misarb.carlaapi",
+        "charliermarsh.ruff",
+        "naumovs.color-highlight",
+        "percy.vscode-pydata-viewer",
+        "njpwerner.autodocstring"
+    ]
+}

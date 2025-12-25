@@ -20,6 +20,7 @@ The basic section is sufficient to get started with the local data collection, t
 
    data_collection
    carla_training
+   evaluation
    jupyter_notebooks
 
 .. toctree::
