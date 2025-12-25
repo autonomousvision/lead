@@ -19,7 +19,7 @@ We maintain custom forks of CARLA evaluation tools with our modifications:
 
 ## Which TransFuser versions are there?
 
-See this [list](https://github.com/autonomousvision/carla_garage/blob/leaderboard_2/docs/history.md).
+See this [list](https://github.com/autonomousvision/carla_garage/blob/main/docs/history.md).
 
 ## How often does CARLA crash or fail to start?
 

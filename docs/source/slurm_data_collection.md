@@ -4,14 +4,14 @@
 
 ## Quick Start
 
-Adapt setting in `slurm/data_collection/collect_data.py`. In particular, you might be interested in to changing those:
+Adapt setting in [slurm/data_collection/collect_data.py](https://github.com/autonomousvision/lead/blob/main/slurm/data_collection/collect_data.py). In particular, you might be interested in to changing those:
 - `repetitions`: For more diversity, each route can be ran multiple times with different seeds.
 - `partitions`: Specific for your cluster.
 - `dataset_name`: Change this to your need.
 
 This script can be parametrized at running time by following config files:
-- `slurm/configs/max_num_parallel_jobs_collect_data.txt` controls how many jobs are spawned parallel.
-- `slurm/configs/max_sleep.txt` controls the time between starting CARLA server and starting python client.
+- [slurm/configs/max_num_attempts_collect_data.txt](https://github.com/autonomousvision/lead/blob/main/slurm/configs/max_num_attempts_collect_data.txt) controls how many jobs are spawned parallel.
+- [slurm/configs/max_sleep.txt](https://github.com/autonomousvision/lead/blob/main/slurm/configs/max_sleep.txt) controls the time between starting CARLA server and starting python client.
 
 Log into a login-node of your cluster, run
 

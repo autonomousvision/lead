@@ -1,3 +1,39 @@
 {
-  "jupyter.notebookFileRoot": "${workspaceRoot}"
+  "python.analysis.extraPaths": [
+    "3rd_party/leaderboard_autopilot/leaderboard",
+    "3rd_party/scenario_runner_autopilot/srunner",
+    "3rd_party/CARLA_0915/PythonAPI/carla"
+  ],
+  "python.autoComplete.extraPaths": [
+    "3rd_party/leaderboard_autopilot/leaderboard",
+    "3rd_party/scenario_runner_autopilot/srunner",
+    "3rd_party/CARLA_0915/PythonAPI/carla"
+  ],
+  "python.analysis.exclude": [
+    "data/**"
+  ],
+  "files.exclude": {
+    ".idea": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/__pycache__": true,
+    "wandb": true,
+    ".ruff_cache": true,
+    ".mypy_cache": true,
+  },
+  "jupyter.notebookFileRoot": "${workspaceRoot}",
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/*/**": true,
+    "**/3rd_party/*/**": true,
+    "**/data/*/**": true,
+    "**/outputs/*/**": true,
+  },
+  "vscode-pydata-viewer.scriptPath": "${workspaceFolder}/3rd_party/vscode_pydata_viewer/view_pickles.py",
+  "autoDocstring.docstringFormat": "google-notypes",
+  "autoDocstring.guessTypes": false,
 }

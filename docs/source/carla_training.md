@@ -22,7 +22,7 @@ cp -r data/expert_debug data/carla_leaderboard2
 
 Buckets group training samples by characteristics (e.g., scenarios, towns, weather, scenarios, road curvature, etc.) to enable curriculum learning and balanced batch sampling.
 
-By default we use [full_pretrain_bucket_collection](https://github.com/autonomousvision/lead/blob/leaderboard_2/lead/training/data_loader/buckets/full_pretrain_bucket_collection.py) for pre-training and [full_posttrain_bucket_collection](https://github.com/autonomousvision/lead/blob/leaderboard_2/lead/training/data_loader/buckets/full_posttrain_bucket_collection.py) for post-training, e.g., we train uniformly on all samples.
+By default we use [full_pretrain_bucket_collection](https://github.com/autonomousvision/lead/blob/main/lead/training/data_loader/buckets/full_pretrain_bucket_collection.py) for pre-training and [full_posttrain_bucket_collection](https://github.com/autonomousvision/lead/blob/main/lead/training/data_loader/buckets/full_posttrain_bucket_collection.py) for post-training, e.g., we train uniformly on all samples.
 
 Buckets are built once and stored on disk in the dataset directory. In subsequents runs they are reused automatically. This is neccessary to save time.
 
@@ -61,7 +61,7 @@ The bucket files can be used on other computers since file paths in each bucket 
 Raw sensor data (images, LiDAR, RADAR, etc.) requires significant preprocessing before training - decompression, format conversion, and perturbation alignment. The training cache stores preprocessed and compressed data to disk, eliminating redundant computation and dramatically speeding up data loading. Once built, the cache is reused across training runs, reducing the data loading bottleneck.
 
 Two types of cache are used:
-- **`persistent_cache`**: Stored alongside the dataset, reused across all training sessions. See implementation at [PersistentCache](https://github.com/autonomousvision/lead/blob/leaderboard_2/lead/training/data_loader/carla_dataset_utils.py).
+- **`persistent_cache`**: Stored alongside the dataset, reused across all training sessions. See implementation at [PersistentCache](https://github.com/autonomousvision/lead/blob/main/lead/training/data_loader/carla_dataset_utils.py).
 - **`training_session_cache`**: Temporary cache on local SSD of a cluster job. We use [diskcache](https://pypi.org/project/diskcache/) for this purpose.
 
 To build cache, run
