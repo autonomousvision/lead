@@ -313,21 +313,26 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
                 )
 
         # Cut cameras down to only used cameras
-        for modality in ["rgb", "original_rgb"]:
-            if (
-                self.training_config.num_used_cameras
-                != self.training_config.num_available_cameras
-            ):
-                n = self.training_config.num_available_cameras
-                w = input_data[modality].shape[2] // n
+        if (
+            self.training_config.num_used_cameras
+            != self.training_config.num_available_cameras
+        ):
+            n = self.training_config.num_available_cameras
+            for modality in ["rgb", "original_rgb"]:
+                # rgb is (C, H, W), original_rgb is (H, W, C)
+                width_axis = 1 if modality == "original_rgb" else 2
+                w = input_data[modality].shape[width_axis] // n
 
                 rgb_slices = []
                 for i, use in enumerate(self.training_config.used_cameras):
                     if use:
                         s, e = i * w, (i + 1) * w
-                        rgb_slices.append(input_data[modality][:, :, s:e])
+                        if modality == "original_rgb":
+                            rgb_slices.append(input_data[modality][:, s:e])
+                        else:
+                            rgb_slices.append(input_data[modality][:, :, s:e])
 
-                input_data[modality] = np.concatenate(rgb_slices, axis=2)
+                input_data[modality] = np.concatenate(rgb_slices, axis=width_axis)
 
         # Plan next target point and command.
         self.set_target_points(
@@ -575,7 +580,6 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
         ):
             # Get the RGB image for visualization (before JPEG compression)
             input_image = input_data["original_rgb"].copy()
-
             # Save input image and video using VideoRecorder
             if hasattr(self, "video_recorder"):
                 self.video_recorder.save_input_image(input_image)

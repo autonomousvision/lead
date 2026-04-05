@@ -56,14 +56,11 @@
 | Date         | Content                                                                                                                                        |
 | :----------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
 | **26.03.21** | Added evaluation support for the RL planner [CaRL](https://github.com/autonomousvision/carl), see [instructions](#carl-agent-evaluation). |
-| **26.03.18** | Deactivated creeping heuristic. Set `sensor_agent_creeping=True` in [config_closed_loop](lead/inference/config_closed_loop.py) to re-enable.   |
+| **26.03.18** | Deactivated Kalman Filter and all post-processing heuristics. See performance report [here](#3-download-checkpoints).   |
 | **26.02.25** | LEAD is accepted to **CVPR 2026**!                                                                                                             |
 | **26.02.25** | NAVSIM extension released. Code and [instructions](#navsim-training-and-evaluation) available. Supplementary data coming soon.                 |
 | **26.02.02** | Preliminary support for [123D](https://github.com/autonomousvision/py123d). See [instructions](#carla-123d-data-collection).                   |
-| **26.01.18** | Deactivated Kalman filter. Set `use_kalman_filter=True` in [config_closed_loop](lead/inference/config_closed_loop.py) to re-enable.            |
 | **26.01.13** | CARLA dataset and training documentation released.                                                                                             |
-| **26.01.05** | Deactivated stop-sign heuristic. Set `slower_for_stop_sign=True` in [config_closed_loop](lead/inference/config_closed_loop.py) to re-enable.   |
-| **26.01.05** | RoutePlanner bug fix — fixed an index error causing crashes at end of routes in Town13.                                                        |
 | **25.12.24** | Initial release — paper, checkpoints, expert driver, and inference code.                                                                       |
 
 </div>
@@ -107,7 +104,7 @@ pip install conda-lock && conda-lock install -n lead conda-lock.yml
 # Activate conda environment
 conda activate lead
 
-# Install dependencies and setup git hooks
+# Install dependencies
 pip install uv && uv pip install -r requirements.txt && uv pip install -e .
 
 # Install other tools needed for development
@@ -129,7 +126,7 @@ ln -s /your/carla/path 3rd_party/CARLA_0915
 
 ### 3. Download checkpoints
 
-Pre-trained checkpoints are hosted on HuggingFace. To reproduce the published results, enable the Kalman filter, stop-sign, and creeping heuristics. Performance without these heuristics (fully end-to-end) should be comparable to performance with them.
+Pre-trained checkpoints are hosted on HuggingFace. Following are the results from the paper. To reproduce these results, enable the Kalman filter, stop-sign, and creeping heuristics by setting `sensor_agent_creeping=True use_kalman_filter=True slower_for_stop_sign=True` in [config_closed_loop](lead/inference/config_closed_loop.py).
 
 <div align="center">
 
@@ -141,6 +138,16 @@ Pre-trained checkpoints are hosted on HuggingFace. To reproduce the published re
 | &ensp; − Radar         |     94      |     52      |   TBD    |    [Link](https://huggingface.co/ln2697/tfv6/tree/main/noradar_resnet34)    |
 | &ensp; Vision only     |     91      |     43      |   TBD    |  [Link](https://huggingface.co/ln2697/tfv6/tree/main/visiononly_resnet34)   |
 | &ensp; Town13 held out |     93      |     52      |   3.52   | [Link](https://huggingface.co/ln2697/tfv6/tree/main/town13heldout_resnet34) |
+
+</div>
+
+<b>Without these heuristics</b>, the performance changes as follows, with the biggest boost observed on Town13.
+
+<div align="center">
+
+| Variant            | Bench2Drive  | Longest6 v2 |   Town13   |
+| :----------------- | :----------: | :---------: | :--------: |
+| Full E2E TransFuser V6 | 95 &rarr; 94 | 62 &rarr; 62 | 5 &rarr; 10 |
 
 </div>
 

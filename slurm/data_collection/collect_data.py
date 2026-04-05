@@ -301,7 +301,7 @@ if __name__ == "__main__":
     username = os.environ["USER"]
     code_root = os.getcwd()
     carla_root = os.getcwd() + "/3rd_party/CARLA_0915"
-    max_route_per_scenario_type = 40  # -1 means no limit
+    max_route_per_scenario_type = 51  # -1 means no limit
 
     # Configure based on data format
     if args.py123d:
