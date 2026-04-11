@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="40" town="Town13">
+    <weathers>
+      <weather route_percentage="0" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+      <weather route_percentage="100" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+    </weathers>
+    <waypoints>
+      <position x="-2292.0" y="156.0" z="170.5" />
+      <position x="-2415.3" y="35.7" z="172.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="ImageOnObject" type="ImageOnObject">
+        <distance value="50" />
+        <trigger_point x="-2293.9" y="136.8" z="170.5" yaw="256.5" />
+        <prop value="static.prop.busstop" />
+        <image value="none" />
+        <offset_y value="0.25" />
+        <offset_z value="0.25" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

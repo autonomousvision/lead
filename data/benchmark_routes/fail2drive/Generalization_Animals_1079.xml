@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="1079" town="Town13">
+    <weathers>
+      <weather route_percentage="0" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+      <weather route_percentage="100" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+    </weathers>
+    <waypoints>
+      <position x="2238.2" y="446.6" z="159.1" />
+      <position x="2186.4" y="551.5" z="158.2" />
+    </waypoints>
+    <scenarios>
+      <scenario name="VehicleTurningRoutePedestrian_0" type="VehicleTurningRoutePedestrian">
+        <trigger_point x="2237.6" y="508.4" z="159.1" yaw="90.5" />
+        <walker value="walker.animal.1010" />
+      </scenario>
+      <scenario name="PriorityAtJunction_0" type="PriorityAtJunction">
+        <trigger_point x="2237.6" y="508.4" z="159.1" yaw="90.5" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

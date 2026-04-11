@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="1088" town="Town13">
+    <weathers>
+      <weather route_percentage="0" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+      <weather route_percentage="100" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+    </weathers>
+    <waypoints>
+      <position x="2826.5" y="5236.4" z="168.4" />
+      <position x="3007.0" y="5238.3" z="172.8" />
+    </waypoints>
+    <scenarios>
+      <scenario name="PedestriansOnRoad" type="PedestriansOnRoad">
+        <distance value="30" />
+        <walker_duration value="30" />
+        <walker_speed value="3" />
+        <trigger_point x="2837.6" y="5236.5" z="168.7" yaw="0.6" />
+        <pedestrians a="walker.pedestrian.0013" b="walker.pedestrian.0049" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="26" town="Town13">
+    <weathers>
+      <weather route_percentage="0" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+      <weather route_percentage="100" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+    </weathers>
+    <waypoints>
+      <position x="-1021.9" y="5832.2" z="146.3" />
+      <position x="-1371.5" y="5800.7" z="146.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="ParkedObstacle_0" type="ParkedObstacle">
+        <distance value="80" />
+        <direction value="right" />
+        <speed value="80" />
+        <trigger_point x="-1114.4" y="5819.3" z="145.9" yaw="-173.1" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

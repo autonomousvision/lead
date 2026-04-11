@@ -17,3 +17,7 @@ A well-tuned controller (e.g., MPC) can significantly improve performance. Preli
 ## CARLA 0.9.16 Has Goal-Point Issues
 
 CARLA 0.9.16 currently has problems with the goal-point pipeline that degrade policy behavior. We don't recommend evaluating models on this version.
+
+## Torch version
+
+The training of CARLA agents work best with Torch `2.5.x`. Newer version might results into training divergence.

@@ -37,6 +37,7 @@
 - [CARLA Data Collection](#carla-data-collection)
 - [CARLA 123D Data Collection](#carla-123d-data-collection)
 - [CARLA Benchmarking](#carla-benchmarking)
+- [Fail2Drive Evaluation](#fail2drive-evaluation)
 - [CaRL Agent Evaluation](#carl-agent-evaluation)
 - [NAVSIM Training and Evaluation](#navsim-training-and-evaluation)
 - [Project Structure](#project-structure)
@@ -55,6 +56,7 @@
 
 | Date         | Content                                                                                                                                        |
 | :----------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
+| **26.04.11** | Added [Fail2Drive](https://github.com/lead-3rd-party/fail2drive) benchmark support, see [instructions](#fail2drive-evaluation). |
 | **26.03.21** | Added evaluation support for the RL planner [CaRL](https://github.com/autonomousvision/carl), see [instructions](#carl-agent-evaluation). |
 | **26.03.18** | Deactivated Kalman Filter and all post-processing heuristics. See performance report [here](#3-download-checkpoints).   |
 | **26.02.25** | LEAD is accepted to **CVPR 2026**!                                                                                                             |
@@ -390,11 +392,12 @@ python lead/leaderboard_wrapper.py \
 
 <div align="center">
 
-| Benchmark   | Route file                                    | Extra flag      |
-| :---------- | :-------------------------------------------- | :-------------- |
-| Bench2Drive | `data/benchmark_routes/bench2drive/23687.xml` | `--bench2drive` |
-| Longest6 v2 | `data/benchmark_routes/longest6/00.xml`       | —               |
-| Town13      | `data/benchmark_routes/Town13/0.xml`          | —               |
+| Benchmark   | Route file                                                      | Extra flag      |
+| :---------- | :-------------------------------------------------------------- | :-------------- |
+| Bench2Drive | `data/benchmark_routes/bench2drive/23687.xml`                   | `--bench2drive` |
+| Longest6 v2 | `data/benchmark_routes/longest6/00.xml`                         | —               |
+| Town13      | `data/benchmark_routes/Town13/0.xml`                            | —               |
+| Fail2Drive  | `data/benchmark_routes/fail2drive/Base_Animals_0075.xml`        | `--fail2drive`  |
 
 </div>
 
@@ -404,6 +407,7 @@ Or via **bash**:
 bash scripts/eval_bench2drive.sh   # Bench2Drive
 bash scripts/eval_longest6.sh      # Longest6 v2
 bash scripts/eval_town13.sh        # Town13
+bash scripts/eval_fail2drive.sh    # Fail2Drive (requires CARLA_F2D)
 ```
 
 Results are saved to `outputs/local_evaluation/` with videos, infractions, and metrics.
@@ -412,6 +416,37 @@ Results are saved to `outputs/local_evaluation/` with videos, infractions, and m
 > 1. See the [evaluation docs](https://ln2697.github.io/lead/docs/evaluation.html) for details.
 > 2. For distributed evaluation, see the [SLURM evaluation docs](https://ln2697.github.io/lead/docs/slurm_evaluation.html).
 > 3. Our SLURM wrapper supports WandB for reproducible benchmarking.
+
+---
+
+## Fail2Drive Evaluation
+
+[Fail2Drive](https://github.com/lead-3rd-party/fail2drive) is a CARLA v2 benchmark for testing closed-loop generalization on unseen long-tail scenarios.
+
+**Setup.** Download the Fail2Drive simulator (custom CARLA build with novel assets):
+
+```bash
+mkdir -p 3rd_party/CARLA_F2D
+curl -L \
+  https://huggingface.co/datasets/SimonGer/Fail2Drive/resolve/main/fail2drive_simulator.tar.gz \
+  | tar -xz -C 3rd_party/CARLA_F2D
+```
+
+**Evaluate.** With CARLA_F2D running, evaluate on a single route:
+
+```bash
+# Start the Fail2Drive CARLA simulator
+bash 3rd_party/CARLA_F2D/CarlaUE4.sh
+
+# Evaluate model on one route
+python lead/leaderboard_wrapper.py \
+  --checkpoint outputs/checkpoints/tfv6_resnet34 \
+  --routes data/benchmark_routes/fail2drive/Base_Animals_0075.xml \
+  --fail2drive
+```
+
+> [!TIP]
+> For SLURM evaluation, use `evaluate_fail2drive` from `slurm/init.sh`. See existing experiment scripts for usage patterns.
 
 ---
 
@@ -481,6 +516,8 @@ The project is organized into the following top-level directories. See the [full
 | Simulator hangs or is unresponsive             | Restart the CARLA simulator                                    |
 | Route or evaluation failures                   | Restart the leaderboard                                        |
 | Need to reset the map without restarting CARL  | Run `scripts/reset_carla_world.py` (much faster on large maps) |
+| PyTorch version mismatch after upgrade         | Do not upgrade PyTorch — CARLA's PythonAPI and scenario runner depend on the pinned version. Upgrading may cause silent evaluation failures. |
+| Training divergence after PyTorch update       | Run a test training for 50k–100k steps on the new PyTorch version and check if the loss is stable before committing to a full run. We tried to upgrade several times but failed to achieve stable training on newer Torch versions.|
 
 ---
 
@@ -520,7 +557,7 @@ This project builds on the shoulders of excellent open-source work. Special than
 <p align="center">
   <a href="https://github.com/OpenDriveLab/DriveLM/blob/DriveLM-CARLA/pdm_lite/docs/report.pdf">PDM-Lite</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/carla-simulator/leaderboard">Leaderboard</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/carla-simulator/scenario_runner">Scenario Runner</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/autonomousvision/navsim">NAVSIM</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/waymo-research/waymo-open-dataset">Waymo Open Dataset</a>
   <br>
-  <a href="https://github.com/RenzKa/simlingo">SimLingo</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/autonomousvision/plant2">PlanT2</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/autonomousvision/Bench2Drive-Leaderboard">Bench2Drive Leaderboard</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/Thinklab-SJTU/Bench2Drive/">Bench2Drive</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/autonomousvision/CaRL">CaRL</a>
+  <a href="https://github.com/RenzKa/simlingo">SimLingo</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/autonomousvision/plant2">PlanT2</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/autonomousvision/Bench2Drive-Leaderboard">Bench2Drive Leaderboard</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/Thinklab-SJTU/Bench2Drive/">Bench2Drive</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/autonomousvision/CaRL">CaRL</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/autonomousvision/fail2drive">Fail2Drive</a>
 </p>
 
 Long Nguyen led development of the project. Kashyap Chitta, Bernhard Jaeger, and Andreas Geiger contributed through technical discussion and advisory feedback. Daniel Dauner provided guidance with NAVSIM.

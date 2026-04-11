@@ -215,6 +215,17 @@ function evaluate_expert_longest6() {
 	evaluate_expert "$@"
 }
 
+############################# Fail2Drive Evaluation #############################
+
+# Evaluate on Fail2Drive benchmark (uses custom CARLA simulator with novel assets)
+# Usage: evaluate_fail2drive <checkpoint_dir>
+function evaluate_fail2drive() {
+	export EVALUATION_DATASET=fail2drive
+	export CARLA_ROOT=$LEAD_PROJECT_ROOT/3rd_party/CARLA_F2D
+	export SCRIPT_GENERATOR_PARAMETERS="$SCRIPT_GENERATOR_PARAMETERS --slurm_timeout 0-04:00:00"
+	evaluate "$@"
+}
+
 ############################# CARL Evaluation #############################
 
 # Evaluate CaRL agent

@@ -26,6 +26,7 @@ class LeaderboardType(Enum):
 
     STANDARD = "standard"
     BENCH2DRIVE = "bench2drive"
+    FAIL2DRIVE = "fail2drive"
     AUTOPILOT = "autopilot"
 
 
@@ -38,6 +39,7 @@ class ModeConfig:
         is_expert: bool,
         is_carl_agent: bool,
         is_bench2drive: bool,
+        is_fail2drive: bool,
         checkpoint: str | None,
         routes: str,
         use_py123d: bool = False,
@@ -48,6 +50,7 @@ class ModeConfig:
             is_expert: Whether expert mode is selected
             is_carl_agent: Whether CaRL agent mode is selected
             is_bench2drive: Whether bench2drive variant is selected
+            is_fail2drive: Whether fail2drive variant is selected
             checkpoint: Model checkpoint path (None for expert)
             routes: Routes file path
             use_py123d: Whether to use expert_py123d.py instead of expert.py
@@ -69,11 +72,16 @@ class ModeConfig:
                 "MAP",
             )
 
+        def _resolve_leaderboard_type() -> LeaderboardType:
+            if is_fail2drive:
+                return LeaderboardType.FAIL2DRIVE
+            if is_bench2drive:
+                return LeaderboardType.BENCH2DRIVE
+            return LeaderboardType.STANDARD
+
         if is_carl_agent:
             return (
-                LeaderboardType.BENCH2DRIVE
-                if is_bench2drive
-                else LeaderboardType.STANDARD,
+                _resolve_leaderboard_type(),
                 "lead/carl_agent/carl_agent.py",
                 checkpoint,
                 checkpoint,
@@ -81,7 +89,7 @@ class ModeConfig:
             )
 
         return (
-            LeaderboardType.BENCH2DRIVE if is_bench2drive else LeaderboardType.STANDARD,
+            _resolve_leaderboard_type(),
             "lead/inference/sensor_agent.py",
             checkpoint,
             checkpoint,
@@ -167,6 +175,18 @@ class LeaderboardWrapper:
                 "evaluator_module": "leaderboard.leaderboard_evaluator",
                 "carla_path": self.workspace_root
                 / "3rd_party/CARLA_0915/PythonAPI/carla",
+            }
+        elif self.leaderboard_type == LeaderboardType.FAIL2DRIVE:
+            return {
+                "leaderboard_root": self.workspace_root
+                / "3rd_party/fail2drive/leaderboard",
+                "scenario_runner_root": self.workspace_root
+                / "3rd_party/fail2drive/scenario_runner",
+                "evaluator_script": self.workspace_root
+                / "3rd_party/fail2drive/leaderboard/leaderboard/leaderboard_evaluator.py",
+                "evaluator_module": "leaderboard.leaderboard_evaluator",
+                "carla_path": self.workspace_root
+                / "3rd_party/CARLA_F2D/PythonAPI/carla",
             }
         elif self.leaderboard_type == LeaderboardType.AUTOPILOT:
             return {
@@ -359,6 +379,7 @@ class LeaderboardWrapper:
                 is_expert=self.args.expert,
                 is_carl_agent=self.args.carl_agent,
                 is_bench2drive=self.args.bench2drive,
+                is_fail2drive=self.args.fail2drive,
                 checkpoint=self.args.checkpoint,
                 routes=str(self.routes),
                 use_py123d=self.args.py123d if hasattr(self.args, "py123d") else False,
@@ -554,6 +575,11 @@ Examples:
     # Leaderboard type
     parser.add_argument(
         "--bench2drive", action="store_true", help="Use Bench2Drive leaderboard"
+    )
+    parser.add_argument(
+        "--fail2drive",
+        action="store_true",
+        help="Use Fail2Drive leaderboard (requires CARLA_F2D simulator)",
     )
     parser.add_argument(
         "--carl-agent",

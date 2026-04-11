@@ -170,6 +170,7 @@ slurm-*.out
 3rd_party/CARLA_0.9.15.tar.gz
 3rd_party/CARLA_0915
 3rd_party/CARLA_0916
+3rd_party/CARLA_F2D
 outputs/
 docs/build/
 !slurm/

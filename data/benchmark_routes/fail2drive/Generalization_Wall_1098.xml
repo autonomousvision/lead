@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="1098" town="Town13">
+    <weathers>
+      <weather route_percentage="0.0" cloudiness="0.0" precipitation="0.0" precipitation_deposits="0.0" wind_intensity="0.0" sun_azimuth_angle="180.0" sun_altitude_angle="45.0" fog_density="0.0" fog_distance="0.0" wetness="0.0" />
+    </weathers>
+    <waypoints>
+      <position x="2335.7" y="689.6" z="160.5" />
+      <position x="2336.6" y="545.4" z="160.6" />
+    </waypoints>
+    <scenarios>
+      <scenario name="RoadBlocked" type="RoadBlocked">
+        <distance value="50" />
+        <objects a="id=static.prop.screenshot1 x=0 y=0 z=2 yaw=90 roll=90" />
+        <trigger_point x="2336.1" y="624.8" z="160.6" yaw="270.4" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

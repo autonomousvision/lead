@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="1003" town="Town13">
+    <weathers>
+      <weather route_percentage="0" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+      <weather route_percentage="100" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+    </weathers>
+    <waypoints>
+      <position x="-3471.4" y="6001.4" z="168.2" />
+      <position x="-3817.0" y="5995.5" z="173.6" />
+    </waypoints>
+    <scenarios>
+      <scenario name="BadParkingObstacle" type="BadParkingObstacle">
+        <vehicle value="vehicle.dodge.charger_2020" />
+        <y value="2.3" />
+        <yaw value="30" />
+        <distance value="80" />
+        <direction value="right" />
+        <trigger_point x="-3657.0" y="5998.2" z="171.0" yaw="-179.0" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

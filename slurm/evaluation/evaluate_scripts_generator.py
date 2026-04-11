@@ -18,12 +18,16 @@ def make_bash(bash_file, route_file, route_id, args):
     # Select evaluator scripts based on expert mode
     if args.expert:
         bench2drive_evaluator = "3rd_party/Bench2Drive/leaderboard/leaderboard/leaderboard_evaluator_local.py"
+        fail2drive_evaluator = "3rd_party/fail2drive/leaderboard/leaderboard/leaderboard_evaluator_local.py"
         standard_evaluator = (
             "3rd_party/leaderboard_autopilot/leaderboard/leaderboard_evaluator_local.py"
         )
     else:
         bench2drive_evaluator = (
             "3rd_party/Bench2Drive/leaderboard/leaderboard/leaderboard_evaluator.py"
+        )
+        fail2drive_evaluator = (
+            "3rd_party/fail2drive/leaderboard/leaderboard/leaderboard_evaluator.py"
         )
         standard_evaluator = (
             "3rd_party/leaderboard/leaderboard/leaderboard_evaluator.py"
@@ -59,6 +63,11 @@ if [[ $EVALUATION_DATASET == "bench2drive" ]]; then
     export IS_BENCH2DRIVE=1
     export SCENARIO_RUNNER_ROOT=3rd_party/Bench2Drive/scenario_runner
     export LEADERBOARD_ROOT=3rd_party/Bench2Drive/leaderboard
+elif [[ $EVALUATION_DATASET == "fail2drive" ]]; then
+    export IS_BENCH2DRIVE=0
+    export SCENARIO_RUNNER_ROOT=3rd_party/fail2drive/scenario_runner
+    export LEADERBOARD_ROOT=3rd_party/fail2drive/leaderboard
+    export CARLA_ROOT=$LEAD_PROJECT_ROOT/3rd_party/CARLA_F2D
 else
     export IS_BENCH2DRIVE=0
     export REPETITIONS=1
@@ -119,6 +128,22 @@ set +e
 
 if [[ $EVALUATION_DATASET == "bench2drive" ]]; then
     CUDA_VISIBLE_DEVICES=0 python3 {bench2drive_evaluator} \
+    --routes=$ROUTES \
+    --track={args.track} \
+    --checkpoint=$CHECKPOINT_ENDPOINT \
+    --agent=$TEAM_AGENT \
+    --agent-config=$TEAM_CONFIG \
+    --debug=$DEBUG_CHALLENGE \
+    --record=$RECORD_PATH \
+    --resume=False \
+    --port=$PORT \
+    --traffic-manager-port=$TM_PORT \
+    --timeout=120 \
+    --debug-checkpoint=$DEBUG_CHECKPOINT_ENDPOINT \
+    --traffic-manager-seed=$EXPERIMENT_SEED \
+    --repetitions={args.repetitions}
+elif [[ $EVALUATION_DATASET == "fail2drive" ]]; then
+    CUDA_VISIBLE_DEVICES=0 python3 {fail2drive_evaluator} \
     --routes=$ROUTES \
     --track={args.track} \
     --checkpoint=$CHECKPOINT_ENDPOINT \
