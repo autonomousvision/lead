@@ -1,9 +1,11 @@
 <p align="center">
-  <img src="docs/assets/logo.png" alt="LEAD">
+  <img src="https://avatars.githubusercontent.com/u/269669339?s=200&v=4" alt="KE:SAI" height="60">&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="https://www.iapb.org/wp-content/uploads/2020/09/The-Eberhard-Karls-University-of-Tubingen.png" alt="University of Tübingen" height="60">&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="https://research.nvidia.com/labs/gear/images/media/nvidia_hu_9c090f760c3ff52d.png" alt="NVIDIA" height="60">
 </p>
 
 <h2 align="center">
-  <b>Minimizing Learner–Expert Asymmetry in End-to-End Driving</b>
+  <b>LEAD: Minimizing Learner–Expert Asymmetry in End-to-End Driving</b>
 </h2>
 
 <p align="center">
@@ -11,16 +13,31 @@
 </p>
 
 <p align="center">
-  An open-source end-to-end driving stack for CARLA, achieving state-of-the-art<br>closed-loop performance across all major Leaderboard 2.0 benchmarks.
+  An open-source end-to-end driving stack for CARLA.</br>
+  ▶ Achieving state-of-the-art performance across all major Leaderboard 2.0 benchmarks. ◀
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Bench2Drive-95.2 🏆-0F6E56?style=for-the-badge&labelColor=1D9E75" alt="Bench2Drive">
-  <img src="https://img.shields.io/badge/Longest6_V2-62 🏆-185FA5?style=for-the-badge&labelColor=378ADD" alt="Longest6 V2">
-  <img src="https://img.shields.io/badge/Town13-5.2 🏆-854F0B?style=for-the-badge&labelColor=BA7517" alt="Town13">
+  <img src="https://img.shields.io/badge/Bench2Drive-95.2 🏆-00484B?style=for-the-badge&labelColor=006064" alt="Bench2Drive">
+  <img src="https://img.shields.io/badge/Longest6_V2-62 🏆-141A5F?style=for-the-badge&labelColor=1A237E" alt="Longest6 V2">
+  <img src="https://img.shields.io/badge/Town13-5.2 🏆-BF8E1E?style=for-the-badge&labelColor=FFBE28" alt="Town13">
 </p>
 
----
+
+<p align="center">
+  <a href="https://ln2697.github.io">Long Nguyen</a><sup>1,3</sup>&nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="https://de.linkedin.com/in/micha-fauth-b4492a22b">Micha Fauth</a><sup>1</sup>&nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="https://kait0.github.io">Bernhard Jaeger</a><sup>1,3</sup>&nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="https://danieldauner.github.io">Daniel Dauner</a><sup>1,3</sup>
+  <br>
+  <a href="https://maximilianigl.com">Maximilian Igl</a><sup>2</sup>&nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="http://www.cvlibs.net">Andreas Geiger</a><sup>1,3</sup>&nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="https://kashyap7x.github.io">Kashyap Chitta</a><sup>2</sup>
+</p>
+
+<p align="center">
+  <sup>1</sup>University of Tübingen, Tübingen AI Center&nbsp;&nbsp;·&nbsp;&nbsp;<sup>2</sup>NVIDIA Research&nbsp;&nbsp;·&nbsp;&nbsp;<sup>3</sup>KE:SAI
+</p>
 
 ## Table of Contents
 
@@ -34,12 +51,11 @@
   - [1.5. Evaluate model](#15-evaluate-model)
   - [1.6. Infraction Analysis Webapp](#16-infraction-analysis-webapp)
 - [2. CARLA Research Cycle](#2-carla-research-cycle)
-  - [2.1. Data Collection](#21-data-collection)
+  - [2.1. Collecting Data](#21-collecting-data)
   - [2.2. Training](#22-training)
   - [2.3. Benchmarking](#23-benchmarking)
 - [3. Extensions](#3-extensions)
   - [3.1. Fail2Drive Evaluation](#31-fail2drive-evaluation)
-    - [Results](#results)
   - [3.2. CaRL Agent Evaluation](#32-carl-agent-evaluation)
   - [3.3. NAVSIM Training and Evaluation](#33-navsim-training-and-evaluation)
   - [3.4. CARLA 123D Data Collection](#34-carla-123d-data-collection)
@@ -49,9 +65,6 @@
 - [Further Documentation](#further-documentation)
 - [Acknowledgements](#acknowledgements)
 - [Citation](#citation)
-- [License](#license)
-
----
 
 ## Updates
 
@@ -59,20 +72,20 @@
 
 | Date         | Content                                                                                                                                        |
 | :----------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
-| **26.04.11** | Added [Fail2Drive](https://github.com/lead-3rd-party/fail2drive) benchmark support, see [instructions](#31-fail2drive-evaluation). |
-| **26.03.21** | Added evaluation support for the RL planner [CaRL](https://github.com/autonomousvision/carl), see [instructions](#32-carl-agent-evaluation). |
+| **26.04.11** | Added Fail2Drive benchmark support, see [instructions](#31-fail2drive-evaluation). |
+| **26.03.21** | Added evaluation support for the reinforcement-learning planner CaRL, see [instructions](#32-carl-agent-evaluation). |
 | **26.03.18** | Deactivated Kalman Filter and all post-processing heuristics. See performance report [here](#13-download-checkpoints).   |
-| **26.02.25** | LEAD is accepted to **CVPR 2026**!                                                                                                             |
+| **26.02.25** | LEAD is accepted to **CVPR 2026** 🎉                                                                                                             |
 | **26.02.25** | NAVSIM extension released. Code and [instructions](#33-navsim-training-and-evaluation) available. Supplementary data coming soon.                 |
-| **26.02.02** | Preliminary support for [123D](https://github.com/autonomousvision/py123d). See [instructions](#34-carla-123d-data-collection).                   |
+| **26.02.02** | Preliminary support for 123D. See [instructions](#34-carla-123d-data-collection).                   |
 | **26.01.13** | CARLA dataset and training documentation released.                                                                                             |
 | **25.12.24** | Initial release — paper, checkpoints, expert driver, and inference code.                                                                       |
 
 </div>
 
----
+## 1. Quick Start
 
-## 1. Quick Start CARLA Leaderboard
+Get LEAD running locally: from cloning the repo and installing dependencies, to downloading a pretrained checkpoint and driving a CARLA Leaderboard 2.0 route end-to-end. We tested the instructions on: Ubuntu 24.04 and RTX 2080ti / GTX 1080ti.
 
 ### 1.1. Environment initialization
 
@@ -170,13 +183,24 @@ git lfs pull
 
 ### 1.4. Setup VSCode/PyCharm
 
-**VSCode** — install recommended extensions when prompted. Debugging works out of the box.
+<div align="center">
 
-![VSCode recommended extensions prompt](docs/assets/vscode.png)
+<table>
+  <tr>
+    <th width="50%">VSCode</th>
+    <th width="50%">PyCharm</th>
+  </tr>
+  <tr>
+    <td>Install the recommended extensions when prompted. Debugging works out of the box.</td>
+    <td>Add the CARLA Python API <code>3rd_party/CARLA_0915/PythonAPI/carla</code> to your interpreter paths via <code>Settings → Python → Interpreter → Show All → Show Interpreter Paths</code>.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/vscode.png" alt="VSCode recommended extensions prompt"></td>
+    <td><img src="docs/assets/pycharm.png" alt="PyCharm interpreter paths setting"></td>
+  </tr>
+</table>
 
-**PyCharm** — add the CARLA Python API `3rd_party/CARLA_0915/PythonAPI/carla` to your interpreter paths via `Settings → Python → Interpreter → Show All → Show Interpreter Paths`.
-
-![PyCharm interpreter paths setting](docs/assets/pycharm.png)
+</div>
 
 ### 1.5. Evaluate model
 
@@ -236,11 +260,11 @@ Navigate to http://localhost:5000 and point it at `outputs/local_evaluation`.
 > [!TIP]
 > The app supports browser bookmarking to jump directly to a specific timestamp.
 
----
-
 ## 2. CARLA Research Cycle
 
-### 2.1. Data Collection
+The primary focus of this repository is solving the [original CARLA Leaderboard 2.0](https://leaderboard.carla.org/get_started_v2_0/). This section walks through the full research loop — collecting expert demonstrations, training a TFv6 policy, and benchmarking it closed-loop.
+
+### 2.1. Collecting Data
 
 With CARLA running, collect data for a single route via **Python** (recommended for debugging):
 
@@ -278,6 +302,8 @@ Collected data is saved to `outputs/expert_evaluation/` with the following struc
 | `results.json`           | Route-level summary and evaluation metadata |
 
 </div>
+
+On a SLURM Cluster of 92 GTX 1080ti, the data collection is often finished after 2 days.
 
 > [!TIP]
 > 1. To configure camera/lidar/radar calibration, see [config_base.py](lead/common/config_base.py) and [config_expert.py](lead/expert/config_expert.py).
@@ -371,9 +397,9 @@ Results are saved to `outputs/local_evaluation/` with videos, infractions, and m
 > 2. For distributed evaluation, see the [SLURM evaluation docs](https://ln2697.github.io/lead/docs/slurm_evaluation.html).
 > 3. Our SLURM wrapper supports WandB for reproducible benchmarking.
 
----
-
 ## 3. Extensions
+
+Beyond the core Leaderboard 2.0 workflow, LEAD also supports additional benchmarks (Fail2Drive, NAVSIM), an alternative RL policy (CaRL), and an alternative data format (123D). Each extension plugs into the code base with minimal changes.
 
 ### 3.1. Fail2Drive Evaluation
 
@@ -383,8 +409,7 @@ Results are saved to `outputs/local_evaluation/` with videos, infractions, and m
 
 ```bash
 mkdir -p 3rd_party/CARLA_F2D
-curl -L \
-  https://huggingface.co/datasets/SimonGer/Fail2Drive/resolve/main/fail2drive_simulator.tar.gz \
+curl -L https://hf.co/datasets/SimonGer/Fail2Drive/resolve/main/fail2drive_simulator.tar.gz \
   | tar -xz -C 3rd_party/CARLA_F2D
 ```
 
@@ -395,7 +420,9 @@ curl -L \
 bash 3rd_party/CARLA_F2D/CarlaUE4.sh
 
 # Evaluate model on one route
-LEAD_CLOSED_LOOP_CONFIG="sensor_agent_creeping=True use_kalman_filter=True slower_for_stop_sign=True" \
+LEAD_CLOSED_LOOP_CONFIG="sensor_agent_creeping=True \
+  use_kalman_filter=True \
+  slower_for_stop_sign=True" \
 python lead/leaderboard_wrapper.py \
   --checkpoint outputs/checkpoints/tfv6_regnety \
   --routes data/benchmark_routes/fail2drive/Base_Animals_0075.xml \
@@ -405,7 +432,7 @@ python lead/leaderboard_wrapper.py \
 > [!TIP]
 > For SLURM evaluation, use `evaluate_fail2drive` from `slurm/init.sh`. See existing experiment scripts for usage patterns.
 
-#### Results
+**Results.**
 
 <div align="center">
 
@@ -582,8 +609,6 @@ python scripts/123d_viser.py
 > [!TIP]
 > This feature is experimental. Change `PY123D_DATA_ROOT` in `scripts/main.sh` to set the output directory.
 
----
-
 ## 4. Project Structure
 
 The project is organized into the following top-level directories. See the [full documentation](https://ln2697.github.io/lead/docs/project_structure.html) for a detailed breakdown.
@@ -602,8 +627,6 @@ The project is organized into the following top-level directories. See the [full
 
 </div>
 
----
-
 ## 5. Common Issues
 
 | Issue                                        | Fix                                                            |
@@ -612,8 +635,6 @@ The project is organized into the following top-level directories. See the [full
 | Simulator hangs or is unresponsive             | Restart the CARLA simulator                                    |
 | Route or evaluation failures                   | Restart the leaderboard                                        |
 | Training divergence after PyTorch version update       | No fix for now. We tried to upgrade Torch several times but failed to achieve stable training on newer Torch versions.|
-
----
 
 ## Beyond CARLA: Cross-Benchmark Deployment
 
@@ -630,8 +651,6 @@ The LEAD pipeline and TFv6 models serve as reference implementations across mult
 
 </div>
 
----
-
 ## Further Documentation
 
 For a deeper dive, visit the [full documentation site](https://ln2697.github.io/lead/docs):
@@ -641,8 +660,6 @@ For a deeper dive, visit the [full documentation site](https://ln2697.github.io/
 </p>
 
 The documentation will be updated regularly.
-
----
 
 ## Acknowledgements
 
@@ -656,8 +673,6 @@ This project builds on the shoulders of excellent open-source work. Special than
 
 Long Nguyen led development of the project. Kashyap Chitta, Bernhard Jaeger, and Andreas Geiger contributed through technical discussion and advisory feedback. Daniel Dauner provided guidance with NAVSIM.
 
----
-
 ## Citation
 
 If you find this work useful, please consider giving this repository a star and citing our paper:
@@ -670,7 +685,3 @@ If you find this work useful, please consider giving this repository a star and 
 	year = {2026},
 }
 ```
-
-## License
-
-This project is released under the MIT License. See [LICENSE](LICENSE) for details.
