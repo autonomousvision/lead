@@ -215,8 +215,6 @@ function evaluate_expert_longest6() {
 	evaluate_expert "$@"
 }
 
-############################# Fail2Drive Evaluation #############################
-
 # Evaluate on Fail2Drive benchmark (uses custom CARLA simulator with novel assets)
 # Usage: evaluate_fail2drive <checkpoint_dir>
 function evaluate_fail2drive() {

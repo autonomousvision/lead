@@ -339,7 +339,7 @@ toml==0.10.2
 tomli==2.3.0
 tomlkit==0.13.3
 torch==2.5.0+cu124
-torchao==0.12.0+cu126
+torchao==0.12.0
 torchaudio==2.5.0+cu124
 torchdata==0.11.0
 torcheval==0.0.7
