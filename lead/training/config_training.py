@@ -301,12 +301,6 @@ class TrainingConfig(BaseConfig):
         return not self.use_planning_decoder
 
     # --- Training speed and memory optimization ---
-    # bucket_cap_mb
-    bucket_cap_mb = 256
-
-    # gradient_as_bucket_view
-    gradient_as_bucket_view = False
-
     # Number of data loader workers to prefetch batches.
     prefetch_factor = 16
 
@@ -673,12 +667,6 @@ class TrainingConfig(BaseConfig):
 
     # If true model will use the planning decoder.
     use_planning_decoder = False
-
-    # If true will use TFv5's planning decoder
-    use_tfv5_planning_decoder = False
-
-    # Used for TFv5 planning decoder
-    gru_hidden_size = 64
 
     @property
     def target_speed_classes(self):

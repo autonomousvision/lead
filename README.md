@@ -72,6 +72,7 @@
 
 | Date         | Content                                                                                                                                        |
 | :----------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
+| **26.04.13** | <b>WARNING: </b> we notice training divergence. Last reported working commit: `a41d11616`. |
 | **26.04.11** | Added Fail2Drive benchmark support, see [instructions](#31-fail2drive-evaluation). |
 | **26.03.21** | Added evaluation support for the reinforcement-learning planner CaRL, see [instructions](#32-carl-agent-evaluation). |
 | **26.03.18** | Deactivated Kalman Filter and all post-processing heuristics. See performance report [here](#13-download-checkpoints).   |
