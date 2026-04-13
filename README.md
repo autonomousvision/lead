@@ -72,7 +72,7 @@
 
 | Date         | Content                                                                                                                                        |
 | :----------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
-| **26.04.13** | <b>WARNING: </b> we notice training divergence. Last reported working commit: `a41d11616`. |
+| **26.04.13** | <b>WARNING: </b> In some rare cases, we notice training divergence. See [instructions](#5-common-issues), if you face similar problem. |
 | **26.04.11** | Added Fail2Drive benchmark support, see [instructions](#31-fail2drive-evaluation). |
 | **26.03.21** | Added evaluation support for the reinforcement-learning planner CaRL, see [instructions](#32-carl-agent-evaluation). |
 | **26.03.18** | Deactivated Kalman Filter and all post-processing heuristics. See performance report [here](#13-download-checkpoints).   |
@@ -636,6 +636,8 @@ The project is organized into the following top-level directories. See the [full
 | Simulator hangs or is unresponsive             | Restart the CARLA simulator                                    |
 | Route or evaluation failures                   | Restart the leaderboard                                        |
 | Training divergence after PyTorch version update       | No fix for now. We tried to upgrade Torch several times but failed to achieve stable training on newer Torch versions.|
+
+If you face training diverge, as reported in issue [#67](https://github.com/kesai-labs/lead/issues/67), try the last reported working commit: `a41d11616`. Reinstalling the environment might also help. We suspect the main cause of issue to be wrong Pytorch version. Other non-related dependencies like WandB might be updated freely. Please open an issue if you face the same problem.
 
 ## Beyond CARLA: Cross-Benchmark Deployment
 
