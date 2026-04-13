@@ -43,7 +43,7 @@
 
 - [Table of Contents](#table-of-contents)
 - [Updates](#updates)
-- [1. Quick Start CARLA Leaderboard](#1-quick-start-carla-leaderboard)
+- [1. Quick Start](#1-quick-start)
   - [1.1. Environment initialization](#11-environment-initialization)
   - [1.2. Install dependencies](#12-install-dependencies)
   - [1.3. Download checkpoints](#13-download-checkpoints)
