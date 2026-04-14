@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchmetrics
 from beartype import beartype
 
 from lead.common.constants import SOURCE_DATASET_NAME_MAP, SourceDataset
@@ -142,6 +143,37 @@ class PerspectiveDecoder(nn.Module):
             if self.source_data == SourceDataset.CARLA:
                 prefix = ""
             loss.update({f"{prefix}loss_{self.modality}": loss_value})
+
+            if (
+                "iteration" in data
+                and ((data["iteration"] + 1) % self.config.log_scalars_frequency) == 0
+            ):
+                subset = source_mask.bool()
+                subset_pred = prediction[subset]
+                subset_label = label[subset]
+                log[f"{prefix}{self.modality}/output_min"] = subset_pred.min().item()
+                log[f"{prefix}{self.modality}/output_max"] = subset_pred.max().item()
+                if self.modality == "semantic":
+                    miou = torchmetrics.functional.jaccard_index(
+                        subset_pred,
+                        subset_label,
+                        task="multiclass",
+                        num_classes=self.config.num_semantic_classes,
+                    )
+                    f1 = torchmetrics.functional.f1_score(
+                        subset_pred,
+                        subset_label,
+                        task="multiclass",
+                        num_classes=self.config.num_semantic_classes,
+                        average="macro",
+                    )
+                    log[f"{prefix}metric/semantic_miou"] = miou.item()
+                    log[f"{prefix}metric/semantic_f1"] = f1.item()
+                else:
+                    mae = torchmetrics.functional.mean_absolute_error(
+                        subset_pred.float(), subset_label.float()
+                    )
+                    log[f"{prefix}metric/depth_mae"] = mae.item()
 
     def forward(self, data: dict, image_feature_grid: torch.Tensor, log: dict):
         """Forward pass for the decoder.

@@ -1,0 +1,7 @@
+carla
+numpy
+scipy
+PyQt5
+lxml
+tqdm
+networkx

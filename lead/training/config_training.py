@@ -650,7 +650,7 @@ class TrainingConfig(BaseConfig):
     # Number of attention heads in BEV cross-attention.
     transfuser_num_bev_cross_attention_heads = 8
     # Dimension of tokens in the transformer.
-    transfuser_token_dim = 64
+    transfuser_token_dim = 256
 
     @property
     def predict_target_speed(self):

@@ -191,7 +191,7 @@
             "env": {
                 "PYTHONDONTWRITEBYTECODE": "1",
                 "LEAD_EXPERT_CONFIG": "debug_mode=true target_dataset=6 py123d_data_format=true use_radars=false lidar_stack_size=2 save_only_non_ground_lidar=false save_lidar_only_inside_bev=false",
-                "PY123D_DATA_ROOT": "${workspaceFolder}/outputs/expert_evaluation/py123d/"
+                "PY123D_DATA_ROOT": "${workspaceFolder}/data/carla_leaderboard2_py123d/"
             }
         },
         {

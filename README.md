@@ -51,9 +51,10 @@
   - [1.5. Evaluate model](#15-evaluate-model)
   - [1.6. Infraction Analysis Webapp](#16-infraction-analysis-webapp)
 - [2. CARLA Research Cycle](#2-carla-research-cycle)
-  - [2.1. Collecting Data](#21-collecting-data)
-  - [2.2. Training](#22-training)
-  - [2.3. Benchmarking](#23-benchmarking)
+  - [2.1. (Optional) Extending Data Routes](#21-optional-extending-data-routes)
+  - [2.2. Collecting Data](#22-collecting-data)
+  - [2.3. Training](#23-training)
+  - [2.4. Benchmarking](#24-benchmarking)
 - [3. Extensions](#3-extensions)
   - [3.1. Fail2Drive Evaluation](#31-fail2drive-evaluation)
   - [3.2. CaRL Agent Evaluation](#32-carl-agent-evaluation)
@@ -70,17 +71,18 @@
 
 <div align="center">
 
-| Date         | Content                                                                                                                                        |
-| :----------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
+| Date         | Content                                                                                                                                |
+| :----------- | :------------------------------------------------------------------------------------------------------------------------------------- |
+| **26.04.14** | <b>WARNING: </b> The parameter `transfuser_token_dim`'s default parameter should be `256`, as used in the paper, and not `64`. |
 | **26.04.13** | <b>WARNING: </b> In some rare cases, we notice training divergence. See [instructions](#5-common-issues), if you face similar problem. |
-| **26.04.11** | Added Fail2Drive benchmark support, see [instructions](#31-fail2drive-evaluation). |
-| **26.03.21** | Added evaluation support for the reinforcement-learning planner CaRL, see [instructions](#32-carl-agent-evaluation). |
-| **26.03.18** | Deactivated Kalman Filter and all post-processing heuristics. See performance report [here](#13-download-checkpoints).   |
-| **26.02.25** | LEAD is accepted to **CVPR 2026** 🎉                                                                                                             |
-| **26.02.25** | NAVSIM extension released. Code and [instructions](#33-navsim-training-and-evaluation) available. Supplementary data coming soon.                 |
-| **26.02.02** | Preliminary support for 123D. See [instructions](#34-carla-123d-data-collection).                   |
-| **26.01.13** | CARLA dataset and training documentation released.                                                                                             |
-| **25.12.24** | Initial release — paper, checkpoints, expert driver, and inference code.                                                                       |
+| **26.04.11** | Added Fail2Drive benchmark support, see [instructions](#31-fail2drive-evaluation).                                                     |
+| **26.03.21** | Added evaluation support for the reinforcement-learning planner CaRL, see [instructions](#32-carl-agent-evaluation).                   |
+| **26.03.18** | Deactivated Kalman Filter and all post-processing heuristics. See performance report [here](#13-download-checkpoints).                 |
+| **26.02.25** | LEAD is accepted to **CVPR 2026** 🎉                                                                                                  |
+| **26.02.25** | NAVSIM extension released. Code and [instructions](#33-navsim-training-and-evaluation) available. Supplementary data coming soon.      |
+| **26.02.02** | Preliminary support for 123D. See [instructions](#34-carla-123d-data-collection).                                                      |
+| **26.01.13** | CARLA dataset and training documentation released.                                                                                     |
+| **25.12.24** | Initial release — paper, checkpoints, expert driver, and inference code.                                                               |
 
 </div>
 
@@ -164,8 +166,8 @@ Pre-trained checkpoints are hosted on HuggingFace. Following are the results fro
 
 <div align="center">
 
-| Variant            | Bench2Drive  | Longest6 v2 |   Town13   |
-| :----------------- | :----------: | :---------: | :--------: |
+| Variant                | Bench2Drive  | Longest6 v2  |   Town13    |
+| :--------------------- | :----------: | :----------: | :---------: |
 | Full E2E TransFuser V6 | 95 &rarr; 94 | 62 &rarr; 62 | 5 &rarr; 10 |
 
 </div>
@@ -248,6 +250,21 @@ Driving logs are saved to `outputs/local_evaluation/<route_id>/`:
 
 </div>
 
+> [!TIP]
+> If run into OOM issue, there are few options:
+> 1. Run those commands block the later 2 seeds from being loaded into memory for ensembling:
+> ```bash
+> mv outputs/checkpoints/tfv6_resnet34/model_0030_1.pth \
+> outputs/checkpoints/tfv6_resnet34/_model_0030_1.pth
+> 
+> mv outputs/checkpoints/tfv6_resnet34/model_0030_2.pth \
+> outputs/checkpoints/tfv6_resnet34/_model_0030_2.pth
+> ```
+>
+> 2. For local computer, start CARLA with `-quality-level=Poor`. This reduces 
+> the rendering quality, however will introduce distribution shift and 
+> should not be used for official evaluation.
+
 ### 1.6. Infraction Analysis Webapp
 
 Launch the interactive infraction dashboard to analyze driving failures — especially useful for Longest6 or Town13 where iterating over evaluation logs is time-consuming:
@@ -265,7 +282,28 @@ Navigate to http://localhost:5000 and point it at `outputs/local_evaluation`.
 
 The primary focus of this repository is solving the [original CARLA Leaderboard 2.0](https://leaderboard.carla.org/get_started_v2_0/). This section walks through the full research loop — collecting expert demonstrations, training a TFv6 policy, and benchmarking it closed-loop.
 
-### 2.1. Collecting Data
+### 2.1. (Optional) Extending Data Routes
+
+Before collecting, you may want to enlarge or diversify the route set under `data/data_routes/`. This step is optional — the shipped routes are enough to reproduce the paper results. However, if you want to improve the performance of the model, in particular for Longest6 v2 or Fail2Drive, introduce more routes is the easiest way to achieve this.
+
+Two ways to do it:
+
+- **Automatic** — sample routes programmatically from a CARLA town (e.g. random start/goal pairs with scenario annotations). Useful when you want large-scale coverage without hand-authoring.
+- **Manual** — use the bundled [carla_route_generator](3rd_party/carla_route_generator), a GUI tool for clicking waypoints on a map and exporting routes. Launch it via the hotkey script:
+
+```bash
+cd 3rd_party/carla_route_generator
+python3 scripts/window.py
+```
+
+Generated XML files can be dropped directly into `data/data_routes/` and picked up by the expert during data collection.
+
+> [!TIP] 
+> Out of the box, [carla_route_generator](3rd_party/carla_route_generator) is purely mouse-driven (left-click to add/remove waypoints, right-click for scenarios, wheel to pan/zoom). Annotating hundreds of routes this way is slow. There are few tricks to accelerate the process:
+> 1. We strongly recommend extending [scripts/window.py](3rd_party/carla_route_generator/scripts/window.py) with Qt `QShortcut` / `keyPressEvent` bindings for the actions you repeat most — e.g. add new route. Even one or two of keys cuts manual annotation time substantially.
+> 2. Only annotate route manually, add scenarios automatically via Python.
+
+### 2.2. Collecting Data
 
 With CARLA running, collect data for a single route via **Python** (recommended for debugging):
 
@@ -311,7 +349,7 @@ On a SLURM Cluster of 92 GTX 1080ti, the data collection is often finished after
 > 2. For large-scale collection on SLURM, see the [data collection docs](https://ln2697.github.io/lead/docs/data_collection.html).
 > 3. The [Jupyter notebooks](notebooks) provide visualization examples.
 
-### 2.2. Training
+### 2.3. Training
 
 Download the dataset from HuggingFace:
 
@@ -360,7 +398,7 @@ bash scripts/posttrain_ddp.sh
 > 2. For a complete workflow (pretrain → posttrain → eval), see this [example](slurm/experiments/001_example).
 > 3. For detailed documentation, see the [training guide](https://ln2697.github.io/lead/docs/carla_training.html).
 
-### 2.3. Benchmarking
+### 2.4. Benchmarking
 
 With CARLA running, evaluate on any benchmark via **Python**:
 
@@ -373,12 +411,12 @@ python lead/leaderboard_wrapper.py \
 
 <div align="center">
 
-| Benchmark   | Route file                                                      | Extra flag      |
-| :---------- | :-------------------------------------------------------------- | :-------------- |
-| Bench2Drive | `data/benchmark_routes/bench2drive/23687.xml`                   | `--bench2drive` |
-| Longest6 v2 | `data/benchmark_routes/longest6/00.xml`                         | —               |
-| Town13      | `data/benchmark_routes/Town13/0.xml`                            | —               |
-| Fail2Drive  | `data/benchmark_routes/fail2drive/Base_Animals_0075.xml`        | `--fail2drive`  |
+| Benchmark   | Route file                                               | Extra flag      |
+| :---------- | :------------------------------------------------------- | :-------------- |
+| Bench2Drive | `data/benchmark_routes/bench2drive/23687.xml`            | `--bench2drive` |
+| Longest6 v2 | `data/benchmark_routes/longest6/00.xml`                  | —               |
+| Town13      | `data/benchmark_routes/Town13/0.xml`                     | —               |
+| Fail2Drive  | `data/benchmark_routes/fail2drive/Base_Animals_0075.xml` | `--fail2drive`  |
 
 </div>
 
@@ -630,12 +668,13 @@ The project is organized into the following top-level directories. See the [full
 
 ## 5. Common Issues
 
-| Issue                                        | Fix                                                            |
-| :--------------------------------------------- | :------------------------------------------------------------- |
-| Stale or corrupted data errors                 | Delete and rebuild the training cache / buckets                |
-| Simulator hangs or is unresponsive             | Restart the CARLA simulator                                    |
-| Route or evaluation failures                   | Restart the leaderboard                                        |
-| Training divergence after PyTorch version update       | No fix for now. We tried to upgrade Torch several times but failed to achieve stable training on newer Torch versions.|
+| Issue                                            | Fix                                                                                                                                                                                                                                    |
+| :----------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stale or corrupted data errors                   | Delete and rebuild the training cache / buckets                                                                                                                                                                                        |
+| Simulator hangs or is unresponsive               | Restart the CARLA simulator                                                                                                                                                                                                            |
+| Route or evaluation failures                     | Restart the leaderboard                                                                                                                                                                                                                |
+| Training divergence after PyTorch version update | No fix for now. We tried to upgrade Torch several times but failed to achieve stable training on newer Torch versions.                                                                                                                 |
+| OOM in evaluation                                | Use larger GPU. In our [submit_job](slurm/evaluation/evaluate_utils.py) utility function, we first attempt to use a smaller GPU partition (1080ti/2080ti). After some failures, we switch automatically to a partition with more VRAM. |
 
 If you face training diverge, as reported in issue [#67](https://github.com/kesai-labs/lead/issues/67), try the last reported working commit: `a41d11616`. Reinstalling the environment might also help. We suspect the main cause of issue to be wrong Pytorch version. Other non-related dependencies like WandB might be updated freely. Please open an issue if you face the same problem.
 

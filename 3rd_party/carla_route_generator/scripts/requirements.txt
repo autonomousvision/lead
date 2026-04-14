@@ -1,0 +1,8 @@
+agents==1.4.0
+carla==0.9.15
+lxml==4.9.1
+numpy==1.21.6
+PyQt5==5.15.10
+PyQt5_sip==12.13.0
+scipy==1.7.3
+tqdm==4.64.1

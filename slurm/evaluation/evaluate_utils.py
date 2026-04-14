@@ -136,13 +136,13 @@ def submit_job(job_name, script_path, num_attempt):
     if not is_on_slurm():
         submit_command = f"bash {script_path} > {std_out_file} 2> {std_err_file}"
     else:
-        partition = ""
-        if (
-            num_attempt > 10
-        ):  # set to 10 to avoid memory issues. we dont really need this anymore but i don t want to remove it
-            partition = "--partition=a100-preemptable-galvani"  # Use A100 GPUs for more than 2 attempts due to potential memory issues
+        extra = ""
+        # If the job has failed multiple times, most properly because of memory issues, switch to a more powerful partition
+        if num_attempt > 4:
+            partition = "L40Sday" if "TCML" in os.environ else "a100-galvani"
+            extra = f"--partition {partition} --gres gpu:1"
 
-        submit_command = f"sbatch --job-name {job_route_name} --output {std_out_file} --error {std_err_file} {partition} {script_path}"
+        submit_command = f"sbatch --job-name {job_route_name} --output {std_out_file} --error {std_err_file} {extra} {script_path}"
 
     # Submit jobs and return job ID
     try:

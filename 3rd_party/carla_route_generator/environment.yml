@@ -1,0 +1,12 @@
+name: carla_route_generator
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - ca-certificates
+  - freetype
+  - libpng
+  - python=3.10.15
+  - pip
+  - pip:
+    - -r requirements.txt

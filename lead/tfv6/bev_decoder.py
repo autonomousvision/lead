@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torchmetrics
 from beartype import beartype
 from torch.nn import functional as F
 
@@ -128,6 +129,33 @@ class BEVDecoder(nn.Module):
 
         # Add dataset name prefix
         loss[f"{prefix}loss_bev_semantic"] = loss_bev
+
+        if (
+            "iteration" in data
+            and ((data["iteration"] + 1) % self.config.log_scalars_frequency) == 0
+        ):
+            subset = source_mask.bool()
+            log[f"{prefix}bev_semantic/output_min"] = pred.min().item()
+            log[f"{prefix}bev_semantic/output_max"] = pred.max().item()
+            pred_classes = pred[subset].argmax(dim=1)
+            subset_label = visible_label[subset]
+            valid_pixels = subset_label >= 0
+            if valid_pixels.any():
+                miou = torchmetrics.functional.jaccard_index(
+                    pred_classes[valid_pixels],
+                    subset_label[valid_pixels],
+                    task="multiclass",
+                    num_classes=self.num_classes,
+                )
+                f1 = torchmetrics.functional.f1_score(
+                    pred_classes[valid_pixels],
+                    subset_label[valid_pixels],
+                    task="multiclass",
+                    num_classes=self.num_classes,
+                    average="macro",
+                )
+                log[f"{prefix}metric/bev_semantic_miou"] = miou.item()
+                log[f"{prefix}metric/bev_semantic_f1"] = f1.item()
 
     @beartype
     def forward(self, bev_feature_grid: torch.Tensor, log: dict):
