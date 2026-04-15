@@ -10,7 +10,11 @@ from shapely.geometry import Polygon
 
 
 def rect_polygon(
-    x: float, y: float, width: float, height: float, angle: float
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    angle: float,
 ) -> Polygon:
     """Create a shapely Polygon representing a rotated rectangle.
 
@@ -25,11 +29,13 @@ def rect_polygon(
         Shapely Polygon representing the rotated rectangle.
     """
     p = Polygon(
-        [(-width, -height), (width, -height), (width, height), (-width, height)]
+        [(-width, -height), (width, -height), (width, height), (-width, height)],
     )
     # Shapely is very inefficient at these operations, worth rewriting
     return shapely.affinity.translate(
-        shapely.affinity.rotate(p, angle, use_radians=True), x, y
+        shapely.affinity.rotate(p, angle, use_radians=True),
+        x,
+        y,
     )
 
 
@@ -55,7 +61,8 @@ def iou_bbs(bb1: jt.Float[npt.NDArray, "5"], bb2: jt.Float[npt.NDArray, "5"]) ->
 
 @beartype
 def non_maximum_suppression(
-    bounding_boxes: list[jt.Float[npt.NDArray, "num_boxes D"]], iou_threshold: float
+    bounding_boxes: list[jt.Float[npt.NDArray, "num_boxes D"]],
+    iou_threshold: float,
 ) -> jt.Float[npt.NDArray, "num_filtered_boxes D"]:
     """
     Basic Non-Maximum Suppression (NMS) implementation for oriented bounding boxes.
@@ -69,7 +76,8 @@ def non_maximum_suppression(
     """
     filtered_boxes = []
     bounding_boxes = np.array(
-        list(itertools.chain.from_iterable(bounding_boxes)), dtype=object
+        list(itertools.chain.from_iterable(bounding_boxes)),
+        dtype=object,
     )
 
     if bounding_boxes.size == 0:  # If no bounding boxes are detected can't do NMS

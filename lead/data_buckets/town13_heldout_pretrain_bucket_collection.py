@@ -21,7 +21,7 @@ class Town13HeldOutPretrainBucketCollection(AbstractBucketCollection):
     def _build_buckets(self):
         """Build bucket collection from scratch"""
         print(
-            f"[Town13HeldOutPretrainBucketCollection] Building buckets from data at: {self.root}"
+            f"[Town13HeldOutPretrainBucketCollection] Building buckets from data at: {self.root}",
         )
         for route_path in self.iter_root():
             if route_filtering.route_not_finished(route_path):
@@ -41,7 +41,8 @@ class Town13HeldOutPretrainBucketCollection(AbstractBucketCollection):
     def cache_file_path(self):
         """Return path for cache file"""
         return os.path.join(
-            self.config.bucket_collection_path, "town13_heldout_pretrain_buckets.gz"
+            self.config.bucket_collection_path,
+            "town13_heldout_pretrain_buckets.gz",
         )
 
     def buckets_mixture_per_epoch(self, _):

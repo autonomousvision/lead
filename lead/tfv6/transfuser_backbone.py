@@ -32,10 +32,12 @@ class TransfuserBackbone(nn.Module):
 
         # Image branch
         self.image_encoder = timm.create_model(
-            config.image_architecture, pretrained=True, features_only=True
+            config.image_architecture,
+            pretrained=True,
+            features_only=True,
         )
         self.avgpool_img = nn.AdaptiveAvgPool2d(
-            (self.config.img_vert_anchors, self.config.img_horz_anchors)
+            (self.config.img_vert_anchors, self.config.img_horz_anchors),
         )
         image_start_index = 0
         if len(self.image_encoder.return_layers) > 4:
@@ -69,7 +71,7 @@ class TransfuserBackbone(nn.Module):
                     kernel_size=1,
                 )
                 for i in range(0, 4)
-            ]
+            ],
         )
         self.img_channel_to_lidar = nn.ModuleList(
             [
@@ -83,10 +85,10 @@ class TransfuserBackbone(nn.Module):
                     kernel_size=1,
                 )
                 for i in range(0, 4)
-            ]
+            ],
         )
         self.avgpool_lidar = nn.AdaptiveAvgPool2d(
-            (self.config.lidar_vert_anchors, self.config.lidar_horz_anchors)
+            (self.config.lidar_vert_anchors, self.config.lidar_horz_anchors),
         )
 
         # Fusion transformers
@@ -99,7 +101,7 @@ class TransfuserBackbone(nn.Module):
                     config=config,
                 )
                 for i in range(0, 4)
-            ]
+            ],
         )
 
         # Post-fusion convs
@@ -134,12 +136,15 @@ class TransfuserBackbone(nn.Module):
             padding=1,
         )
         self.c5_conv = nn.Conv2d(
-            self.num_lidar_features, self.config.bev_features_chanels, (1, 1)
+            self.num_lidar_features,
+            self.config.bev_features_chanels,
+            (1, 1),
         )
 
     @jt.jaxtyped(typechecker=beartype)
     def top_down(
-        self, x: jt.Float[torch.Tensor, "B C H W"]
+        self,
+        x: jt.Float[torch.Tensor, "B C H W"],
     ) -> jt.Float[torch.Tensor, "B C2 H2 W2"]:
         """Apply top-down feature pyramid processing to BEV features.
 
@@ -158,7 +163,8 @@ class TransfuserBackbone(nn.Module):
         return p3
 
     def forward(
-        self, data: dict[str, torch.Tensor]
+        self,
+        data: dict[str, torch.Tensor],
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Forward pass through the TransFuser backbone with data preprocessing.
 
@@ -176,7 +182,9 @@ class TransfuserBackbone(nn.Module):
                 - image_features: Image feature map for perception tasks
         """
         rgb = data["rgb"].to(
-            self.device, dtype=self.config.torch_float_type, non_blocking=True
+            self.device,
+            dtype=self.config.torch_float_type,
+            non_blocking=True,
         )
         if self.config.LTF:
             x = torch.linspace(0, 1, self.config.lidar_width_pixel)
@@ -196,7 +204,9 @@ class TransfuserBackbone(nn.Module):
             lidar[:, 1] = x_grid.unsqueeze(0)  # Left right positional encoding
         else:
             lidar = data["rasterized_lidar"].to(
-                self.device, dtype=self.config.torch_float_type, non_blocking=True
+                self.device,
+                dtype=self.config.torch_float_type,
+                non_blocking=True,
             )
         return self._forward(rgb, lidar)
 
@@ -208,7 +218,8 @@ class TransfuserBackbone(nn.Module):
         | jt.Float[torch.Tensor, "B 2 bev_h bev_w"]
         | None,
     ) -> tuple[
-        jt.Float[torch.Tensor, "B D1 H1 W1"], jt.Float[torch.Tensor, "B D2 H2 W2"]
+        jt.Float[torch.Tensor, "B D1 H1 W1"],
+        jt.Float[torch.Tensor, "B D2 H2 W2"],
     ]:
         """
         Image + LiDAR feature fusion using transformers
@@ -234,31 +245,44 @@ class TransfuserBackbone(nn.Module):
         # In some architectures the stem is not a return layer, so we need to skip it.
         if len(self.image_encoder.return_layers) > 4:
             image_features = self.forward_layer_block(
-                image_layers, self.image_encoder.return_layers, image_features
+                image_layers,
+                self.image_encoder.return_layers,
+                image_features,
             )
         if len(self.lidar_encoder.return_layers) > 4:
             lidar_features = self.forward_layer_block(
-                lidar_layers, self.lidar_encoder.return_layers, lidar_features
+                lidar_layers,
+                self.lidar_encoder.return_layers,
+                lidar_features,
             )
 
         # Loop through the 4 blocks of the network.
         for i in range(4):
             # Branch-specific forward pass
             image_features = self.forward_layer_block(
-                image_layers, self.image_encoder.return_layers, image_features
+                image_layers,
+                self.image_encoder.return_layers,
+                image_features,
             )
             lidar_features = self.forward_layer_block(
-                lidar_layers, self.lidar_encoder.return_layers, lidar_features
+                lidar_layers,
+                self.lidar_encoder.return_layers,
+                lidar_features,
             )
             image_features, lidar_features = self.fuse_features(
-                image_features, lidar_features, i
+                image_features,
+                lidar_features,
+                i,
             )
 
         return lidar_features, image_features
 
     @beartype
     def forward_layer_block(
-        self, layers: Any, return_layers: dict[str, str], features: torch.Tensor
+        self,
+        layers: Any,
+        return_layers: dict[str, str],
+        features: torch.Tensor,
     ) -> torch.Tensor:
         """Run one forward pass to a block of layers from a TIMM neural network and returns the result.
         Advances the whole network by just one block.
@@ -298,11 +322,12 @@ class TransfuserBackbone(nn.Module):
         lidar_embd_layer = self.lidar_channel_to_img[layer_idx](lidar_embd_layer)
 
         image_features_layer, lidar_features_layer = self.transformers[layer_idx](
-            image_embd_layer, lidar_embd_layer
+            image_embd_layer,
+            lidar_embd_layer,
         )
 
         lidar_features_layer = self.img_channel_to_lidar[layer_idx](
-            lidar_features_layer
+            lidar_features_layer,
         )
         image_features_layer = F.interpolate(
             image_features_layer,
@@ -348,7 +373,7 @@ class GPT(nn.Module):
                 self.config.img_vert_anchors * self.config.img_horz_anchors
                 + self.config.lidar_vert_anchors * self.config.lidar_horz_anchors,
                 self.n_embd,
-            )
+            ),
         )
         self.drop = nn.Dropout(config.embd_pdrop)
         # transformer
@@ -362,7 +387,7 @@ class GPT(nn.Module):
                     config.resid_pdrop,
                 )
                 for layer in range(config.n_layer)
-            ]
+            ],
         )
         # decoder head
         self.ln_f = nn.LayerNorm(n_embd)
@@ -479,7 +504,8 @@ class Block(nn.Module):
 
     @jt.jaxtyped(typechecker=beartype)
     def forward(
-        self, x: jt.Float[torch.Tensor, "B T C"]
+        self,
+        x: jt.Float[torch.Tensor, "B T C"],
     ) -> jt.Float[torch.Tensor, "B T C"]:
         """Apply transformer block with attention and feed-forward processing.
 
@@ -505,7 +531,11 @@ class SelfAttention(nn.Module):
 
     @beartype
     def __init__(
-        self, n_embd: int, n_head: int, attn_pdrop: float, resid_pdrop: float
+        self,
+        n_embd: int,
+        n_head: int,
+        attn_pdrop: float,
+        resid_pdrop: float,
     ) -> None:
         """Initialize multi-head self-attention.
 
@@ -533,7 +563,8 @@ class SelfAttention(nn.Module):
 
     @jt.jaxtyped(typechecker=beartype)
     def forward(
-        self, x: jt.Float[torch.Tensor, "B T C"]
+        self,
+        x: jt.Float[torch.Tensor, "B T C"],
     ) -> jt.Float[torch.Tensor, "B T C"]:
         """Compute multi-head self-attention.
 

@@ -73,7 +73,9 @@ def rasterize_lidar(
     ]
     if remove_ground_plane:
         is_ground_mask = ransac.remove_ground(
-            lidar, config, parallel=True
+            lidar,
+            config,
+            parallel=True,
         )  # Torch parallel and dataloader seem to have issues with parallel numba.
         above = lidar[~is_ground_mask]
         features = splat_points(above)
@@ -132,7 +134,7 @@ def perturbate_route(
         [
             [np.cos(aug_yaw_rad), -np.sin(aug_yaw_rad)],
             [np.sin(aug_yaw_rad), np.cos(aug_yaw_rad)],
-        ]
+        ],
     )
 
     translation = np.array([[0.0, y_perturbation]])
@@ -161,7 +163,7 @@ def perturbate_target_point(
         [
             [np.cos(aug_yaw_rad), -np.sin(aug_yaw_rad)],
             [np.sin(aug_yaw_rad), np.cos(aug_yaw_rad)],
-        ]
+        ],
     )
 
     translation = np.array([[0.0], [y_perturbation]])
@@ -192,7 +194,7 @@ def perturbate_waypoints(
         [
             [np.cos(aug_yaw_rad), -np.sin(aug_yaw_rad)],
             [np.sin(aug_yaw_rad), np.cos(aug_yaw_rad)],
-        ]
+        ],
     )
 
     translation = np.array([[0.0], [y_perturbation]])
@@ -255,7 +257,7 @@ def bbox_json2array(
         [
             [np.cos(aug_yaw_rad), -np.sin(aug_yaw_rad)],
             [np.sin(aug_yaw_rad), np.cos(aug_yaw_rad)],
-        ]
+        ],
     )
 
     position = np.array([[bbox_dict["position"][0]], [bbox_dict["position"][1]]])
@@ -282,7 +284,7 @@ def bbox_json2array(
         dtype=np.float32,
     )
     bbox[TransfuserBoundingBoxIndex.YAW] = common_utils.normalize_angle(
-        bbox_dict["yaw"] - aug_yaw_rad
+        bbox_dict["yaw"] - aug_yaw_rad,
     )
 
     if bbox_dict["class"] == "car":  # static class = parking vehicle = an implicit car
@@ -331,7 +333,7 @@ def bbox_json2array(
         future_waypoint_indices = [config.waypoints_spacing]
         for _ in range(config.num_way_points_prediction - 1):
             future_waypoint_indices.append(
-                future_waypoint_indices[-1] + config.waypoints_spacing
+                future_waypoint_indices[-1] + config.waypoints_spacing,
             )
 
         # In CARLA, often vehicles disappear. But they are not removed but rather teleported far away.
@@ -340,14 +342,14 @@ def bbox_json2array(
             [
                 bbox_dict["position"][0],
                 bbox_dict["position"][1],
-            ]
+            ],
         )
         last_valid_yaw = bbox_dict["yaw"]
         last_valid_speed = bbox_dict.get("speed", 0.0)
         for i, future_waypoint_index in enumerate(future_waypoint_indices):
             if future_waypoint_index < len(bbox_dict["future_positions"]):
                 dist = np.linalg.norm(
-                    last_pos - bbox_dict["future_positions"][future_waypoint_index]
+                    last_pos - bbox_dict["future_positions"][future_waypoint_index],
                 )
                 if dist > config.max_distance_future_waypoint:
                     break
@@ -416,7 +418,10 @@ def get_bbox_labels(
 
     for _, current_box in enumerate(boxes):
         bbox, waypoint, num_waypoint = bbox_json2array(
-            current_box, perturbation_translation, perturbation_rotation, config
+            current_box,
+            perturbation_translation,
+            perturbation_rotation,
+            config,
         )
         if current_box["class"] in ["ego_car"]:
             continue
@@ -629,12 +634,12 @@ def get_bbox_labels(
         ).squeeze()
         if not (0 <= bbox[TransfuserBoundingBoxIndex.X] < config.lidar_width_pixel):
             LOG.warning(
-                f"{bbox[TransfuserBoundingBoxIndex.X]=} is larger than {config.lidar_width_pixel=}"
+                f"{bbox[TransfuserBoundingBoxIndex.X]=} is larger than {config.lidar_width_pixel=}",
             )
             continue
         if not (0 <= bbox[TransfuserBoundingBoxIndex.Y] < config.lidar_height_pixel):
             LOG.warning(
-                f"{bbox[TransfuserBoundingBoxIndex.Y]=} is larger than {config.lidar_height_pixel=}"
+                f"{bbox[TransfuserBoundingBoxIndex.Y]=} is larger than {config.lidar_height_pixel=}",
             )
             continue
         bboxes.append(bbox)
@@ -648,7 +653,8 @@ def get_bbox_labels(
     # Pad bounding boxes to a fixed number
     padded_bounding_boxes_array = np.zeros((config.max_num_bbs, 9), dtype=np.float32)
     padded_waypoints_array = np.zeros(
-        (config.max_num_bbs, config.num_way_points_prediction, 2), dtype=np.float32
+        (config.max_num_bbs, config.num_way_points_prediction, 2),
+        dtype=np.float32,
     )
     padded_num_waypoints_array = np.zeros((config.max_num_bbs,), dtype=np.int32)
 
@@ -668,7 +674,9 @@ def get_bbox_labels(
                 : config.max_num_bbs
             ]
             padded_waypoints_array[: config.max_num_bbs, :, :] = waypoints_array[
-                : config.max_num_bbs, :, :
+                : config.max_num_bbs,
+                :,
+                :,
             ]
             padded_num_waypoints_array[: config.max_num_bbs] = num_waypoints_array[
                 : config.max_num_bbs
@@ -683,7 +691,9 @@ def get_bbox_labels(
 
 @beartype
 def get_centernet_labels(
-    gt_bboxes: jt.Float[npt.NDArray, "N 9"], config: TrainingConfig, num_bb_classes: int
+    gt_bboxes: jt.Float[npt.NDArray, "N 9"],
+    config: TrainingConfig,
+    num_bb_classes: int,
 ) -> dict[str, npt.NDArray]:
     """
     Compute regression and classification targets for CenterNet.
@@ -706,7 +716,8 @@ def get_centernet_labels(
     velocity_target = np.zeros([1, feat_h, feat_w], dtype=np.float32)
     brake_target = np.zeros([1, feat_h, feat_w], dtype=np.int32)
     pixel_weight = np.zeros(
-        [2, feat_h, feat_w], dtype=np.float32
+        [2, feat_h, feat_w],
+        dtype=np.float32,
     )  # 2 is the max of the channels above here.
 
     if not gt_bboxes.shape[0] > 0:
@@ -760,19 +771,21 @@ def get_centernet_labels(
         wh_target[1, cty_int, ctx_int] = extent_y
 
         yaw_class, yaw_res = common_utils.angle2class(
-            gt_bboxes[j, TransfuserBoundingBoxIndex.YAW], config.num_dir_bins
+            gt_bboxes[j, TransfuserBoundingBoxIndex.YAW],
+            config.num_dir_bins,
         )
 
         yaw_class_target[0, cty_int, ctx_int] = yaw_class
         yaw_res_target[0, cty_int, ctx_int] = yaw_res
 
         velocity_target[0, cty_int, ctx_int] = gt_bboxes[
-            j, TransfuserBoundingBoxIndex.VELOCITY
+            j,
+            TransfuserBoundingBoxIndex.VELOCITY,
         ]
         # Brakes can potentially be continous but we classify them now.
         # Using mathematical rounding the split is applied at 0.5
         brake_target[0, cty_int, ctx_int] = int(
-            round(gt_bboxes[j, TransfuserBoundingBoxIndex.BRAKE])
+            round(gt_bboxes[j, TransfuserBoundingBoxIndex.BRAKE]),
         )
 
         offset_target[0, cty_int, ctx_int] = ctx - ctx_int
@@ -830,7 +843,7 @@ def build_bev_occupancy(
         [
             [np.cos(aug_yaw_rad), -np.sin(aug_yaw_rad)],
             [np.sin(aug_yaw_rad), np.cos(aug_yaw_rad)],
-        ]
+        ],
     )
     translation = np.array([[0.0], [y_perturbation]])
 
@@ -1109,7 +1122,10 @@ def build_bev_occupancy(
 
 @jt.jaxtyped(typechecker=beartype)
 def bb_vehicle_to_image_system(
-    box: jt.Float[npt.NDArray, "N D"], pixels_per_meter: Real, min_x: Real, min_y: Real
+    box: jt.Float[npt.NDArray, "N D"],
+    pixels_per_meter: Real,
+    min_x: Real,
+    min_y: Real,
 ) -> jt.Float[npt.NDArray, "N D"]:
     """
     Changed a bounding box from the vehicle coordinate system to the image coordinate system.
@@ -1131,7 +1147,10 @@ def bb_vehicle_to_image_system(
 
 @jt.jaxtyped(typechecker=beartype)
 def bb_image_to_vehicle_system(
-    box: jt.Float[npt.NDArray, "N D"], pixels_per_meter: Real, min_x: Real, min_y: Real
+    box: jt.Float[npt.NDArray, "N D"],
+    pixels_per_meter: Real,
+    min_x: Real,
+    min_y: Real,
 ) -> jt.Float[npt.NDArray, "N D"]:
     """Inverse of bb_vehicle_to_image_system.
 
@@ -1152,7 +1171,8 @@ def bb_image_to_vehicle_system(
 
 @beartype
 def preprocess_radar_input(
-    config: TrainingConfig, radar_data_dict: dict
+    config: TrainingConfig,
+    radar_data_dict: dict,
 ) -> list[jt.Float[npt.NDArray, "N 5"]]:
     """Preprocess radar input data for model inference.
 
@@ -1198,7 +1218,8 @@ def preprocess_radar_input(
 
 @beartype
 def parse_radar_detection_labels(
-    config: TrainingConfig, sensor_data: SensorData
+    config: TrainingConfig,
+    sensor_data: SensorData,
 ) -> jt.Float32[npt.NDArray, "num_queries features"]:
     """Parse and filter radar detection labels from sensor data for model training.
 
@@ -1227,7 +1248,8 @@ def parse_radar_detection_labels(
     """
     # Initialize default values (all zeros)
     radar_detections = np.zeros(
-        (config.num_radar_queries, len(RadarLabels)), dtype=np.float32
+        (config.num_radar_queries, len(RadarLabels)),
+        dtype=np.float32,
     )
 
     if (
@@ -1280,20 +1302,23 @@ def parse_radar_detection_labels(
                 [
                     class_priorities.get(int(c), len(priority_classes))
                     for c in loaded_boxes_vehicle_system[
-                        :, TransfuserBoundingBoxIndex.CLASS
+                        :,
+                        TransfuserBoundingBoxIndex.CLASS,
                     ]
-                ]
+                ],
             )
 
             # Stack into sortable array: (-velocity, class_priority, -num_radar_points)
             sortable = np.stack(
                 [
                     -loaded_boxes_vehicle_system[
-                        :, TransfuserBoundingBoxIndex.VELOCITY
+                        :,
+                        TransfuserBoundingBoxIndex.VELOCITY,
                     ],
                     class_priority,
                     -loaded_boxes_vehicle_system[
-                        :, TransfuserBoundingBoxIndex.NUM_RADAR_POINTS
+                        :,
+                        TransfuserBoundingBoxIndex.NUM_RADAR_POINTS,
                     ],
                 ],
                 axis=1,
@@ -1312,13 +1337,16 @@ def parse_radar_detection_labels(
             # Extract [x, y, velocity]
             n_boxes = selected_boxes.shape[0]
             radar_detections[:n_boxes, RadarLabels.X] = selected_boxes[
-                :, TransfuserBoundingBoxIndex.X
+                :,
+                TransfuserBoundingBoxIndex.X,
             ]
             radar_detections[:n_boxes, RadarLabels.Y] = selected_boxes[
-                :, TransfuserBoundingBoxIndex.Y
+                :,
+                TransfuserBoundingBoxIndex.Y,
             ]
             radar_detections[:n_boxes, RadarLabels.V] = selected_boxes[
-                :, TransfuserBoundingBoxIndex.VELOCITY
+                :,
+                TransfuserBoundingBoxIndex.VELOCITY,
             ]
             radar_detections[:n_boxes, RadarLabels.VALID] = 1.0  # Valid box indicator
 
@@ -1361,7 +1389,9 @@ def smooth_path(
     indices = np.array(indices).astype(int)
     route = route[indices]
     interpolated_route_points = iterative_line_interpolation(
-        config, route, target_first_distance
+        config,
+        route,
+        target_first_distance,
     )
 
     return interpolated_route_points

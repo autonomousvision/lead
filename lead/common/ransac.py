@@ -23,7 +23,7 @@ from lead.training.config_training import TrainingConfig
 def extract_initial_seeds(P_segment, center, Th_center, N_LPR, Th_seeds):
     """Extract initial seed points for ground plane estimation. Choose the lowest points near center."""
     dist = np.abs(P_segment[:, 0] - center[0]) + np.abs(
-        P_segment[:, 1] - center[1]
+        P_segment[:, 1] - center[1],
     )  # L1 distance
     P_near_center = P_segment[dist <= Th_center]
     P_sorted = P_near_center[np.argsort(P_near_center[:, 2])]
@@ -57,7 +57,13 @@ def height_difference_to_plane(plane, P):
 
 @njit(cache=True)
 def fit_plane_on_radial_segment(
-    P_segment, center, N_iter, N_LPR, Th_seeds, Th_dist, Th_center
+    P_segment,
+    center,
+    N_iter,
+    N_LPR,
+    Th_seeds,
+    Th_dist,
+    Th_center,
 ):
     """Fit ground plane for a radial_segment iteratively."""
     if len(P_segment) < 3:
@@ -99,11 +105,20 @@ def divide_plane_into_radial_segments(P, center, n_segments):
 
 @njit(cache=True)
 def remove_ground_around_a_center(
-    P, center, n_segments, N_iter, N_LPR, Th_seeds, Th_dist, Th_center
+    P,
+    center,
+    n_segments,
+    N_iter,
+    N_LPR,
+    Th_seeds,
+    Th_dist,
+    Th_center,
 ):
     """Fit a ground plane for each radial segment around a center."""
     radial_segments, segments_point_indices = divide_plane_into_radial_segments(
-        P, center, n_segments
+        P,
+        center,
+        n_segments,
     )
     plane_ground_mask = np.zeros(P.shape[0], dtype=np.bool_)
     loop_range = range(len(radial_segments))
@@ -113,7 +128,13 @@ def remove_ground_around_a_center(
             segments_point_indices[i],
         )
         radial_segment_ground_mask = fit_plane_on_radial_segment(
-            radial_segment, center, N_iter, N_LPR, Th_seeds, Th_dist, Th_center
+            radial_segment,
+            center,
+            N_iter,
+            N_LPR,
+            Th_seeds,
+            Th_dist,
+            Th_center,
         )
         plane_ground_mask[segment_point_indices] = radial_segment_ground_mask
     return plane_ground_mask
@@ -121,7 +142,16 @@ def remove_ground_around_a_center(
 
 @njit(cache=True)
 def fit_ground(
-    P, centers, n_segments, N_iter, N_LPR, Th_seeds, Th_dist, Th_center, max_r, min_r
+    P,
+    centers,
+    n_segments,
+    N_iter,
+    N_LPR,
+    Th_seeds,
+    Th_dist,
+    Th_center,
+    max_r,
+    min_r,
 ):
     """Fit ground plane for each center, return the conjunction of ground masks.."""
     n_points = P.shape[0]
@@ -131,7 +161,8 @@ def fit_ground(
     for i in loop_range:
         center = centers[i]
         distances_to_center = np.sum(
-            np.abs(P[:, :2] - center[:2]), axis=1
+            np.abs(P[:, :2] - center[:2]),
+            axis=1,
         )  # L1 distance
         if (
             np.sum(distances_to_center < 20) < 3
@@ -157,7 +188,16 @@ def fit_ground(
 
 @njit(parallel=True, cache=True)
 def fit_ground_parallel(
-    P, centers, n_segments, N_iter, N_LPR, Th_seeds, Th_dist, Th_center, max_r, min_r
+    P,
+    centers,
+    n_segments,
+    N_iter,
+    N_LPR,
+    Th_seeds,
+    Th_dist,
+    Th_center,
+    max_r,
+    min_r,
 ):
     """Fit ground plane for each center, return the conjunction of ground masks.."""
     n_points = P.shape[0]
@@ -167,7 +207,8 @@ def fit_ground_parallel(
     for i in loop_range:
         center = centers[i]
         distances_to_center = np.sum(
-            np.abs(P[:, :2] - center[:2]), axis=1
+            np.abs(P[:, :2] - center[:2]),
+            axis=1,
         )  # L1 distance
         if (
             np.sum(distances_to_center < 20) < 3
@@ -194,10 +235,14 @@ def fit_ground_parallel(
 def generate_center_grid(center_resolution, min_x, max_x, min_y, max_y):
     """Generate a grid of centers for ground plane fitting.."""
     x_values = np.arange(
-        min_x - center_resolution // 2, max_x + center_resolution, center_resolution
+        min_x - center_resolution // 2,
+        max_x + center_resolution,
+        center_resolution,
     )
     y_values = np.arange(
-        min_y - center_resolution // 2, max_y + center_resolution, center_resolution
+        min_y - center_resolution // 2,
+        max_y + center_resolution,
+        center_resolution,
     )
     grid_points = np.array([(x, y) for x in x_values for y in y_values])
     grid_points = [center for center in grid_points] + [[0, 0]]  # Add the origin

@@ -101,7 +101,7 @@ class ClosedLoopInference(OpenLoopInference):
 
         brake = bool(
             pred_target_speed < 0.01
-            or (speed / pred_target_speed) > self.config_closed_loop.brake_ratio
+            or (speed / pred_target_speed) > self.config_closed_loop.brake_ratio,
         )
         steer = self.lateral_route_controller.step(
             pred_checkpoints,
@@ -111,7 +111,10 @@ class ClosedLoopInference(OpenLoopInference):
             sensor_agent_steer_correction=self.config_closed_loop.sensor_agent_steer_correction,
         )
         throttle, brake = get_throttle(
-            brake, pred_target_speed, speed, self.config_expert
+            brake,
+            pred_target_speed,
+            speed,
+            self.config_expert,
         )
 
         return steer, throttle, float(brake)
@@ -136,7 +139,7 @@ class ClosedLoopInference(OpenLoopInference):
         speed = velocity[0].data.cpu().float().numpy()
 
         one_second = int(
-            self.config_training.carla_fps // self.config_training.data_save_freq
+            self.config_training.carla_fps // self.config_training.data_save_freq,
         )
         half_second = one_second // 2
 
@@ -144,7 +147,9 @@ class ClosedLoopInference(OpenLoopInference):
             np.linalg.norm(waypoints[half_second - 1] - waypoints[one_second - 1]) * 2.0
         )
         delta_speed = np.clip(
-            desired_speed - speed, 0.0, self.config_closed_loop.wp_delta_clip
+            desired_speed - speed,
+            0.0,
+            self.config_closed_loop.wp_delta_clip,
         )
 
         brake = (desired_speed < self.config_closed_loop.brake_speed) or (
@@ -187,7 +192,9 @@ class ClosedLoopInference(OpenLoopInference):
 
     @beartype
     def ensemble(
-        self, data: dict[str, torch.Tensor], predictions: list[Prediction]
+        self,
+        data: dict[str, torch.Tensor],
+        predictions: list[Prediction],
     ) -> ClosedLoopPrediction:
         """
         Args:
@@ -215,7 +222,8 @@ class ClosedLoopInference(OpenLoopInference):
         if open_loop_prediction.pred_future_waypoints is not None:
             waypoints_steer, waypoints_throttle, waypoints_brake = (
                 self.execute_waypoints(
-                    open_loop_prediction.pred_future_waypoints, ego_speed
+                    open_loop_prediction.pred_future_waypoints,
+                    ego_speed,
                 )
             )
 
@@ -226,7 +234,7 @@ class ClosedLoopInference(OpenLoopInference):
             steer = waypoints_steer
         else:
             raise ValueError(
-                f"Invalid steer_modality: {self.config_closed_loop.steer_modality}"
+                f"Invalid steer_modality: {self.config_closed_loop.steer_modality}",
             )
 
         if self.config_closed_loop.throttle_modality == "target_speed":
@@ -235,7 +243,7 @@ class ClosedLoopInference(OpenLoopInference):
             throttle = waypoints_throttle
         else:
             raise ValueError(
-                f"Invalid throttle_modality: {self.config_closed_loop.throttle_modality}"
+                f"Invalid throttle_modality: {self.config_closed_loop.throttle_modality}",
             )
 
         if self.config_closed_loop.brake_modality == "target_speed":
@@ -244,7 +252,7 @@ class ClosedLoopInference(OpenLoopInference):
             brake = waypoints_brake
         else:
             raise ValueError(
-                f"Invalid brake_modality: {self.config_closed_loop.brake_modality}"
+                f"Invalid brake_modality: {self.config_closed_loop.brake_modality}",
             )
 
         # Turn off throttle if we brake

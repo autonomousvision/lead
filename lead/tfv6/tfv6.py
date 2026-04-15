@@ -154,22 +154,28 @@ class TFv6(nn.Module):
         if self.config.detect_boxes:
             if self.config.use_carla_data:
                 pred_bounding_box = self.center_net_decoder(
-                    data, bev_feature_grid, self.log
+                    data,
+                    bev_feature_grid,
+                    self.log,
                 )
             if self.config.use_navsim_data:
                 pred_bounding_box_navsim = self.center_net_decoder_navsim(
-                    data, bev_feature_grid, self.log
+                    data,
+                    bev_feature_grid,
+                    self.log,
                 )
 
         # BEV semantic segmentation forward pass
         if self.config.use_bev_semantic:
             if self.config.use_carla_data:
                 pred_bev_semantic = self.bev_semantic_decoder(
-                    bev_feature_grid, self.log
+                    bev_feature_grid,
+                    self.log,
                 )
             if self.config.use_navsim_data:
                 pred_bev_semantic_navsim = self.bev_semantic_decoder_navsim(
-                    bev_feature_grid, self.log
+                    bev_feature_grid,
+                    self.log,
                 )
 
         # Collect predictions
@@ -194,30 +200,44 @@ class TFv6(nn.Module):
 
     @beartype
     def compute_loss(
-        self, predictions: Prediction, data: dict[str, typing.Any]
+        self,
+        predictions: Prediction,
+        data: dict[str, typing.Any],
     ) -> tuple[dict, dict]:
         loss = {}
         # Semantic segmentation loss
         if self.config.use_semantic and self.config.use_carla_data:
             self.semantic_decoder.compute_loss(
-                predictions.pred_semantic, data, loss, log=self.log
+                predictions.pred_semantic,
+                data,
+                loss,
+                log=self.log,
             )
 
         # Depth estimation loss
         if self.config.use_depth and self.config.use_carla_data:
             self.depth_decoder.compute_loss(
-                predictions.pred_depth, data, loss, log=self.log
+                predictions.pred_depth,
+                data,
+                loss,
+                log=self.log,
             )
 
         # BEV semantic segmentation loss
         if self.config.use_bev_semantic:
             if self.config.use_carla_data:
                 self.bev_semantic_decoder.compute_loss(
-                    predictions.pred_bev_semantic, data, loss, log=self.log
+                    predictions.pred_bev_semantic,
+                    data,
+                    loss,
+                    log=self.log,
                 )
             if self.config.use_navsim_data:
                 self.bev_semantic_decoder_navsim.compute_loss(
-                    predictions.pred_bev_semantic_navsim, data, loss, log=self.log
+                    predictions.pred_bev_semantic_navsim,
+                    data,
+                    loss,
+                    log=self.log,
                 )
 
         # Bounding box detection loss
@@ -249,7 +269,10 @@ class TFv6(nn.Module):
         # Planning loss
         if self.config.use_planning_decoder:
             self.planning_decoder.compute_loss(
-                data=data, predictions=predictions, loss=loss, log=self.log
+                data=data,
+                predictions=predictions,
+                loss=loss,
+                log=self.log,
             )
 
         return loss, self.log

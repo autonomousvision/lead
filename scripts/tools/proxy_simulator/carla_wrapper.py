@@ -53,7 +53,7 @@ class CarlaWrapper:
                 1,
                 7,
             )
-            + road.shape
+            + road.shape,
         )
         global_map[:, 0, ...] = road / 255.0
         global_map[:, 1, ...] = lane / 255.0

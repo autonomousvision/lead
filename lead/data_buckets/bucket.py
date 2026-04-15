@@ -31,28 +31,28 @@ class Bucket:
     def add(self, route_dir: str, seq: int):
         # Loads the current (and past) frames (if seq_len > 1)
         self.bev_3rd_person_images.append(
-            route_dir + "/3rd_person" + (f"/{(seq):04}.jpg")
+            route_dir + "/3rd_person" + (f"/{(seq):04}.jpg"),
         )
         self.images.append(route_dir + "/rgb" + (f"/{(seq):04}.jpg"))
         self.images_perturbated.append(
-            route_dir + "/rgb_perturbated" + (f"/{(seq):04}.jpg")
+            route_dir + "/rgb_perturbated" + (f"/{(seq):04}.jpg"),
         )
         self.semantics.append(route_dir + "/semantics" + (f"/{(seq):04}.png"))
         self.semantics_perturbated.append(
-            route_dir + "/semantics_perturbated" + (f"/{(seq):04}.png")
+            route_dir + "/semantics_perturbated" + (f"/{(seq):04}.png"),
         )
         self.hdmap.append(route_dir + "/hdmap" + (f"/{(seq):04}.png"))
         self.hdmap_perturbated.append(
-            route_dir + "/hdmap_perturbated" + (f"/{(seq):04}.png")
+            route_dir + "/hdmap_perturbated" + (f"/{(seq):04}.png"),
         )
         self.depth.append(route_dir + "/depth" + (f"/{(seq):04}.png"))
         self.depth_perturbated.append(
-            route_dir + "/depth_perturbated" + (f"/{(seq):04}.png")
+            route_dir + "/depth_perturbated" + (f"/{(seq):04}.png"),
         )
         self.lidars.append(route_dir + "/lidar" + (f"/{(seq):04}.laz"))
         self.radars.append(route_dir + "/radar" + (f"/{(seq):04}.npz"))
         self.radars_perturbated.append(
-            route_dir + "/radar_perturbated" + (f"/{(seq):04}.npz")
+            route_dir + "/radar_perturbated" + (f"/{(seq):04}.npz"),
         )
         self.route_dirs.append(route_dir)
         self.route_indices.append(seq)
@@ -65,13 +65,13 @@ class Bucket:
     def finalize(self):
         # https://github.com/pytorch/pytorch/issues/13246#issuecomment-905703662
         self.bev_3rd_person_images = np.array(self.bev_3rd_person_images).astype(
-            np.string_
+            np.string_,
         )
         self.images = np.array(self.images).astype(np.string_)
         self.images_perturbated = np.array(self.images_perturbated).astype(np.string_)
         self.semantics = np.array(self.semantics).astype(np.string_)
         self.semantics_perturbated = np.array(self.semantics_perturbated).astype(
-            np.string_
+            np.string_,
         )
         self.hdmap = np.array(self.hdmap).astype(np.string_)
         self.hdmap_perturbated = np.array(self.hdmap_perturbated).astype(np.string_)

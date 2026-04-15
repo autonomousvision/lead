@@ -27,7 +27,11 @@ class NavsimData(Dataset):
     """Data loader for NavSim data"""
 
     def __init__(
-        self, root, config: TrainingConfig, training_session_cache=None, random=True
+        self,
+        root,
+        config: TrainingConfig,
+        training_session_cache=None,
+        random=True,
     ):
         self.root = root
         self.config = config
@@ -36,10 +40,12 @@ class NavsimData(Dataset):
         self.data_sampling_generator = default_rng(seed=self.config.seed)
 
         self._feature = glob.glob(
-            os.path.join(self.root, "**/transfuser_feature.gz"), recursive=True
+            os.path.join(self.root, "**/transfuser_feature.gz"),
+            recursive=True,
         )
         self._target = glob.glob(
-            os.path.join(self.root, "**/transfuser_target.gz"), recursive=True
+            os.path.join(self.root, "**/transfuser_target.gz"),
+            recursive=True,
         )
 
         self._feature.sort()
@@ -54,7 +60,7 @@ class NavsimData(Dataset):
                 f"Mismatch in number of files. Found {len(self._feature)} features and {len(self._target)} targets."
             )
             LOG.info(
-                f"NavSim: Found {len(self._feature)} samples. Upsampled to {self.size} samples"
+                f"NavSim: Found {len(self._feature)} samples. Upsampled to {self.size} samples",
             )
 
     def shuffle(self, epoch):
@@ -77,7 +83,9 @@ class NavsimData(Dataset):
                     # Add random samples for the remainder
                     if remainder > 0:
                         extra_indices = rng.choice(
-                            original_size, size=remainder, replace=False
+                            original_size,
+                            size=remainder,
+                            replace=False,
                         )
                         indices.extend(extra_indices)
 
@@ -135,7 +143,8 @@ class NavsimData(Dataset):
 
         bev_semantic_map = target["bev_semantic_map"].numpy().astype(np.uint8)
         bev_semantic_map = np.rot90(
-            bev_semantic_map, 1
+            bev_semantic_map,
+            1,
         )  # Align NavSim BEV with CARLA BEV
         bev_semantic_map = cv2.imencode(".png", bev_semantic_map)[1]
 
@@ -161,7 +170,8 @@ class NavsimData(Dataset):
             data["navsim_bev_semantic"] = bev_semantic_map.astype(np.uint8)
 
         data["future_waypoints"][:, 1] = -data["future_waypoints"][
-            :, 1
+            :,
+            1,
         ]  # Flip Y axis to align with CARLA
         data["future_yaws"] = -data["future_yaws"]  # Flip Y axis to align with CARLA
 
@@ -229,7 +239,7 @@ class NavsimData(Dataset):
                     self.config.pixels_per_meter,
                     self.config.min_x_meter,
                     self.config.min_y_meter,
-                ).squeeze()
+                ).squeeze(),
             )
         image_system_boxes = np.array(image_system_boxes)
 
@@ -242,6 +252,8 @@ class NavsimData(Dataset):
                 image_system_boxes = padding
 
         for key, value in navsim_dataset_utils.get_centernet_labels(
-            image_system_boxes, self.config, self.config.navsim_num_bb_classes
+            image_system_boxes,
+            self.config,
+            self.config.navsim_num_bb_classes,
         ).items():
             data["navsim_" + key] = value

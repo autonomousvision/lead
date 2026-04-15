@@ -303,7 +303,7 @@ class LeaderboardWrapper:
                     "DATAGEN": "1",
                     "DEBUG_CHALLENGE": "0",
                     "TEAM_CONFIG": str(self.routes.absolute()),
-                }
+                },
             )
         else:
             save_path = resolved_output_dir
@@ -311,12 +311,13 @@ class LeaderboardWrapper:
                 {
                     "CHECKPOINT_DIR": checkpoint_dir,
                     "SAVE_PATH": str(save_path),
-                }
+                },
             )
             if getattr(self.args, "carl_agent", False):
                 # Required by PyTorch deterministic algorithms when using CuBLAS.
                 env_vars["CUBLAS_WORKSPACE_CONFIG"] = os.environ.get(
-                    "CUBLAS_WORKSPACE_CONFIG", ":4096:8"
+                    "CUBLAS_WORKSPACE_CONFIG",
+                    ":4096:8",
                 )
 
         # Apply to os.environ
@@ -442,12 +443,12 @@ class LeaderboardWrapper:
         # Add debug checkpoint if not autopilot
         if leaderboard_type != LeaderboardType.AUTOPILOT:
             cmd.extend(
-                ["--debug-checkpoint", str(debug_checkpoint_path), "--record", "None"]
+                ["--debug-checkpoint", str(debug_checkpoint_path), "--record", "None"],
             )
 
         LOG.info("\n" + "=" * 80)
         LOG.info(
-            f"Starting CARLA Leaderboard Evaluation ({self.leaderboard_type.value})"
+            f"Starting CARLA Leaderboard Evaluation ({self.leaderboard_type.value})",
         )
         LOG.info(f"Command: {' '.join(cmd)}")
         LOG.info("=" * 80)
@@ -487,7 +488,7 @@ class LeaderboardWrapper:
                     else:
                         # If still running after timeout, send SIGTERM
                         LOG.warning(
-                            "Subprocess did not exit after 30s, sending SIGTERM..."
+                            "Subprocess did not exit after 30s, sending SIGTERM...",
                         )
                         process.terminate()
                         try:
@@ -564,17 +565,24 @@ Examples:
         help="Path to model checkpoint directory (for model evaluation)",
     )
     mode_group.add_argument(
-        "--expert", action="store_true", help="Run expert agent (for expert evaluation)"
+        "--expert",
+        action="store_true",
+        help="Run expert agent (for expert evaluation)",
     )
 
     # Required arguments
     parser.add_argument(
-        "--routes", type=str, required=True, help="Path to the routes XML file"
+        "--routes",
+        type=str,
+        required=True,
+        help="Path to the routes XML file",
     )
 
     # Leaderboard type
     parser.add_argument(
-        "--bench2drive", action="store_true", help="Use Bench2Drive leaderboard"
+        "--bench2drive",
+        action="store_true",
+        help="Use Bench2Drive leaderboard",
     )
     parser.add_argument(
         "--fail2drive",
@@ -597,25 +605,43 @@ Examples:
     # CARLA settings
     parser.add_argument("--port", type=int, default=2000, help="CARLA server port")
     parser.add_argument(
-        "--traffic-manager-port", type=int, default=8000, help="Traffic manager port"
+        "--traffic-manager-port",
+        type=int,
+        default=8000,
+        help="Traffic manager port",
     )
     parser.add_argument(
-        "--traffic-manager-seed", type=int, default=0, help="Traffic manager seed"
+        "--traffic-manager-seed",
+        type=int,
+        default=0,
+        help="Traffic manager seed",
     )
 
     # Evaluation settings
     parser.add_argument(
-        "--repetitions", type=int, default=1, help="Number of repetitions per route"
+        "--repetitions",
+        type=int,
+        default=1,
+        help="Number of repetitions per route",
     )
     parser.add_argument(
-        "--timeout", type=float, default=180.0, help="Timeout in seconds"
+        "--timeout",
+        type=float,
+        default=180.0,
+        help="Timeout in seconds",
     )
     parser.add_argument(
-        "--resume", action="store_true", default=False, help="Resume from checkpoint"
+        "--resume",
+        action="store_true",
+        default=False,
+        help="Resume from checkpoint",
     )
     parser.add_argument("--debug", type=int, default=0, help="Debug mode")
     parser.add_argument(
-        "--gpu", type=int, default=0, help="GPU device ID (for model evaluation)"
+        "--gpu",
+        type=int,
+        default=0,
+        help="GPU device ID (for model evaluation)",
     )
     parser.add_argument(
         "--output-dir",
@@ -671,7 +697,7 @@ def main() -> None:
     # Validate py123d flag
     if args.py123d and not args.expert:
         LOG.warning(
-            "--py123d flag is only valid with --expert mode. Ignoring --py123d flag."
+            "--py123d flag is only valid with --expert mode. Ignoring --py123d flag.",
         )
 
     # Validate carl mode flag
@@ -693,7 +719,7 @@ def main() -> None:
     result = LeaderboardWrapper(args).run()
     if result.returncode != 0:
         LOG.error(
-            f"Leaderboard evaluator exited with non-zero code {result.returncode}"
+            f"Leaderboard evaluator exited with non-zero code {result.returncode}",
         )
         sys.exit(result.returncode)
 

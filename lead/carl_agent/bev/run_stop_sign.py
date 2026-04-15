@@ -9,8 +9,9 @@ Code adapted from https://github.com/zhejz/carla-roach
 """
 
 import carla
-from lead.carl_agent.rl_utils import check_obb_intersection
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+
+from lead.carl_agent.rl_utils import check_obb_intersection
 
 
 class RunStopSign:
@@ -63,7 +64,9 @@ class RunStopSign:
         stop_extent = stop.trigger_volume.extent
         for actor_wp in wp_list:
             if self.point_inside_boundingbox(
-                actor_wp.transform.location, stop_location, stop_extent
+                actor_wp.transform.location,
+                stop_location,
+                stop_extent,
             ):
                 return True
 
@@ -105,14 +108,16 @@ class RunStopSign:
 
         if not self.target_stop_sign:
             self.target_stop_sign = self.scan_for_stop_sign(
-                actor_transform, check_wps, actor_velocity
+                actor_transform,
+                check_wps,
+                actor_velocity,
             )
             return
 
         if not self.stop_completed:
             current_speed = CarlaDataProvider.get_velocity(vehicle)
             stop_location = self.target_stop_sign.get_transform().transform(
-                self.target_stop_sign.trigger_volume.location
+                self.target_stop_sign.trigger_volume.location,
             )
             stop_extent = self.target_stop_sign.trigger_volume.extent
 
@@ -121,7 +126,7 @@ class RunStopSign:
                     x=vehicle.bounding_box.location.x,
                     y=vehicle.bounding_box.location.y,
                     z=vehicle.bounding_box.location.z,
-                )
+                ),
             )
             actor_bb = carla.BoundingBox(actor_bb_location, vehicle.bounding_box.extent)
             actor_bb.rotation = actor_transform.rotation

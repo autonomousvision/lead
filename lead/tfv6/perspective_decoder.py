@@ -83,7 +83,12 @@ class PerspectiveDecoder(nn.Module):
             ),
             nn.ReLU(inplace=True),
             nn.Conv2d(
-                self.config.deconv_channel_num_2, out_channels, 3, 1, 1, bias=True
+                self.config.deconv_channel_num_2,
+                out_channels,
+                3,
+                1,
+                1,
+                bias=True,
             ),
         )
 
@@ -107,7 +112,9 @@ class PerspectiveDecoder(nn.Module):
         if self.config.use_semantic:
             # Mask for samples from the correct source dataset
             source_dataset = data["source_dataset"].to(
-                prediction.device, dtype=torch.long, non_blocking=True
+                prediction.device,
+                dtype=torch.long,
+                non_blocking=True,
             )  # (B,)
             source_mask = (source_dataset == self.source_data).float()  # (B,)
 
@@ -115,7 +122,9 @@ class PerspectiveDecoder(nn.Module):
                 return  # No samples from this source dataset in the batch
 
             label = data[self.modality].to(
-                prediction.device, dtype=torch.long, non_blocking=True
+                prediction.device,
+                dtype=torch.long,
+                non_blocking=True,
             )
 
             # Compute loss per sample
@@ -129,7 +138,9 @@ class PerspectiveDecoder(nn.Module):
                     loss_per_sample = loss_per_sample.mean(dim=(1, 2))  # (B,)
                 else:
                     loss_per_sample = F.l1_loss(
-                        prediction.float(), label.float(), reduction="none"
+                        prediction.float(),
+                        label.float(),
+                        reduction="none",
                     )  # (B, H, W)
                     loss_per_sample = loss_per_sample.mean(dim=(1, 2))  # (B,)
 
@@ -171,7 +182,8 @@ class PerspectiveDecoder(nn.Module):
                     log[f"{prefix}metric/semantic_f1"] = f1.item()
                 else:
                     mae = torchmetrics.functional.mean_absolute_error(
-                        subset_pred.float(), subset_label.float()
+                        subset_pred.float(),
+                        subset_label.float(),
                     )
                     log[f"{prefix}metric/depth_mae"] = mae.item()
 
@@ -188,11 +200,17 @@ class PerspectiveDecoder(nn.Module):
         """
         x = self.deconv1(image_feature_grid)
         x = F.interpolate(
-            x, scale_factor=self.scale_factor_0, mode="bilinear", align_corners=False
+            x,
+            scale_factor=self.scale_factor_0,
+            mode="bilinear",
+            align_corners=False,
         )
         x = self.deconv2(x)
         x = F.interpolate(
-            x, scale_factor=self.scale_factor_1, mode="bilinear", align_corners=False
+            x,
+            scale_factor=self.scale_factor_1,
+            mode="bilinear",
+            align_corners=False,
         )
         x = self.deconv3(x)
 
@@ -204,10 +222,13 @@ class PerspectiveDecoder(nn.Module):
             width_error = abs(x.shape[3] - expected_w) / expected_w * 100
             if max(height_error, width_error) > 10:
                 raise ValueError(
-                    f"Output size mismatch too large: got ({x.shape[2]}, {x.shape[3]}), expected ({expected_h}, {expected_w})"
+                    f"Output size mismatch too large: got ({x.shape[2]}, {x.shape[3]}), expected ({expected_h}, {expected_w})",
                 )
             x = F.interpolate(
-                x, size=(expected_h, expected_w), mode="bilinear", align_corners=False
+                x,
+                size=(expected_h, expected_w),
+                mode="bilinear",
+                align_corners=False,
             )
 
         if self.modality == "depth":

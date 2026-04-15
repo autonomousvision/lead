@@ -28,7 +28,7 @@ class SlurmJobPool:
             )
         except:
             self.slurm_scripts = sorted(
-                [str(file) for file in Path(args.slurm_dir).glob(pattern="*.sh")]
+                [str(file) for file in Path(args.slurm_dir).glob(pattern="*.sh")],
             )
 
         # Filter self.slurm_scripts if id_list is not empty
@@ -49,7 +49,8 @@ class SlurmJobPool:
                 exit(1)
 
         self.wandb_logger = WandBLogger(
-            closed_loop_config=ClosedLoopConfig(), num_routes=len(self.slurm_scripts)
+            closed_loop_config=ClosedLoopConfig(),
+            num_routes=len(self.slurm_scripts),
         )
 
         # Submit and monitor jobs
@@ -59,13 +60,15 @@ class SlurmJobPool:
     def fill_pool(self):
         """Fill the job pool with new jobs if there's space."""
         while len(
-            self.status_of_jobs
+            self.status_of_jobs,
         ) < evaluate_utils.get_max_parallel_jobs() and self.script_index < len(
-            self.slurm_scripts
+            self.slurm_scripts,
         ):
             script_path = self.slurm_scripts[self.script_index]
             slurm_job_id, process = evaluate_utils.submit_job(
-                self.job_name, script_path, 1
+                self.job_name,
+                script_path,
+                1,
             )
             self.status_of_jobs[slurm_job_id] = {
                 "script": script_path,
@@ -84,7 +87,7 @@ class SlurmJobPool:
             self.status_of_jobs or self.script_index < len(self.slurm_scripts)
         ):
             for slurm_job_id, slurm_job_status in list(
-                self.status_of_jobs.items()
+                self.status_of_jobs.items(),
             ):  # Check slurm_job_status of each job in the pool
                 carla_route_id = Path(slurm_job_status["script"]).stem
                 json_log_path = (
@@ -93,7 +96,9 @@ class SlurmJobPool:
                     / f"{carla_route_id}.json"
                 )
                 if not evaluate_utils.is_job_running(
-                    slurm_job_id, slurm_job_status, self.job_name
+                    slurm_job_id,
+                    slurm_job_status,
+                    self.job_name,
                 ):  # Check if job is still running or needs resubmission
                     print(f"Route {carla_route_id} is not running anymore.")
                     job_failed = evaluate_utils.did_job_fail(json_log_path)
@@ -103,7 +108,7 @@ class SlurmJobPool:
                         < evaluate_utils.get_max_num_attempts()
                     ):  # Retry job if it failed and has attempts left
                         print(
-                            f"Retrying route {carla_route_id} (Attempt {slurm_job_status['attempts'] + 1})"
+                            f"Retrying route {carla_route_id} (Attempt {slurm_job_status['attempts'] + 1})",
                         )
                         new_slurm_job_id, process = evaluate_utils.submit_job(
                             self.job_name,
@@ -120,17 +125,17 @@ class SlurmJobPool:
                     else:
                         if job_failed:  # Job failed
                             print(
-                                f"Job for route {carla_route_id} failed after {slurm_job_status['attempts']} attempts."
+                                f"Job for route {carla_route_id} failed after {slurm_job_status['attempts']} attempts.",
                             )
                         else:  # Job succeeded
                             print(
-                                f"Job for route {carla_route_id} completed successfully."
+                                f"Job for route {carla_route_id} completed successfully.",
                             )
                             self.wandb_logger.log_job(
                                 json_log_path,
                                 slurm_job_status["route_idx"],
                                 evaluate_utils.get_num_running_jobs(
-                                    job_name=self.job_name
+                                    job_name=self.job_name,
                                 ),
                                 slurm_job_status["attempts"],
                                 job_failed,
@@ -159,7 +164,7 @@ class SlurmJobPool:
                         ["scancel", job_id],
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL,
-                    )
+                    ),
                 )
         else:
             # Create separate kill processes
@@ -169,14 +174,14 @@ class SlurmJobPool:
                         ["kill", "-9", str(job_id)],
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL,
-                    )
+                    ),
                 )
             processes.append(
                 subprocess.Popen(
                     ["clean_carla.sh"],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
-                )
+                ),
             )
 
         # Wait for all processes to complete
@@ -191,7 +196,7 @@ class SlurmJobPool:
 def main():
     # Argument parsing
     parser = argparse.ArgumentParser(
-        description="Submit and monitor SLURM job self.slurm_scripts from a directory."
+        description="Submit and monitor SLURM job self.slurm_scripts from a directory.",
     )
     parser.add_argument(
         "--slurm_dir",
@@ -199,7 +204,9 @@ def main():
         help="Directory containing SLURM job self.slurm_scripts to submit.",
     )
     parser.add_argument(
-        "--job_name", type=str, help="Prefix to know which jobs belong here."
+        "--job_name",
+        type=str,
+        help="Prefix to know which jobs belong here.",
     )
     parser.add_argument(
         "--id_list",

@@ -23,7 +23,9 @@ LOG = logging.getLogger(__name__)
 
 class TrainingConfig(BaseConfig):
     def __init__(
-        self, loaded_config: dict = None, raise_error_on_missing_key: bool = False
+        self,
+        loaded_config: dict = None,
+        raise_error_on_missing_key: bool = False,
     ):
         """Constructor for training config."""
         super().__init__()
@@ -52,7 +54,7 @@ class TrainingConfig(BaseConfig):
         elif "carla_leaderboad2_v10" in self.carla_root:
             return TargetDataset.CARLA_LEADERBOARD2_6CAMERAS
         raise ValueError(
-            f"Unknown CARLA root path: {self.carla_root}. Please register it in the config."
+            f"Unknown CARLA root path: {self.carla_root}. Please register it in the config.",
         )
 
     @property
@@ -260,7 +262,7 @@ class TrainingConfig(BaseConfig):
         if self.target_dataset == TargetDataset.WAYMO_E2E_2025_3CAMERAS:
             return 20
         raise ValueError(
-            "Unknown target dataset. Not sure how many epochs to train for."
+            "Unknown target dataset. Not sure how many epochs to train for.",
         )
 
     @overridable_property
@@ -338,7 +340,7 @@ class TrainingConfig(BaseConfig):
         ]:
             return self.num_way_points_prediction * 2
         raise ValueError(
-            "Unknown target dataset. Not sure how many frames to skip at the end of sequences."
+            "Unknown target dataset. Not sure how many frames to skip at the end of sequences.",
         )
 
     # --- RaDAR ---
@@ -550,7 +552,7 @@ class TrainingConfig(BaseConfig):
         ]:
             return 4
         raise ValueError(
-            "Unknown target dataset. Not sure how many discrete commands there are."
+            "Unknown target dataset. Not sure how many discrete commands there are.",
         )
 
     # If true train model with noisy target points. The level of noise depends on use_kalman_filter_for_gps.
@@ -579,7 +581,7 @@ class TrainingConfig(BaseConfig):
     def use_acceleration(self):
         """If true use the acceleration as input to the network."""
         return not self.carla_leaderboard_mode and self.target_dataset not in [
-            TargetDataset.WAYMO_E2E_2025_3CAMERAS
+            TargetDataset.WAYMO_E2E_2025_3CAMERAS,
         ]
 
     @property
@@ -627,14 +629,14 @@ class TrainingConfig(BaseConfig):
     def use_past_positions(self):
         """If true use past positions as input to the network."""
         return not self.carla_leaderboard_mode and self.target_dataset in [
-            TargetDataset.WAYMO_E2E_2025_3CAMERAS
+            TargetDataset.WAYMO_E2E_2025_3CAMERAS,
         ]
 
     @overridable_property
     def use_past_speeds(self):
         """If true use past speeds as input to the network."""
         return not self.carla_leaderboard_mode and self.target_dataset in [
-            TargetDataset.WAYMO_E2E_2025_3CAMERAS
+            TargetDataset.WAYMO_E2E_2025_3CAMERAS,
         ]
 
     @overridable_property
@@ -707,7 +709,7 @@ class TrainingConfig(BaseConfig):
         elif self.target_dataset in [TargetDataset.WAYMO_E2E_2025_3CAMERAS]:
             return 10  # 2Hz and 5 seconds
         raise ValueError(
-            "Unknown target dataset. Not sure how long is the planning horizon."
+            "Unknown target dataset. Not sure how long is the planning horizon.",
         )
 
     @property
@@ -722,7 +724,7 @@ class TrainingConfig(BaseConfig):
         elif self.target_dataset in [TargetDataset.WAYMO_E2E_2025_3CAMERAS]:
             return 10  # 2Hz
         raise ValueError(
-            "Unknown target dataset. Not sure which planning frequency to use."
+            "Unknown target dataset. Not sure which planning frequency to use.",
         )
 
     # --- Image config ---
@@ -964,7 +966,7 @@ class TrainingConfig(BaseConfig):
                 "loss_spatio_temporal_waypoints": 1.0,
                 "loss_target_speed": 1.0,
                 "loss_spatial_route": 1.0,
-            }
+            },
         )
 
         # Disable planning losses during pretraining
@@ -985,7 +987,7 @@ class TrainingConfig(BaseConfig):
                 os.path.join(
                     self.lead_project_root,
                     "slurm/configs/wandb_log_frequency_training_scalar.txt",
-                )
+                ),
             ) as f:
                 return int(f.readline().strip())
         except Exception as e:
@@ -1002,7 +1004,7 @@ class TrainingConfig(BaseConfig):
                 os.path.join(
                     self.lead_project_root,
                     "slurm/configs/wandb_log_frequency_training_images.txt",
-                )
+                ),
             ) as f:
                 return int(f.readline().strip())
         except Exception as e:
@@ -1036,7 +1038,7 @@ class TrainingConfig(BaseConfig):
     def device(self):
         """PyTorch device to use for training."""
         return torch.device(
-            f"cuda:{self.local_rank}" if torch.cuda.is_available() else "cpu"
+            f"cuda:{self.local_rank}" if torch.cuda.is_available() else "cpu",
         )
 
     @overridable_property

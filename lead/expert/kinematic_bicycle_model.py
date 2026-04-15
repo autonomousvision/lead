@@ -39,7 +39,9 @@ class KinematicBicycleModel:
         speeds: jt.Float[NDArray, "..."],
         actions: jt.Float[NDArray, "... 3"],
     ) -> tuple[
-        jt.Float[NDArray, "... 3"], jt.Float[NDArray, "..."], jt.Float[NDArray, "..."]
+        jt.Float[NDArray, "... 3"],
+        jt.Float[NDArray, "..."],
+        jt.Float[NDArray, "..."],
     ]:
         """Forecast the future states of other vehicles based on their current states and actions.
 
@@ -59,7 +61,7 @@ class KinematicBicycleModel:
         slip_angles = np.arctan(
             self.rear_wheel_base
             / (self.front_wheel_base + self.rear_wheel_base)
-            * np.tan(wheel_angles)
+            * np.tan(wheel_angles),
         )
 
         next_x = (
@@ -74,7 +76,9 @@ class KinematicBicycleModel:
         )
 
         next_speeds = speeds + self.time_step * np.where(
-            brakes, self.brake_acceleration, throttles * self.throttle_acceleration
+            brakes,
+            self.brake_acceleration,
+            throttles * self.throttle_acceleration,
         )
         next_speeds = np.maximum(0.0, next_speeds)
 
@@ -110,7 +114,7 @@ class KinematicBicycleModel:
         slip_angle = np.arctan(
             self.rear_wheel_base
             / (self.front_wheel_base + self.rear_wheel_base)
-            * np.tan(wheel_angle)
+            * np.tan(wheel_angle),
         )
 
         next_x = location[0] + speed * np.cos(heading + slip_angle) * self.time_step
@@ -149,7 +153,7 @@ class KinematicBicycleModel:
                         speed_kph * throttle**2,
                         speed_kph**2 * throttle,
                         speed_kph**2 * throttle**2,
-                    ]
+                    ],
                 ).T
 
                 next_speed_kph = features @ self.throttle_values

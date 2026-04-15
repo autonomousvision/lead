@@ -12,7 +12,12 @@ from lead.tfv6.center_net_decoder import PredictedBoundingBox
 
 @beartype
 def draw_gaussian_blob(
-    bev, x: numbers.Real, y: numbers.Real, size: numbers.Real, color, filled=True
+    bev,
+    x: numbers.Real,
+    y: numbers.Real,
+    size: numbers.Real,
+    color,
+    filled=True,
 ):
     """Draw a 2D Gaussian blob"""
     # Create a small patch around the point
@@ -20,7 +25,8 @@ def draw_gaussian_blob(
 
     # Create coordinate grids
     xx, yy = np.meshgrid(
-        np.arange(-patch_size, patch_size + 1), np.arange(-patch_size, patch_size + 1)
+        np.arange(-patch_size, patch_size + 1),
+        np.arange(-patch_size, patch_size + 1),
     )
 
     # 2D Gaussian formula
@@ -86,7 +92,7 @@ def draw_box(
     yaw = -box[TransfuserBoundingBoxIndex.YAW] + np.pi / 2
     rot = np.array([[np.cos(yaw), -np.sin(yaw)], [np.sin(yaw), np.cos(yaw)]])
     corners = np.array(
-        [[-width, -height], [width, -height], [width, height], [-width, height]]
+        [[-width, -height], [width, -height], [width, height], [-width, height]],
     )
     corner_global = (rot @ corners.T).T + translation
     corner_global = corner_global.astype(int)
@@ -244,13 +250,17 @@ def draw_circle_with_number(
             rotated_text[: text_y_end - text_y, : text_x_end - text_x].sum(axis=2) > 0
         )
         bev_image[text_y:text_y_end, text_x:text_x_end][mask] = rotated_text[
-            : text_y_end - text_y, : text_x_end - text_x
+            : text_y_end - text_y,
+            : text_x_end - text_x,
         ][mask]
 
 
 @beartype
 def lighter_shade(
-    color: tuple[int, int, int], i: int, max_len: int, max_lighter: int = 100
+    color: tuple[int, int, int],
+    i: int,
+    max_len: int,
+    max_lighter: int = 100,
 ) -> tuple[int, int, int]:
     """Create a lighter shade of a color based on position in sequence.
 

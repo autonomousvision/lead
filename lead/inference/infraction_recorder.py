@@ -58,7 +58,7 @@ class InfractionRecorder:
 
             for criterion in criteria:
                 criterion_key = str(
-                    getattr(criterion, "name", type(criterion).__name__)
+                    getattr(criterion, "name", type(criterion).__name__),
                 )
                 events = getattr(criterion, "events", None)
 

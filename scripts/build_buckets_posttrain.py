@@ -9,5 +9,5 @@ data = CARLAData(
     root=config.carla_data,
     config=config,
     training_session_cache=None,
-    build_cache=False
+    build_cache=False,
 )

@@ -50,7 +50,7 @@ class RunStopSign:
             if not self.affected_by_stop:
                 stop_t = self.target_stop_sign.get_transform()
                 transformed_tv = stop_t.transform(
-                    self.target_stop_sign.trigger_volume.location
+                    self.target_stop_sign.trigger_volume.location,
                 )
                 stop_extent = self.target_stop_sign.trigger_volume.extent
                 if self.point_inside_boundingbox(ev_loc, transformed_tv, stop_extent):
@@ -110,7 +110,9 @@ class RunStopSign:
 
         for actor_location in list_locations:
             if self.point_inside_boundingbox(
-                actor_location, transformed_tv, stop.trigger_volume.extent
+                actor_location,
+                transformed_tv,
+                stop.trigger_volume.extent,
             ):
                 affected = True
 

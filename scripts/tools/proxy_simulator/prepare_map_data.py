@@ -18,7 +18,7 @@ def main():
 
     parser.add_argument("--port", default=2000, type=int, help="port to reach carla server")
     parser.add_argument(
-        "--map_data_folder", default="../proxy_simulator/map_data", help="path to the map_data folder that gets created"
+        "--map_data_folder", default="../proxy_simulator/map_data", help="path to the map_data folder that gets created",
     )
     args = parser.parse_args()
 

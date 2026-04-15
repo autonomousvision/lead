@@ -14,7 +14,10 @@ from lead.training.config_training import TrainingConfig
 class RadarDetector(nn.Module):
     @beartype
     def __init__(
-        self, bev_input_dim: int, config: TrainingConfig, device: torch.device
+        self,
+        bev_input_dim: int,
+        config: TrainingConfig,
+        device: torch.device,
     ):
         super().__init__()
         self.config = config
@@ -31,7 +34,8 @@ class RadarDetector(nn.Module):
             ),
             nn.ReLU(inplace=True),
             nn.Linear(
-                self.config.radar_hidden_dim_tokenizer, self.config.radar_token_dim
+                self.config.radar_hidden_dim_tokenizer,
+                self.config.radar_token_dim,
             ),
         )
 
@@ -41,13 +45,13 @@ class RadarDetector(nn.Module):
                 1,
                 config.lidar_horz_anchors * config.lidar_vert_anchors,
                 config.radar_token_dim,
-            )
+            ),
         )
         self.ego_vel_pos_embed = nn.Parameter(torch.zeros(1, 1, config.radar_token_dim))
 
         # Learned queries and transformer
         self.q = nn.Parameter(
-            torch.zeros(1, config.num_radar_queries, config.radar_token_dim)
+            torch.zeros(1, config.num_radar_queries, config.radar_token_dim),
         )
         self.tf = nn.TransformerDecoder(
             nn.TransformerDecoderLayer(
@@ -73,19 +77,22 @@ class RadarDetector(nn.Module):
             nn.Linear(config.radar_hidden_dim_decoder, state_output_dim),
         )
         self.label_decoder = nn.Linear(
-            config.radar_token_dim, 1
+            config.radar_token_dim,
+            1,
         )  # Invalid prediction = a vector with negative dot product with learned weights
         self.feature_scale = torch.Tensor(
             [
                 self.config.max_x_meter - self.config.min_x_meter,
                 self.config.max_y_meter - self.config.min_y_meter,
                 self.config.max_speed,
-            ]
+            ],
         ).to(device=self.device, dtype=self.config.torch_float_type)
 
     @beartype
     def forward(
-        self, bev_tokens: jt.Float[torch.Tensor, "B D H W"], data: dict
+        self,
+        bev_tokens: jt.Float[torch.Tensor, "B D H W"],
+        data: dict,
     ) -> tuple[
         jt.Float[torch.Tensor, "B Q C"],
         jt.Float[torch.Tensor, "B Q 4"],
@@ -100,7 +107,8 @@ class RadarDetector(nn.Module):
         """
         # Load data
         radars = data["radar"].to(
-            self.device, dtype=self.config.torch_float_type
+            self.device,
+            dtype=self.config.torch_float_type,
         )  # (B, 300, 5)
 
         # Prepare context
@@ -109,7 +117,7 @@ class RadarDetector(nn.Module):
             data["speed"]
             .reshape(-1, 1)
             .to(self.device, dtype=self.config.torch_float_type)
-            / self.config.max_speed
+            / self.config.max_speed,
         ).unsqueeze(1)  # (B, 1, D)
         radar_tokens = self._tokenize_radar(bev_tokens, radars)  # (B, 300, D)
 
@@ -117,7 +125,8 @@ class RadarDetector(nn.Module):
         bev_tokens = bev_tokens.flatten(2).permute(0, 2, 1) + self.bev_pos_embed
         ego_vel_token = ego_vel_token + self.ego_vel_pos_embed
         kv = torch.cat(
-            [bev_tokens, ego_vel_token, radar_tokens], dim=1
+            [bev_tokens, ego_vel_token, radar_tokens],
+            dim=1,
         )  # (B, H*W+1+300, D)
 
         # Cross-attention
@@ -177,7 +186,8 @@ class RadarDetector(nn.Module):
 
         # Building features for each radar point
         sensor_features = torch.nn.functional.one_hot(
-            sensor_id.to(torch.int64).squeeze(-1), num_classes=self.num_radar_sensors
+            sensor_id.to(torch.int64).squeeze(-1),
+            num_classes=self.num_radar_sensors,
         ).to(self.device, dtype=self.config.torch_float_type)  # (B, 300, 4)
         radar_features = fn.bev_grid_sample(bev_tokens, pos, self.config)  # (B, 300, D)
         rel_vel_features = rel_vel / self.config.max_speed
@@ -207,20 +217,26 @@ class RadarDetector(nn.Module):
         log: dict,
     ) -> None:
         gt_state = data["radar_detections"][
-            ..., [RadarLabels.X, RadarLabels.Y, RadarLabels.V]
+            ...,
+            [RadarLabels.X, RadarLabels.Y, RadarLabels.V],
         ].to(self.device, dtype=self.config.torch_float_type)  # (B, Q, 3)
         gt_label = data["radar_detections"][..., [RadarLabels.VALID]].to(
-            self.device, dtype=self.config.torch_float_type
+            self.device,
+            dtype=self.config.torch_float_type,
         )  # (B, Q, 1)
 
         pred_state = pred[
-            :, :, [RadarLabels.X, RadarLabels.Y, RadarLabels.V]
+            :,
+            :,
+            [RadarLabels.X, RadarLabels.Y, RadarLabels.V],
         ]  # (B, Q, 3)
         pred_label = pred[:, :, [RadarLabels.VALID]]  # (B, Q, 1)
 
         # Compute cost matrices for all batches at once
         state_cost = self._l1_cost_batch(
-            pred_state, gt_state, gt_label.squeeze(-1)
+            pred_state,
+            gt_state,
+            gt_label.squeeze(-1),
         )  # (B, Q, Q)
         classification_cost = self._ce_cost_batch(pred_label, gt_label)  # (B, Q, Q)
         cost = (
@@ -230,12 +246,13 @@ class RadarDetector(nn.Module):
 
         # Batch Hungarian matching
         pred_indices, gt_indices = self._batch_hungarian_matching(
-            cost
+            cost,
         )  # (B, Q), (B, Q)
 
         # Gather matched predictions and ground truth using advanced indexing
         batch_indices = torch.arange(pred_state.shape[0], device=self.device)[
-            :, None
+            :,
+            None,
         ]  # (B, 1)
 
         matched_state_pred = pred_state[batch_indices, pred_indices]  # (B, Q, 3)
@@ -245,10 +262,13 @@ class RadarDetector(nn.Module):
 
         # Compute losses in batch
         state_losses = self._l1_loss_batch(
-            matched_state_pred, matched_state_gt, matched_label_gt.squeeze(-1)
+            matched_state_pred,
+            matched_state_gt,
+            matched_label_gt.squeeze(-1),
         )  # (B,)
         classification_losses = self._ce_loss_batch(
-            matched_label_pred, matched_label_gt
+            matched_label_pred,
+            matched_label_gt,
         )  # (B,)
 
         # Final loss is batch mean
@@ -265,7 +285,8 @@ class RadarDetector(nn.Module):
 
             # Distance error (L2 distance for x, y coordinates)
             xy_pred = matched_state_pred[
-                ..., [RadarLabels.X, RadarLabels.Y]
+                ...,
+                [RadarLabels.X, RadarLabels.Y],
             ]  # (B, Q, 2)
             xy_gt = matched_state_gt[..., [RadarLabels.X, RadarLabels.Y]]  # (B, Q, 2)
             distance_errors = torch.norm(xy_pred - xy_gt, dim=-1)  # (B, Q)
@@ -296,7 +317,8 @@ class RadarDetector(nn.Module):
 
     @beartype
     def _batch_hungarian_matching(
-        self, cost: jt.Float[torch.Tensor, "B N N"]
+        self,
+        cost: jt.Float[torch.Tensor, "B N N"],
     ) -> tuple[jt.Int[torch.Tensor, "B N"], jt.Int[torch.Tensor, "B N"]]:
         """Batch Hungarian matching using linear_sum_assignment"""
         B, N, _ = cost.shape
@@ -329,11 +351,15 @@ class RadarDetector(nn.Module):
 
     @beartype
     def _ce_loss_batch(
-        self, pred: jt.Float[torch.Tensor, "B Q 1"], gt: jt.Float[torch.Tensor, "B Q 1"]
+        self,
+        pred: jt.Float[torch.Tensor, "B Q 1"],
+        gt: jt.Float[torch.Tensor, "B Q 1"],
     ) -> jt.Float[torch.Tensor, " B"]:
         with torch.amp.autocast(device_type="cuda", enabled=False):
             losses = F.binary_cross_entropy_with_logits(
-                pred.float(), gt.float(), reduction="none"
+                pred.float(),
+                gt.float(),
+                reduction="none",
             )  # (B, Q, 1)
         return losses.squeeze(-1).mean(dim=-1).to(pred.dtype)  # (B,)
 
@@ -353,7 +379,9 @@ class RadarDetector(nn.Module):
 
     @beartype
     def _ce_cost_batch(
-        self, pred: jt.Float[torch.Tensor, "B N 1"], gt: jt.Float[torch.Tensor, "B N 1"]
+        self,
+        pred: jt.Float[torch.Tensor, "B N 1"],
+        gt: jt.Float[torch.Tensor, "B N 1"],
     ) -> jt.Float[torch.Tensor, "B N N"]:
         B, N, _ = pred.shape
         pred_expanded = pred[:, :, None].expand(B, N, N, 1)  # (B, N, N, 1)
@@ -361,7 +389,9 @@ class RadarDetector(nn.Module):
         with torch.amp.autocast(device_type="cuda", enabled=False):
             return (
                 F.binary_cross_entropy_with_logits(
-                    pred_expanded.float(), gt_expanded.float(), reduction="none"
+                    pred_expanded.float(),
+                    gt_expanded.float(),
+                    reduction="none",
                 )
                 .squeeze(-1)
                 .to(pred.dtype)

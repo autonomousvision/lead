@@ -131,7 +131,7 @@ class PrivilegedRoutePlanner:
                 agent_position[None, :2]
                 - self.route_points[self.route_index : search_range, :2],
                 axis=1,
-            )
+            ),
         )
 
         return (
@@ -146,7 +146,9 @@ class PrivilegedRoutePlanner:
 
     @beartype
     def extend_lane_shift_transition_for_yield_to_emergency_vehicle(
-        self, shift_to_left_lane: bool, previous_shift_end_index: int
+        self,
+        shift_to_left_lane: bool,
+        previous_shift_end_index: int,
     ) -> int:
         """
         Extend the lane shift transition to yield to an emergency vehicle.
@@ -176,7 +178,7 @@ class PrivilegedRoutePlanner:
             if transition_end_index - idx < self.transition_smoothness_distance:
                 transition_factor = self._smooth_transition(
                     float(transition_end_index - idx)
-                    / self.transition_smoothness_distance
+                    / self.transition_smoothness_distance,
                 )
                 self.commands[idx] = (
                     RoadOption.CHANGELANERIGHT
@@ -197,7 +199,11 @@ class PrivilegedRoutePlanner:
 
             target_lane_location = target_lane.transform.location
             target_lane_location = np.array(
-                [target_lane_location.x, target_lane_location.y, target_lane_location.z]
+                [
+                    target_lane_location.x,
+                    target_lane_location.y,
+                    target_lane_location.z,
+                ],
             )
 
             self.route_points[idx] = (
@@ -209,7 +215,9 @@ class PrivilegedRoutePlanner:
 
     @beartype
     def extend_lane_shift_transition_for_hazard_at_side_lane(
-        self, last_bicycle: carla.Actor, previous_shift_end_index: int
+        self,
+        last_bicycle: carla.Actor,
+        previous_shift_end_index: int,
     ) -> int:
         """Extend the lane shift transition to ensure the vehicle can safely pass the bicycles in HazardAtSideLane.
 
@@ -222,7 +230,8 @@ class PrivilegedRoutePlanner:
         """
         # Find the closest route index to the bicycle
         obstacle_route_index = self.get_closest_route_index(
-            int(self.route_index), last_bicycle.get_location()
+            int(self.route_index),
+            last_bicycle.get_location(),
         )
 
         # Calculate the extent of the bicycle
@@ -244,7 +253,7 @@ class PrivilegedRoutePlanner:
             if transition_end_index - idx < self.transition_smoothness_distance:
                 transition_factor = self._smooth_transition(
                     float(transition_end_index - idx)
-                    / self.transition_smoothness_distance
+                    / self.transition_smoothness_distance,
                 )
                 self.commands[idx] = RoadOption.CHANGELANERIGHT
             else:
@@ -257,7 +266,11 @@ class PrivilegedRoutePlanner:
 
             target_lane_location = target_lane.transform.location
             target_lane_location = np.array(
-                [target_lane_location.x, target_lane_location.y, target_lane_location.z]
+                [
+                    target_lane_location.x,
+                    target_lane_location.y,
+                    target_lane_location.z,
+                ],
             )
 
             self.route_points[idx] = (
@@ -325,7 +338,7 @@ class PrivilegedRoutePlanner:
                 and idx - start_index < end_index - idx
             ):
                 transition_factor = self._smooth_transition(
-                    float(idx - start_index) / transition_length
+                    float(idx - start_index) / transition_length,
                 )
                 if shift_to_left_lane:
                     self.commands[idx] = RoadOption.CHANGELANELEFT
@@ -333,7 +346,7 @@ class PrivilegedRoutePlanner:
                     self.commands[idx] = RoadOption.CHANGELANERIGHT
             elif idx >= end_index - transition_length:
                 transition_factor = self._smooth_transition(
-                    float(end_index - idx) / transition_length
+                    float(end_index - idx) / transition_length,
                 )
                 if shift_to_left_lane:
                     self.commands[idx] = RoadOption.CHANGELANERIGHT
@@ -365,7 +378,7 @@ class PrivilegedRoutePlanner:
         # calculate the search direction
         direction = 1
         if np.linalg.norm(
-            location_np - self.original_route_points[index, :2]
+            location_np - self.original_route_points[index, :2],
         ) < np.linalg.norm(location_np - self.original_route_points[index + 1, :2]):
             direction = -1
 
@@ -380,7 +393,7 @@ class PrivilegedRoutePlanner:
 
             dist1 = np.linalg.norm(location_np - self.original_route_points[index, :2])
             dist2 = np.linalg.norm(
-                location_np - self.original_route_points[index + direction, :2]
+                location_np - self.original_route_points[index + direction, :2],
             )
             # check if we have found the closest route point
             if dist1 < dist2:
@@ -405,11 +418,13 @@ class PrivilegedRoutePlanner:
         """
         # Find the route indices corresponding to the first and last cones
         first_cone_index = self.get_closest_route_index(
-            int(self.route_index), first_cone.get_location()
+            int(self.route_index),
+            first_cone.get_location(),
         )
         # Begin 10 meters for the search after the first cone.
         last_cone_index = self.get_closest_route_index(
-            int(first_cone_index + 10 * self.points_per_meter), last_cone.get_location()
+            int(first_cone_index + 10 * self.points_per_meter),
+            last_cone.get_location(),
         )
 
         # Adjust the route by shifting it laterally between 15m before the first cone and 10m after the last cone
@@ -475,7 +490,7 @@ class PrivilegedRoutePlanner:
         # Find the closest route index to the first actor
         tree = cKDTree(self.original_route_points[self.route_index :, :2])
         first_actor_location = np.array(
-            [first_actor.get_location().x, first_actor.get_location().y]
+            [first_actor.get_location().x, first_actor.get_location().y],
         )
         _, closest_idx = tree.query(first_actor_location, k=1)
         first_idx = closest_idx + self.route_index
@@ -485,7 +500,7 @@ class PrivilegedRoutePlanner:
         shift_start_index = first_idx - int(
             first_actor_extent * self.points_per_meter
             + transition_length
-            + extra_length_before
+            + extra_length_before,
         )
 
         # Calculate where we the route shift ends
@@ -493,7 +508,7 @@ class PrivilegedRoutePlanner:
             shift_end_index = first_idx + int(
                 first_actor_extent * self.points_per_meter
                 + transition_length
-                + extra_length_after
+                + extra_length_after,
             )
         else:
             last_actor_location = last_actor.get_location()
@@ -502,7 +517,7 @@ class PrivilegedRoutePlanner:
             shift_end_index = last_idx + int(
                 last_actor_extent * self.points_per_meter
                 + transition_length
-                + extra_length_after
+                + extra_length_after,
             )
 
         # Determine the shift direction
@@ -583,7 +598,8 @@ class PrivilegedRoutePlanner:
 
         # Smooth and interpolate the route
         self.route_points, self.commands = self.smooth_and_supersample(
-            route_points, cmds
+            route_points,
+            cmds,
         )
         self.original_route_points = np.copy(self.route_points)
         self.commands_orig = self.commands.copy()
@@ -592,7 +608,7 @@ class PrivilegedRoutePlanner:
         self.route_waypoints = []
         for route_loc in self.route_points:
             wp = carla_map.get_waypoint(
-                carla.Location(x=route_loc[0], y=route_loc[1], z=route_loc[2])
+                carla.Location(x=route_loc[0], y=route_loc[1], z=route_loc[2]),
             )
             self.route_waypoints.append(wp)
 
@@ -624,7 +640,9 @@ class PrivilegedRoutePlanner:
 
     @beartype
     def smooth_and_supersample(
-        self, original_route_points: np.ndarray, commands: list
+        self,
+        original_route_points: np.ndarray,
+        commands: list,
     ) -> tuple:
         """
         Smooths and supersamples the given route to increase density and matches commands accordingly.
@@ -654,29 +672,31 @@ class PrivilegedRoutePlanner:
 
         # Interpolate points along the original route
         x_supersampled = interp_x(
-            np.arange(0, num_original_points - 1, 1.0 / num_samples)
+            np.arange(0, num_original_points - 1, 1.0 / num_samples),
         )
         y_supersampled = interp_y(
-            np.arange(0, num_original_points - 1, 1.0 / num_samples)
+            np.arange(0, num_original_points - 1, 1.0 / num_samples),
         )
         z_supersampled = interp_z(
-            np.arange(0, num_original_points - 1, 1.0 / num_samples)
+            np.arange(0, num_original_points - 1, 1.0 / num_samples),
         )
 
         route_supersampled = np.column_stack(
-            [x_supersampled, y_supersampled, z_supersampled]
+            [x_supersampled, y_supersampled, z_supersampled],
         )
 
         # Calculate cumulative distances along the supersampled route
         cumulative_distances = np.cumsum(
-            np.linalg.norm(np.diff(route_supersampled, axis=0), axis=1)
+            np.linalg.norm(np.diff(route_supersampled, axis=0), axis=1),
         )
         cumulative_distances = np.insert(cumulative_distances, 0, 0)
         cumulative_distances = cumulative_distances % segment_length
 
         # Find indices of points at segment boundaries
         segment_indices = np.insert(
-            np.argwhere(cumulative_distances[1:] < cumulative_distances[:-1]), 0, 0
+            np.argwhere(cumulative_distances[1:] < cumulative_distances[:-1]),
+            0,
+            0,
         )
         smoothed_points = route_supersampled[segment_indices]
 
@@ -686,7 +706,7 @@ class PrivilegedRoutePlanner:
             np.round(
                 segment_indices.astype("float")
                 / self.points_per_meter
-                / num_supersample_per_point
+                / num_supersample_per_point,
             ),
             num_original_commands - 1,
         ).astype("int")
@@ -752,14 +772,14 @@ class PrivilegedRoutePlanner:
                             wp.transform.location.x,
                             wp.transform.location.y,
                             wp.transform.location.z,
-                        ]
+                        ],
                     )
                     self.original_route_points[j] = np.array(
                         [
                             wp.transform.location.x,
                             wp.transform.location.y,
                             wp.transform.location.z,
-                        ]
+                        ],
                     )
                     j += 1
 
@@ -773,7 +793,8 @@ class PrivilegedRoutePlanner:
         """
         # Initialize arrays to store distances and next traffic lights
         self.distances_to_next_traffic_lights = np.full(
-            self.route_points.shape[0], np.inf
+            self.route_points.shape[0],
+            np.inf,
         )
         self.next_traffic_lights = [None] * self.route_points.shape[0]
 
@@ -808,13 +829,15 @@ class PrivilegedRoutePlanner:
 
         # Since we search for traffic lights up to 5m away, we have to shift the arrays
         self.distances_to_next_traffic_lights = np.concatenate(
-            [self.distances_to_next_traffic_lights[:-40], 40 * [np.inf]]
+            [self.distances_to_next_traffic_lights[:-40], 40 * [np.inf]],
         )
         self.next_traffic_lights = self.next_traffic_lights[:-40] + (40 * [None])
 
     @beartype
     def compute_distances_to_stop_signs(
-        self, carla_world: carla.World, carla_map: carla.Map
+        self,
+        carla_world: carla.World,
+        carla_map: carla.Map,
     ):
         """
         Compute the distance to the next stop sign from each individual route location.
@@ -869,18 +892,26 @@ class PrivilegedRoutePlanner:
             # Using more than one waypoint removes issues with small trigger volumes and backwards movement
             for actor_wp in wp_list:
                 if point_inside_boundingbox(
-                    actor_wp.transform.location, stop_location, stop_extent
+                    actor_wp.transform.location,
+                    stop_location,
+                    stop_extent,
                 ):
                     return True
 
             return False
 
         def _scan_for_stop_sign(
-            list_stop_signs, list_stop_signs_extent, wp_list, stop_locations
+            list_stop_signs,
+            list_stop_signs_extent,
+            wp_list,
+            stop_locations,
         ):
             """Check which stop sign affects the actor."""
             for stop, stop_extent, stop_location in zip(
-                list_stop_signs, list_stop_signs_extent, stop_locations, strict=False
+                list_stop_signs,
+                list_stop_signs_extent,
+                stop_locations,
+                strict=False,
             ):
                 if is_actor_affected_by_stop(wp_list, stop_extent, stop_location):
                     return stop
@@ -909,7 +940,9 @@ class PrivilegedRoutePlanner:
 
         # Initialize arrays to store distances and next stop signs
         self.distances_to_next_stop_signs = np.full(
-            self.route_points.shape[0], np.inf, dtype=np.float32
+            self.route_points.shape[0],
+            np.inf,
+            dtype=np.float32,
         )
         self.next_stop_signs = [None] * self.route_points.shape[0]
 
@@ -964,7 +997,9 @@ class PrivilegedRoutePlanner:
                 )
 
     def compute_leading_vehicles(
-        self, list_vehicles: list, ego_vehicle_id: int
+        self,
+        list_vehicles: list,
+        ego_vehicle_id: int,
     ) -> list:
         """
         Computes the IDs of vehicles leading ahead of the ego vehicle.
@@ -978,7 +1013,7 @@ class PrivilegedRoutePlanner:
         """
         # Get IDs of all vehicles except the ego vehicle
         vehicle_ids = np.array(
-            [vehicle.id for vehicle in list_vehicles if vehicle.id != ego_vehicle_id]
+            [vehicle.id for vehicle in list_vehicles if vehicle.id != ego_vehicle_id],
         )
 
         # Check if there are vehicles and the route index is not at the end
@@ -990,7 +1025,7 @@ class PrivilegedRoutePlanner:
                     vehicle.get_transform().rotation.yaw
                     for vehicle in list_vehicles
                     if vehicle.id != ego_vehicle_id
-                ]
+                ],
             )
             vehicle_locations = [
                 vehicle.get_location()
@@ -998,7 +1033,7 @@ class PrivilegedRoutePlanner:
                 if vehicle.id != ego_vehicle_id
             ]
             vehicle_locations = np.array(
-                [[loc.x, loc.y, loc.z] for loc in vehicle_locations]
+                [[loc.x, loc.y, loc.z] for loc in vehicle_locations],
             )
 
             # Compute leading vehicles up to 80m ahead
@@ -1009,7 +1044,9 @@ class PrivilegedRoutePlanner:
             distances = (
                 vehicle_locations[:, None, :2]
                 - self.route_points[
-                    None, self.route_index : self.route_index + max_distance, :2
+                    None,
+                    self.route_index : self.route_index + max_distance,
+                    :2,
                 ][:, :: self.points_per_meter, :]
             )
             distances = np.linalg.norm(distances, axis=2)
@@ -1036,7 +1073,9 @@ class PrivilegedRoutePlanner:
             return []
 
     def compute_trailing_vehicles(
-        self, list_vehicles: list, ego_vehicle_id: int
+        self,
+        list_vehicles: list,
+        ego_vehicle_id: int,
     ) -> list:
         """
         Computes the IDs of vehicles trailing behind the ego vehicle.
@@ -1050,7 +1089,7 @@ class PrivilegedRoutePlanner:
         """
         # Get IDs of all vehicles except the ego vehicle
         vehicle_ids = np.array(
-            [vehicle.id for vehicle in list_vehicles if vehicle.id != ego_vehicle_id]
+            [vehicle.id for vehicle in list_vehicles if vehicle.id != ego_vehicle_id],
         )
 
         # Maximum distance of vehicles to ego's route
@@ -1059,7 +1098,8 @@ class PrivilegedRoutePlanner:
         # Check if there was a lane change in the past
         max_distance_lane_change = self.max_distance_lane_change_trailing_vehicles
         for i in range(
-            max(0, self.route_index - max_distance_lane_change), self.route_index
+            max(0, self.route_index - max_distance_lane_change),
+            self.route_index,
         ):
             if self.commands[i] in (
                 RoadOption.CHANGELANELEFT,
@@ -1076,7 +1116,7 @@ class PrivilegedRoutePlanner:
                     vehicle.get_transform().rotation.yaw
                     for vehicle in list_vehicles
                     if vehicle.id != ego_vehicle_id
-                ]
+                ],
             )
             vehicle_locations = [
                 vehicle.get_location()
@@ -1084,7 +1124,7 @@ class PrivilegedRoutePlanner:
                 if vehicle.id != ego_vehicle_id
             ]
             vehicle_locations = np.array(
-                [[loc.x, loc.y, loc.z] for loc in vehicle_locations]
+                [[loc.x, loc.y, loc.z] for loc in vehicle_locations],
             )
 
             max_distance_trailing_vehicles = (
@@ -1096,7 +1136,9 @@ class PrivilegedRoutePlanner:
             distances = (
                 vehicle_locations[:, None, :2]
                 - self.route_points[None, from_idx : self.route_index, :2][
-                    :, :: self.points_per_meter, :
+                    :,
+                    :: self.points_per_meter,
+                    :,
                 ]
             )
             distances = np.linalg.norm(distances, axis=2)

@@ -91,7 +91,7 @@ def main():
                 # Only restart for new files (not directories)
                 if not event.is_directory:
                     print(
-                        f"\n[Viser] New scene file detected: {event.src_path}. Restarting viewer..."
+                        f"\n[Viser] New scene file detected: {event.src_path}. Restarting viewer...",
                     )
                     self.restart_callback()
 

@@ -285,7 +285,7 @@ def save_new_route(new_routes, route_id, route_town, route, scenarios_data):
     # Add the weather
     weather_params = [
         'cloudiness', 'precipitation', 'precipitation_deposits', 'wetness',
-        'wind_intensity', 'sun_azimuth_angle', 'sun_altitude_angle', 'fog_density', 'fog_distance'
+        'wind_intensity', 'sun_azimuth_angle', 'sun_altitude_angle', 'fog_density', 'fog_distance',
     ]
 
     for old_weather in route.iter('weather'):

@@ -15,7 +15,9 @@ from lead.training.config_training import TrainingConfig
 
 @beartype
 def get_centernet_labels(
-    gt_bboxes: jt.Float[npt.NDArray, "N 8"], config: TrainingConfig, num_bb_classes: int
+    gt_bboxes: jt.Float[npt.NDArray, "N 8"],
+    config: TrainingConfig,
+    num_bb_classes: int,
 ) -> dict[str, npt.NDArray]:
     """
     Compute regression and classification targets for bounding boxes.
@@ -38,7 +40,8 @@ def get_centernet_labels(
     velocity_target = np.zeros([1, feat_h, feat_w], dtype=np.float32)
     brake_target = np.zeros([1, feat_h, feat_w], dtype=np.int32)
     pixel_weight = np.zeros(
-        [2, feat_h, feat_w], dtype=np.float32
+        [2, feat_h, feat_w],
+        dtype=np.float32,
     )  # 2 is the max of the channels above here.
 
     if not gt_bboxes.shape[0] > 0:
@@ -90,7 +93,8 @@ def get_centernet_labels(
         wh_target[1, cty_int, ctx_int] = extent_y
 
         yaw_class, yaw_res = common_utils.angle2class(
-            gt_bboxes[j, TransfuserBoundingBoxIndex.YAW], config.num_dir_bins
+            gt_bboxes[j, TransfuserBoundingBoxIndex.YAW],
+            config.num_dir_bins,
         )
 
         yaw_class_target[0, cty_int, ctx_int] = yaw_class

@@ -72,7 +72,9 @@ def angle2class(angle: float, num_dir_bins: int) -> tuple[int, float]:
 
 @beartype
 def convert_gps_to_carla(
-    gps: npt.NDArray, lat_ref: float, lon_ref: float
+    gps: npt.NDArray,
+    lat_ref: float,
+    lon_ref: float,
 ) -> npt.NDArray:
     """
     Converts GPS signal into the CARLA coordinate frame.
@@ -246,7 +248,7 @@ def transform_lidar_to_bounding_box(
 
     # Create inverse rotation matrix for yaw
     rotation_matrix = np.array(
-        [[np.cos(bb_yaw), np.sin(bb_yaw)], [-np.sin(bb_yaw), np.cos(bb_yaw)]]
+        [[np.cos(bb_yaw), np.sin(bb_yaw)], [-np.sin(bb_yaw), np.cos(bb_yaw)]],
     )
 
     # Translate LiDAR points relative to the bounding box center
@@ -257,7 +259,8 @@ def transform_lidar_to_bounding_box(
 
 
 def filter_lidar_points_in_obb(
-    lidar_points: jt.Float[npt.NDArray, "n 3"], bb: jt.Float[npt.NDArray, "5"]
+    lidar_points: jt.Float[npt.NDArray, "n 3"],
+    bb: jt.Float[npt.NDArray, "5"],
 ) -> jt.Float[npt.NDArray, "... 3"]:
     """Filter LiDAR points to find those inside the oriented bounding box.
 
@@ -345,7 +348,9 @@ def normalize_angle_degree(x: float) -> float:
 
 
 def euler_deg_to_mat(
-    roll: float, pitch: float, yaw: float
+    roll: float,
+    pitch: float,
+    yaw: float,
 ) -> jt.Float[npt.NDArray, "3 3"]:
     """Convert Euler angles in degrees to rotation matrix.
 
@@ -452,7 +457,7 @@ def align_lidar(
             [np.cos(yaw), -np.sin(yaw), 0.0],
             [np.sin(yaw), np.cos(yaw), 0.0],
             [0.0, 0.0, 1.0],
-        ]
+        ],
     )
 
     return (rotation_matrix.T @ (lidar - translation).T).T
@@ -475,7 +480,7 @@ def inverse_conversion_2d(
         Converted point.
     """
     rotation_matrix = np.array(
-        [[np.cos(yaw), -np.sin(yaw)], [np.sin(yaw), np.cos(yaw)]]
+        [[np.cos(yaw), -np.sin(yaw)], [np.sin(yaw), np.cos(yaw)]],
     )
     return rotation_matrix.T @ (point - translation)
 
@@ -497,7 +502,7 @@ def conversion_2d(
         Converted point.
     """
     rotation_matrix = np.array(
-        [[np.cos(yaw), -np.sin(yaw)], [np.sin(yaw), np.cos(yaw)]]
+        [[np.cos(yaw), -np.sin(yaw)], [np.sin(yaw), np.cos(yaw)]],
     )
 
     converted_point = rotation_matrix @ point + translation
@@ -523,7 +528,8 @@ def preprocess_compass(compass: float) -> float:
 
 @beartype
 def get_world_coordinate_2d(
-    ego_transform: carla.Transform, local_location: carla.Location
+    ego_transform: carla.Transform,
+    local_location: carla.Location,
 ) -> carla.Location:
     """
     Ignore pitch and roll of car to get only 2D position with only yaw.
@@ -545,7 +551,8 @@ def get_world_coordinate_2d(
 
 @beartype
 def get_relative_transform(
-    ego_matrix: npt.NDArray, vehicle_matrix: npt.NDArray
+    ego_matrix: npt.NDArray,
+    vehicle_matrix: npt.NDArray,
 ) -> npt.NDArray:
     """Returns the position of the vehicle matrix in the ego coordinate system.
 
@@ -666,7 +673,7 @@ def decode_depth(
         return decode_depth_16bit(encoded_depth)
     else:
         raise ValueError(
-            "Unsupported data type for encoded depth. Expected uint8 or uint16."
+            "Unsupported data type for encoded depth. Expected uint8 or uint16.",
         )
 
 
@@ -685,7 +692,8 @@ def waypoints_curvature(
     if isinstance(waypoints, np.ndarray):
         waypoints = torch.from_numpy(waypoints)
     angles = torch.atan2(
-        waypoints[:, 1], waypoints[:, 0]
+        waypoints[:, 1],
+        waypoints[:, 0],
     )  # Get angles in range [-pi, pi]
     return float(torch.mean(torch.abs(angles)))  # Compute average absolute angle
 
@@ -700,14 +708,16 @@ def waypoints_signed_curvature(waypoints: torch.Tensor) -> torch.Tensor:
         Average signed curvature as scalar tensor.
     """
     angles = torch.atan2(
-        waypoints[:, 1], waypoints[:, 0]
+        waypoints[:, 1],
+        waypoints[:, 0],
     )  # Get angles in range [-pi, pi]
     return torch.mean(angles)  # Compute average angle
 
 
 @beartype
 def average_displacement_error(
-    predictions: torch.Tensor, observed_traj: torch.Tensor
+    predictions: torch.Tensor,
+    observed_traj: torch.Tensor,
 ) -> float:
     """Compute L2 distance between proposed trajectories and ground truth.
 
@@ -723,13 +733,14 @@ def average_displacement_error(
     if isinstance(observed_traj, torch.Tensor):
         observed_traj = observed_traj.detach().cpu().float().numpy()
     return float(
-        np.linalg.norm(predictions - observed_traj, axis=-1).mean(axis=-1).mean()
+        np.linalg.norm(predictions - observed_traj, axis=-1).mean(axis=-1).mean(),
     )
 
 
 @beartype
 def final_displacement_error(
-    predictions: torch.Tensor, observed_traj: torch.Tensor
+    predictions: torch.Tensor,
+    observed_traj: torch.Tensor,
 ) -> float:
     """Compute final L2 distance between proposed trajectories and ground truth.
 
@@ -745,7 +756,7 @@ def final_displacement_error(
     if isinstance(observed_traj, torch.Tensor):
         observed_traj = observed_traj.detach().cpu().float().numpy()
     return float(
-        np.linalg.norm(predictions[:, -1] - observed_traj[:, -1], axis=-1).mean()
+        np.linalg.norm(predictions[:, -1] - observed_traj[:, -1], axis=-1).mean(),
     )
 
 
