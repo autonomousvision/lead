@@ -74,7 +74,7 @@
 
 | Date         | Content                                                                                                                                 |
 | :----------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
-| **26.04.14** | <b>WARNING: </b> The parameter `transfuser_token_dim`'s default parameter should be `256`, as used in the paper, and not `64`.          |
+| **26.04.14** | <b>WARNING: </b> The parameter `transfuser_token_dim`'s default value should be `256`, as used in the paper, and not `64`.          |
 | **26.04.13** | <b>WARNING: </b> In some rare cases, we notice training instability. See [instructions](#5-common-issues), if you face similar problem. |
 | **26.04.11** | Added Fail2Drive benchmark support, see [instructions](#31-fail2drive-evaluation).                                                      |
 | **26.03.21** | Added evaluation support for the reinforcement-learning planner CaRL, see [instructions](#32-carl-agent-evaluation).                    |

@@ -29,11 +29,6 @@ repos:
         args: [--fix]
       - id: ruff-format
 
-  # - repo: https://github.com/DetachHead/basedpyright-pre-commit-mirror
-  #   rev: 1.36.2
-  #   hooks:
-  #       - id: basedpyright
-
   - repo: https://github.com/efrecon/pre-commit-hook-lxml
     rev: v0.1.4
     hooks:
