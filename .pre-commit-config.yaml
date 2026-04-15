@@ -47,8 +47,7 @@ repos:
             --check-return-types=false,
             --exclude=lead/training/rfs.py,
             --check-yield-types=false,
-            lead/,
-            tests/
+            lead/
           ]
         pass_filenames: false
         always_run: true
