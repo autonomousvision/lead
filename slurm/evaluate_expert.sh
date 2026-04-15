@@ -9,7 +9,6 @@
 #SBATCH --mem=4G
 
 shopt -s globstar
-set -e
 
 # Set up interpreter
 eval "$(conda shell.bash hook)"
@@ -18,6 +17,8 @@ if [ -z "$CONDA_INTERPRETER" ]; then
 fi
 source activate "$CONDA_INTERPRETER"
 which python3
+
+set -e
 
 # Generate for each split a evaluation script
 set -x

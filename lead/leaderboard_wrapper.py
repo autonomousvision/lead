@@ -690,7 +690,12 @@ def main() -> None:
         LOG.info("Running in CaRL evaluation mode")
 
     # Create wrapper and run
-    LeaderboardWrapper(args).run()
+    result = LeaderboardWrapper(args).run()
+    if result.returncode != 0:
+        LOG.error(
+            f"Leaderboard evaluator exited with non-zero code {result.returncode}"
+        )
+        sys.exit(result.returncode)
 
 
 if __name__ == "__main__":

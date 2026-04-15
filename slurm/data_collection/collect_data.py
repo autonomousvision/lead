@@ -8,8 +8,6 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from tqdm import tqdm
-
 
 def make_bash(
     data_save_root: str,
@@ -26,8 +24,8 @@ def make_bash(
     scenario_name: str,
     jobname: str,
     partition_name: str,
-    py123d_format: bool = False,
-    timeout: str = "0-01:00",
+    py123d_format: bool,
+    timeout: str,
 ) -> str:
     os.makedirs(f"{data_save_root}/stderr", exist_ok=True)
     os.makedirs(f"{data_save_root}/stdout", exist_ok=True)
@@ -61,16 +59,6 @@ echo "SLURM_JOB_ID: $SLURM_JOB_ID"
 echo "SLURM_JOB_NODELIST: $SLURM_JOB_NODELIST"
 scontrol show job $SLURM_JOB_ID
 
-dt=$(date '+%d/%m/%Y %H:%M:%S');
-echo "Job started: $dt"
-
-echo "Current branch:"
-git branch
-echo "Current commit:"
-git log -1
-echo "Current hash:"
-git rev-parse HEAD
-
 
 export FREE_STREAMING_PORT=$(random_free_port.sh)
 export FREE_WORLD_PORT=$(random_free_port.sh)
@@ -79,6 +67,8 @@ export TM_PORT=$(random_free_port.sh)
 sleep 2
 
 echo "start python"
+which python
+which python3
 pwd
 
 export SCENARIO_RUNNER_ROOT={code_dir}/3rd_party/scenario_runner_autopilot
@@ -301,7 +291,7 @@ if __name__ == "__main__":
     username = os.environ["USER"]
     code_root = os.getcwd()
     carla_root = os.getcwd() + "/3rd_party/CARLA_0915"
-    max_route_per_scenario_type = 51  # -1 means no limit
+    max_route_per_scenario_type = -1  # -1 means no limit
 
     # Configure based on data format
     if args.py123d:
@@ -309,7 +299,7 @@ if __name__ == "__main__":
         dataset_name = "carla_leaderboard2_py123d"
     else:
         agent = f"{code_root}/lead/expert/expert.py"
-        dataset_name = "carla_leaderboard2"
+        dataset_name = "carla_leaderboard2_6cameras"
 
     scenario_white_lists = []  # Empty list = all scenarios allowed
     scenario_blacklist = ["YieldToEmergencyVehicle"]  # Scenarios to exclude
@@ -340,31 +330,18 @@ if __name__ == "__main__":
         ]
         print(f"Applied scenario blacklist. Total routes: {len(routes)}")
 
-    # Apply max_route_per_scenario_type constraint
+    # Apply max_route_per_scenario_type constraint.
+    # Scenario type is the parent directory name (e.g. .../Accident/1054_0.xml),
+    # so we avoid parsing every XML file which is very slow on network disks.
     if max_route_per_scenario_type > 0:
         scenario_type_counts = {}
         filtered_routes = []
-        for route in tqdm(routes, desc="Filtering routes by scenario type"):
-            try:
-                tree = ET.parse(route)
-                root = tree.getroot()
-                scenario_elem = root.find("route/scenarios/scenario")
-                scenario_type = (
-                    scenario_elem.attrib["type"]
-                    if scenario_elem is not None
-                    else "noScenarios"
-                )
-
-                if scenario_type not in scenario_type_counts:
-                    scenario_type_counts[scenario_type] = 0
-
-                if scenario_type_counts[scenario_type] < max_route_per_scenario_type:
-                    filtered_routes.append(route)
-                    scenario_type_counts[scenario_type] += 1
-            except Exception as e:
-                print(f"Warning: Could not parse scenario type from route {route}: {e}")
-                # Include route anyway if parsing fails
+        for route in routes:
+            scenario_type = os.path.basename(os.path.dirname(route)) or "noScenarios"
+            count = scenario_type_counts.get(scenario_type, 0)
+            if count < max_route_per_scenario_type:
                 filtered_routes.append(route)
+                scenario_type_counts[scenario_type] = count + 1
         routes = filtered_routes
         print(
             f"Applied max_route_per_scenario_type={max_route_per_scenario_type}. Total routes: {len(routes)}"
@@ -435,6 +412,7 @@ if __name__ == "__main__":
                 job_name,
                 random.choice(partitions),
                 py123d_format=args.py123d,
+                timeout="0-03:00:00" if args.py123d else "0-01:00:00",
             )
 
             if is_job_done(ckpt_endpoint):

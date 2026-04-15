@@ -18,8 +18,14 @@ from py123d.geometry import (
     Quaternion,
     Vector3D,
 )
-from py123d.geometry.transform import translate_se3_along_body_frame, translate_se3_along_z
-from py123d.parser.utils.sensor_utils.camera_conventions import convert_camera_convention
+from py123d.geometry.transform import (
+    translate_se3_along_body_frame,
+    translate_se3_along_z,
+)
+from py123d.parser.utils.sensor_utils.camera_conventions import (
+    convert_camera_convention,
+)
+
 
 @beartype
 def get_carla_lincoln_mkz_2020_metadata() -> EgoStateSE3Metadata:
@@ -32,7 +38,9 @@ def get_carla_lincoln_mkz_2020_metadata() -> EgoStateSE3Metadata:
         length=4.89238,
         height=1.49028,
         wheel_base=2.86048,
-        center_to_imu_se3=PoseSE3(x=1.64855, y=0.0, z=0.38579, qw=1.0, qx=0.0, qy=0.0, qz=0.0),
+        center_to_imu_se3=PoseSE3(
+            x=1.64855, y=0.0, z=0.38579, qw=1.0, qx=0.0, qy=0.0, qz=0.0
+        ),
         rear_axle_to_imu_se3=PoseSE3.identity(),
     )
 
@@ -291,9 +299,7 @@ def get_camera_extrinsic_as_iso(
 
     # Convert camera convention from pXpZmY (Unreal) to pZmYpX (ISO 8855/OpenCV)
     camera_extrinsic = convert_camera_convention(
-        camera_extrinsic,
-        from_convention="pXpZmY",
-        to_convention="pZmYpX"
+        camera_extrinsic, from_convention="pXpZmY", to_convention="pZmYpX"
     )
 
     return camera_extrinsic

@@ -6,6 +6,11 @@ if [ "$1" != "" ]; then
 	port=$1
 fi
 
+streaming_port=$((port + 1))
+if [ "$2" != "" ]; then
+	streaming_port=$2
+fi
+
 $CARLA_ROOT/CarlaUE4.sh \
     -quality-level=Poor \
     -world-port=$port \
@@ -13,5 +18,5 @@ $CARLA_ROOT/CarlaUE4.sh \
     -resy=600 \
     -nosound \
     -graphicsadapter=0 \
-    -carla-streaming-port=2001 \
+    -carla-streaming-port=$streaming_port \
     -RenderOffScreen &

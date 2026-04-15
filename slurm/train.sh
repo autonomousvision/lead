@@ -9,7 +9,11 @@
 #SBATCH --mail-user=long.nguyen@student.uni-tuebingen.de
 #SBATCH --mem=256gb
 
+# Initialize Conda
 set -e
+
+which python
+which python3
 
 # print info about current job
 if [ -n "$SLURM_JOB_ID" ]; then
@@ -23,14 +27,6 @@ export PYTHONUNBUFFERED=1
 
 # CUDA debug
 nvidia-smi
-
-# Initialize Conda
-eval "$(conda shell.bash hook)"
-if [ -z "$CONDA_INTERPRETER" ]; then
-	export CONDA_INTERPRETER="lead" # Check if CONDA_INTERPRETER is not set, then set it to lead
-fi
-source activate "$CONDA_INTERPRETER"
-which python3
 
 if which sbatch >/dev/null; then
 	export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}

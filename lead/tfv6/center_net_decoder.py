@@ -316,20 +316,36 @@ class CenterNetDecoder(nn.Module):
             offset_pred = bounding_box_features.offset_pred[subset]
             yaw_class_pred = bounding_box_features.yaw_class_pred[subset]
             yaw_res_pred = bounding_box_features.yaw_res_pred[subset]
-            log[f"{prefix}center_net_output/heatmap_pred_min"] = heatmap_pred.min().item()
-            log[f"{prefix}center_net_output/heatmap_pred_max"] = heatmap_pred.max().item()
+            log[f"{prefix}center_net_output/heatmap_pred_min"] = (
+                heatmap_pred.min().item()
+            )
+            log[f"{prefix}center_net_output/heatmap_pred_max"] = (
+                heatmap_pred.max().item()
+            )
             log[f"{prefix}center_net_output/wh_pred_min"] = wh_pred.min().item()
             log[f"{prefix}center_net_output/wh_pred_max"] = wh_pred.max().item()
             log[f"{prefix}center_net_output/offset_pred_min"] = offset_pred.min().item()
             log[f"{prefix}center_net_output/offset_pred_max"] = offset_pred.max().item()
-            log[f"{prefix}center_net_output/yaw_class_pred_min"] = yaw_class_pred.min().item()
-            log[f"{prefix}center_net_output/yaw_class_pred_max"] = yaw_class_pred.max().item()
-            log[f"{prefix}center_net_output/yaw_res_pred_min"] = yaw_res_pred.min().item()
-            log[f"{prefix}center_net_output/yaw_res_pred_max"] = yaw_res_pred.max().item()
+            log[f"{prefix}center_net_output/yaw_class_pred_min"] = (
+                yaw_class_pred.min().item()
+            )
+            log[f"{prefix}center_net_output/yaw_class_pred_max"] = (
+                yaw_class_pred.max().item()
+            )
+            log[f"{prefix}center_net_output/yaw_res_pred_min"] = (
+                yaw_res_pred.min().item()
+            )
+            log[f"{prefix}center_net_output/yaw_res_pred_max"] = (
+                yaw_res_pred.max().item()
+            )
             if self.config.training_used_lidar_steps > 1:
                 velocity_pred = bounding_box_features.velocity_pred[subset]
-                log[f"{prefix}center_net_output/velocity_pred_min"] = velocity_pred.min().item()
-                log[f"{prefix}center_net_output/velocity_pred_max"] = velocity_pred.max().item()
+                log[f"{prefix}center_net_output/velocity_pred_min"] = (
+                    velocity_pred.min().item()
+                )
+                log[f"{prefix}center_net_output/velocity_pred_max"] = (
+                    velocity_pred.max().item()
+                )
 
 
 @dataclass

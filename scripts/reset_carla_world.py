@@ -7,12 +7,8 @@ This script removes all actors (vehicles, walkers, sensors) from the current wor
 import argparse
 import sys
 import time
+import carla
 
-try:
-    import carla
-except ImportError:
-    print("Error: CARLA Python API not found. Make sure CARLA is in your PYTHONPATH.")
-    sys.exit(1)
 
 
 def clean_carla(host='localhost', port=2000, timeout=10.0, reload_map=False):

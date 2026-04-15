@@ -138,10 +138,7 @@ def initialize_model(
         LOG.info("Using channel last memory format")
     if torch.cuda.device_count() > 1:
         model_wrapper = torch.nn.parallel.DistributedDataParallel(
-            model,
-            device_ids=None,
-            output_device=None,
-            broadcast_buffers=False
+            model, device_ids=None, output_device=None, broadcast_buffers=False
         )
     else:
         model_wrapper = model

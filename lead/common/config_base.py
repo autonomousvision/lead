@@ -225,7 +225,7 @@ class BaseConfig:
                 }
             }
         elif self.target_dataset == TargetDataset.CARLA_PY123D_6CAMERAS:
-            # NOTE: Use six cameras inspired by nuScenes rig. In contract 
+            # NOTE: Use six cameras inspired by nuScenes rig. In contract
             # to the nuScenes resolution 1600x900, we use a downsampled 800x450 resolution
             return {
                 # CAM_FRONT

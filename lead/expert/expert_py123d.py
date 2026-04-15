@@ -7,8 +7,6 @@ This extends the Expert class to add Py123D Arrow format saving without modifyin
 import json
 import logging
 import os
-import time
-from tracemalloc import start
 import typing
 from collections import defaultdict
 from pathlib import Path
@@ -62,6 +60,7 @@ LOG = logging.getLogger(__name__)
 
 def get_entry_point() -> str:
     return "ExpertPy123D"
+
 
 CAMERA_ID_MAPPING = {
     1: CameraID.PCAM_F0,
@@ -292,8 +291,6 @@ class ExpertPy123D(Expert):
 
         camera_metadatas = {}
         for cam_key, camera_id in CAMERA_ID_MAPPING.items():
-
-
             # Calculate intrinsics from CARLA camera parameters
             width = self.config_expert.camera_calibration[cam_key]["width"]
             height = self.config_expert.camera_calibration[cam_key]["height"]
@@ -304,7 +301,9 @@ class ExpertPy123D(Expert):
             cx = width / 2.0
             cy = height / 2.0
 
-            intrinsics = PinholeIntrinsics(fx=focal_length, fy=focal_length, cx=cx, cy=cy)
+            intrinsics = PinholeIntrinsics(
+                fx=focal_length, fy=focal_length, cx=cx, cy=cy
+            )
 
             # Get camera extrinsic relative to IMU (rear axle)
             camera_pos = self.config_expert.camera_calibration[cam_key]["pos"]
@@ -437,7 +436,7 @@ class ExpertPy123D(Expert):
 
         # Traffic light detections
         traffic_lights = self._extract_py123d_traffic_lights(ts)
-        modalities.append(traffic_lights) 
+        modalities.append(traffic_lights)
 
         return ModalitiesSync(timestamp=ts, modalities=modalities)
 
@@ -709,8 +708,10 @@ class ExpertPy123D(Expert):
                 if ego_loc.distance(lane_loc) > TRAFFIC_LIGHT_LOG_RADIUS_M:
                     continue
                 lights_in_radius += 1
-                py123d_tf_status = expert_py123d_utils.carla_traffic_light_status_to_py123d(
-                    actor.state
+                py123d_tf_status = (
+                    expert_py123d_utils.carla_traffic_light_status_to_py123d(
+                        actor.state
+                    )
                 )
                 query_points.append(geom.Point(lane_loc.x, -lane_loc.y))
                 point_status.append(py123d_tf_status)
@@ -731,9 +732,7 @@ class ExpertPy123D(Expert):
             distance=LANE_CENTERLINE_MATCH_THRESHOLD_M,
         )
 
-        lane_dict = typing.cast(
-            dict[int, list[int]], result.get(MapLayer.LANE, {})
-        )
+        lane_dict = typing.cast(dict[int, list[int]], result.get(MapLayer.LANE, {}))
 
         # Reject candidates whose centerline doesn't actually pass near the
         # waypoint (the polygon query can grab adjacent/overlapping lanes).
@@ -783,7 +782,10 @@ class ExpertPy123D(Expert):
         # Convert to ISO 8855: invert Y, shift X by rear axle offset, adjust Z
         lidar_pc[:, 1] = -lidar_pc[:, 1]  # Y
         lidar_pc[:, 0] += self._ego_metadata.rear_axle_to_center_longitudinal  # X
-        lidar_pc[:, 2] += self.config_expert.lidar_pos_1[-1] / 2  - self._ego_metadata.rear_axle_to_center_vertical # Z
+        lidar_pc[:, 2] += (
+            self.config_expert.lidar_pos_1[-1] / 2
+            - self._ego_metadata.rear_axle_to_center_vertical
+        )  # Z
 
         # Split into xyz (Nx3) and features
         point_cloud_3d = lidar_pc[:, :3].astype(np.float32)

@@ -14,13 +14,14 @@
 
 <p align="center">
   An open-source end-to-end driving stack for CARLA.</br>
-  ▶ Achieving state-of-the-art performance across all major Leaderboard 2.0 benchmarks. ◀
+  ▶ State-of-the-art performance on all major Leaderboard 2.0 benchmarks ◀
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Bench2Drive-95.2 🏆-00484B?style=for-the-badge&labelColor=006064" alt="Bench2Drive">
-  <img src="https://img.shields.io/badge/Longest6_V2-62 🏆-141A5F?style=for-the-badge&labelColor=1A237E" alt="Longest6 V2">
-  <img src="https://img.shields.io/badge/Town13-5.2 🏆-BF8E1E?style=for-the-badge&labelColor=FFBE28" alt="Town13">
+  <img src="https://img.shields.io/badge/Bench2Drive-95 DS 🏆-00484B?style=for-the-badge&labelColor=006064" alt="Bench2Drive">
+  <img src="https://img.shields.io/badge/Longest6_V2-62 DS 🏆-141A5F?style=for-the-badge&labelColor=1A237E" alt="Longest6 V2">
+  <img src="https://img.shields.io/badge/Town13-10 DS 🏆-BF8E1E?style=for-the-badge&labelColor=FFBE28" alt="Town13">
+  <img src="https://img.shields.io/badge/Fail2Drive-75 HM 🏆-4A148C?style=for-the-badge&labelColor=6A1B9A" alt="Fail2Drive">
 </p>
 
 
@@ -71,24 +72,36 @@
 
 <div align="center">
 
-| Date         | Content                                                                                                                                |
-| :----------- | :------------------------------------------------------------------------------------------------------------------------------------- |
-| **26.04.14** | <b>WARNING: </b> The parameter `transfuser_token_dim`'s default parameter should be `256`, as used in the paper, and not `64`. |
-| **26.04.13** | <b>WARNING: </b> In some rare cases, we notice training divergence. See [instructions](#5-common-issues), if you face similar problem. |
-| **26.04.11** | Added Fail2Drive benchmark support, see [instructions](#31-fail2drive-evaluation).                                                     |
-| **26.03.21** | Added evaluation support for the reinforcement-learning planner CaRL, see [instructions](#32-carl-agent-evaluation).                   |
-| **26.03.18** | Deactivated Kalman Filter and all post-processing heuristics. See performance report [here](#13-download-checkpoints).                 |
-| **26.02.25** | LEAD is accepted to **CVPR 2026** 🎉                                                                                                  |
-| **26.02.25** | NAVSIM extension released. Code and [instructions](#33-navsim-training-and-evaluation) available. Supplementary data coming soon.      |
-| **26.02.02** | Preliminary support for 123D. See [instructions](#34-carla-123d-data-collection).                                                      |
-| **26.01.13** | CARLA dataset and training documentation released.                                                                                     |
-| **25.12.24** | Initial release — paper, checkpoints, expert driver, and inference code.                                                               |
+| Date         | Content                                                                                                                                 |
+| :----------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
+| **26.04.14** | <b>WARNING: </b> The parameter `transfuser_token_dim`'s default parameter should be `256`, as used in the paper, and not `64`.          |
+| **26.04.13** | <b>WARNING: </b> In some rare cases, we notice training instability. See [instructions](#5-common-issues), if you face similar problem. |
+| **26.04.11** | Added Fail2Drive benchmark support, see [instructions](#31-fail2drive-evaluation).                                                      |
+| **26.03.21** | Added evaluation support for the reinforcement-learning planner CaRL, see [instructions](#32-carl-agent-evaluation).                    |
+| **26.03.18** | Deactivated Kalman Filter and all post-processing heuristics. See performance report [here](#13-download-checkpoints).                  |
+| **26.02.25** | LEAD is accepted to **CVPR 2026** 🎉                                                                                                     |
+| **26.02.25** | NAVSIM extension released. Code and [instructions](#33-navsim-training-and-evaluation) available. Supplementary data coming soon.       |
+| **26.02.02** | Preliminary support for 123D. See [instructions](#34-carla-123d-data-collection).                                                       |
+| **26.01.13** | CARLA dataset and training documentation released.                                                                                      |
+| **25.12.24** | Initial release — paper, checkpoints, expert driver, and inference code.                                                                |
 
 </div>
 
 ## 1. Quick Start
 
-Get LEAD running locally: from cloning the repo and installing dependencies, to downloading a pretrained checkpoint and driving a CARLA Leaderboard 2.0 route end-to-end. We tested the instructions on: Ubuntu 24.04 and RTX 2080ti / GTX 1080ti.
+Get LEAD running locally: from cloning the repo and installing dependencies, to downloading a pretrained checkpoint and driving a CARLA Leaderboard 2.0 route end-to-end. We tested the instructions on the following configurations:
+
+<div align="center">
+
+| OS           | GPU               | CUDA | Driver | Inference | Training |
+| ------------ | ----------------- | ---- | :----: | :-------: | :------: |
+| Ubuntu 22.04 | L40S       | 13.0 |  580   |     ✅     |    ✅     |
+| Ubuntu 22.04 | A100       | 13.0 |  580   |     ❌     |    ✅     |
+| Ubuntu 24.04 | RTX 5090   | 13.1 |  590   |     ✅     |    ❌     |
+| Ubuntu 22.04 | RTX A4000  | 13.0 |  580   |     ✅     |    ❌     |
+| Ubuntu 22.04 | GTX 1080ti | 13.0 |  580   |     ✅     |    ❌     |
+
+</div>
 
 ### 1.1. Environment initialization
 
@@ -112,24 +125,36 @@ Verify that `~/.bashrc` reflects these paths correctly.
 
 ### 1.2. Install dependencies
 
-We use Miniconda, conda-lock, and uv:
+We use Miniconda as container and uv for Python dependencies. Runtime and dev dependencies are declared entirely in [pyproject.toml](pyproject.toml).
 
 ```bash
 # (Optional, needed in some cases) Accept terms and services
-conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
-conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+conda tos accept --override-channels --channel \
+  https://repo.anaconda.com/pkgs/main
+conda tos accept --override-channels --channel \
+  https://repo.anaconda.com/pkgs/r
 
-# Create conda environment
-pip install conda-lock && conda-lock install -n lead conda-lock.yml
+# Create a conda environment
+conda create -n lead python=3.10 -y
+conda activate lead
 
-# Activate conda environment
+# Install system-level tools
+conda install -c conda-forge \
+  ffmpeg parallel tree gcc zip unzip git-lfs uv
+
+# Tell uv to use conda environment
+mkdir -p $CONDA_PREFIX/etc/conda/activate.d \
+  $CONDA_PREFIX/etc/conda/deactivate.d
+echo 'export VIRTUAL_ENV=$CONDA_PREFIX' > \
+  $CONDA_PREFIX/etc/conda/activate.d/uv.sh
+echo 'unset VIRTUAL_ENV' > \
+  $CONDA_PREFIX/etc/conda/deactivate.d/uv.sh
+
+# Reactivate conda environment
 conda activate lead
 
 # Install dependencies
-pip install uv && uv pip install -r requirements.txt && uv pip install -e .
-
-# Install other tools needed for development
-conda install -c conda-forge ffmpeg parallel tree gcc zip unzip git-lfs
+uv sync --active --extra dev
 
 # Optional: activate git hooks
 pre-commit install
@@ -144,6 +169,19 @@ bash scripts/setup_carla.sh
 # Or symlink your pre-installed CARLA
 ln -s /your/carla/path 3rd_party/CARLA_0915
 ```
+
+> [!TIP]
+> uv cheatsheet:
+> ```bash
+> # Add dependency
+> uv add --active <pkg>
+>
+> # Add dev dependency
+> uv add --active --optional dev <pkg>
+>
+> # Update uv.lock
+> uv lock
+> ```
 
 ### 1.3. Download checkpoints
 
@@ -256,13 +294,13 @@ Driving logs are saved to `outputs/local_evaluation/<route_id>/`:
 > ```bash
 > mv outputs/checkpoints/tfv6_resnet34/model_0030_1.pth \
 > outputs/checkpoints/tfv6_resnet34/_model_0030_1.pth
-> 
+>
 > mv outputs/checkpoints/tfv6_resnet34/model_0030_2.pth \
 > outputs/checkpoints/tfv6_resnet34/_model_0030_2.pth
 > ```
 >
-> 2. For local computer, start CARLA with `-quality-level=Poor`. This reduces 
-> the rendering quality, however will introduce distribution shift and 
+> 2. For local computer, start CARLA with `-quality-level=Poor`. This reduces
+> the rendering quality, however will introduce distribution shift and
 > should not be used for official evaluation.
 
 ### 1.6. Infraction Analysis Webapp
@@ -298,7 +336,7 @@ python3 scripts/window.py
 
 Generated XML files can be dropped directly into `data/data_routes/` and picked up by the expert during data collection.
 
-> [!TIP] 
+> [!TIP]
 > Out of the box, [carla_route_generator](3rd_party/carla_route_generator) is purely mouse-driven (left-click to add/remove waypoints, right-click for scenarios, wheel to pan/zoom). Annotating hundreds of routes this way is slow. There are few tricks to accelerate the process:
 > 1. We strongly recommend extending [scripts/window.py](3rd_party/carla_route_generator/scripts/window.py) with Qt `QShortcut` / `keyPressEvent` bindings for the actions you repeat most — e.g. add new route. Even one or two of keys cuts manual annotation time substantially.
 > 2. Only annotate route manually, add scenarios automatically via Python.
@@ -557,12 +595,12 @@ python lead/leaderboard_wrapper.py \
     <tr>
       <td><b>TFv6 (Ours)</b></td>
       <td align="center"><b>95.2</b></td>
-      <td align="center"><b>89.7</b></td>
+      <td align="center"><b>90.2</b></td>
+      <td align="center"><b>93.3</b></td>
       <td align="center"><b>91.7</b></td>
-      <td align="center"><b>90.7</b></td>
-      <td align="center"><b>80.4</b> <sub>(-10.4%)</sub></td>
-      <td align="center"><b>74.9</b> <sub>(-18.3%)</sub></td>
-      <td align="center"><b>77.6</b> <sub>(-14.5%)</sub></td>
+      <td align="center"><b>79.5</b> <sub>(-11.9%)</sub></td>
+      <td align="center"><b>70.7</b> <sub>(-24.2%)</sub></td>
+      <td align="center"><b>74.8</b> <sub>(-18.4%)</sub></td>
     </tr>
   </tbody>
 </table>
@@ -668,15 +706,19 @@ The project is organized into the following top-level directories. See the [full
 
 ## 5. Common Issues
 
-| Issue                                            | Fix                                                                                                                                                                                                                                    |
-| :----------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Stale or corrupted data errors                   | Delete and rebuild the training cache / buckets                                                                                                                                                                                        |
-| Simulator hangs or is unresponsive               | Restart the CARLA simulator                                                                                                                                                                                                            |
-| Route or evaluation failures                     | Restart the leaderboard                                                                                                                                                                                                                |
-| Training divergence after PyTorch version update | No fix for now. We tried to upgrade Torch several times but failed to achieve stable training on newer Torch versions.                                                                                                                 |
-| OOM in evaluation                                | Use larger GPU. In our [submit_job](slurm/evaluation/evaluate_utils.py) utility function, we first attempt to use a smaller GPU partition (1080ti/2080ti). After some failures, we switch automatically to a partition with more VRAM. |
+| Issue                                             | Fix                                                                                                                                                                                                                                    |
+| :------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stale or corrupted data errors                    | Delete and rebuild the training cache / buckets                                                                                                                                                                                        |
+| Simulator hangs or is unresponsive                | Restart the CARLA simulator                                                                                                                                                                                                            |
+| Route or evaluation failures                      | Restart the leaderboard                                                                                                                                                                                                                |
+| Training instability after PyTorch version update | No fix for now. We tried to upgrade Torch several times but failed to achieve stable training on newer Torch versions.                                                                                                                 |
+| OOM in evaluation                                 | Use larger GPU. In our [submit_job](slurm/evaluation/evaluate_utils.py) utility function, we first attempt to use a smaller GPU partition (1080ti/2080ti). After some failures, we switch automatically to a partition with more VRAM. |
+| Training instability in general                   | Turn off mixed-precision training and train in 32bit precision.                                                                                                                                                                        |
 
-If you face training diverge, as reported in issue [#67](https://github.com/kesai-labs/lead/issues/67), try the last reported working commit: `a41d11616`. Reinstalling the environment might also help. We suspect the main cause of issue to be wrong Pytorch version. Other non-related dependencies like WandB might be updated freely. Please open an issue if you face the same problem.
+If you face training instability, as reported in issue [#67](https://github.com/kesai-labs/lead/issues/67), try following solutions:
+1. Turn off mixed-precision training in [config](lead/training/config_training.py).
+2. Purge the Conda environment and reinstall from scratch.
+3. Try the latest working commit at `a41d11616`.
 
 ## Beyond CARLA: Cross-Benchmark Deployment
 
@@ -684,12 +726,12 @@ The LEAD pipeline and TFv6 models serve as reference implementations across mult
 
 <div align="center">
 
-| Platform                                                                           | Model           | Highlight                                                         |
-| :--------------------------------------------------------------------------------- | :-------------- | :---------------------------------------------------------------- |
-| [Waymo E2E Driving Challenge](https://waymo.com/open/challenges/2025/e2e-driving/) | DiffusionLTF    | **2nd place** in the inaugural vision-based E2E driving challenge |
-| [NAVSIM v1](https://huggingface.co/spaces/AGC2024-P/e2e-driving-navtest)           | LTFv6           | +3 PDMS over Latent TransFuser baseline on `navtest`              |
-| [NAVSIM v2](https://huggingface.co/spaces/AGC2025/e2e-driving-navhard)             | LTFv6           | +6 EPMDS over Latent TransFuser baseline on `navhard`             |
-| [NVIDIA AlpaSim](https://github.com/NVlabs/alpasim)                                | TransFuserModel | Official baseline policy for closed-loop simulation               |
+| Platform                                                                                         | Model            | Highlight                                                         |
+| :----------------------------------------------------------------------------------------------- | :--------------- | :---------------------------------------------------------------- |
+| [Waymo E2E Driving Challenge](https://waymo.com/open/challenges/2025/e2e-driving/)               | DiffusionLTF     | **2nd place** in the inaugural vision-based E2E driving challenge |
+| [NAVSIM v1 Huggingface Leaderboard](https://huggingface.co/spaces/AGC2024-P/e2e-driving-navtest) | LTFv6            | +3 PDMS over Latent TransFuser baseline on `navtest`              |
+| [NAVSIM v2 Huggingface Leaderboard](https://huggingface.co/spaces/AGC2025/e2e-driving-navhard)   | LTFv6            | +6 EPMDS over Latent TransFuser baseline on `navhard`             |
+| [NVIDIA AlpaSim](https://github.com/NVlabs/alpasim)                                              | TransFuserDriver | Official baseline policy for closed-loop simulation               |
 
 </div>
 
