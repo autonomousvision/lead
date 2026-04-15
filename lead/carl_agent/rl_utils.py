@@ -87,7 +87,7 @@ def get_traffic_light_waypoints(traffic_light, carla_map):
 
 def inverse_conversion_2d(point, translation, yaw):
     rotation_matrix = np.array(
-        [[np.cos(yaw), -np.sin(yaw)], [np.sin(yaw), np.cos(yaw)]]
+        [[np.cos(yaw), -np.sin(yaw)], [np.sin(yaw), np.cos(yaw)]],
     )
     converted_point = rotation_matrix.T @ (point - translation)
     return converted_point
@@ -128,7 +128,8 @@ def check_obb_intersection(obb1, obb2):
         or get_separating_plane(
             r_pos,
             cross_product(
-                obb1.rotation.get_forward_vector(), obb2.rotation.get_forward_vector()
+                obb1.rotation.get_forward_vector(),
+                obb2.rotation.get_forward_vector(),
             ),
             obb1,
             obb2,
@@ -136,7 +137,8 @@ def check_obb_intersection(obb1, obb2):
         or get_separating_plane(
             r_pos,
             cross_product(
-                obb1.rotation.get_forward_vector(), obb2.rotation.get_right_vector()
+                obb1.rotation.get_forward_vector(),
+                obb2.rotation.get_right_vector(),
             ),
             obb1,
             obb2,
@@ -144,7 +146,8 @@ def check_obb_intersection(obb1, obb2):
         or get_separating_plane(
             r_pos,
             cross_product(
-                obb1.rotation.get_forward_vector(), obb2.rotation.get_up_vector()
+                obb1.rotation.get_forward_vector(),
+                obb2.rotation.get_up_vector(),
             ),
             obb1,
             obb2,
@@ -152,7 +155,8 @@ def check_obb_intersection(obb1, obb2):
         or get_separating_plane(
             r_pos,
             cross_product(
-                obb1.rotation.get_right_vector(), obb2.rotation.get_forward_vector()
+                obb1.rotation.get_right_vector(),
+                obb2.rotation.get_forward_vector(),
             ),
             obb1,
             obb2,
@@ -160,7 +164,8 @@ def check_obb_intersection(obb1, obb2):
         or get_separating_plane(
             r_pos,
             cross_product(
-                obb1.rotation.get_right_vector(), obb2.rotation.get_right_vector()
+                obb1.rotation.get_right_vector(),
+                obb2.rotation.get_right_vector(),
             ),
             obb1,
             obb2,
@@ -168,7 +173,8 @@ def check_obb_intersection(obb1, obb2):
         or get_separating_plane(
             r_pos,
             cross_product(
-                obb1.rotation.get_right_vector(), obb2.rotation.get_up_vector()
+                obb1.rotation.get_right_vector(),
+                obb2.rotation.get_up_vector(),
             ),
             obb1,
             obb2,
@@ -176,7 +182,8 @@ def check_obb_intersection(obb1, obb2):
         or get_separating_plane(
             r_pos,
             cross_product(
-                obb1.rotation.get_up_vector(), obb2.rotation.get_forward_vector()
+                obb1.rotation.get_up_vector(),
+                obb2.rotation.get_forward_vector(),
             ),
             obb1,
             obb2,
@@ -184,7 +191,8 @@ def check_obb_intersection(obb1, obb2):
         or get_separating_plane(
             r_pos,
             cross_product(
-                obb1.rotation.get_up_vector(), obb2.rotation.get_right_vector()
+                obb1.rotation.get_up_vector(),
+                obb2.rotation.get_right_vector(),
             ),
             obb1,
             obb2,

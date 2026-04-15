@@ -186,16 +186,24 @@ Examples:
   %(prog)s --host 192.168.1.100     # Connect to remote server
   %(prog)s --port 2002               # Use different port
   %(prog)s --reload-map             # Reload map for thorough cleanup
-        """
+        """,
     )
-    parser.add_argument('--host', default='localhost',
-                        help='CARLA server host (default: localhost)')
-    parser.add_argument('--port', type=int, default=2000,
-                        help='CARLA server port (default: 2000)')
-    parser.add_argument('--timeout', type=float, default=10.0,
-                        help='Connection timeout in seconds (default: 10.0)')
-    parser.add_argument('--reload-map', action='store_true',
-                        help='Reload the current map for complete cleanup (takes longer)')
+    parser.add_argument(
+        '--host', default='localhost',
+        help='CARLA server host (default: localhost)',
+    )
+    parser.add_argument(
+        '--port', type=int, default=2000,
+        help='CARLA server port (default: 2000)',
+    )
+    parser.add_argument(
+        '--timeout', type=float, default=10.0,
+        help='Connection timeout in seconds (default: 10.0)',
+    )
+    parser.add_argument(
+        '--reload-map', action='store_true',
+        help='Reload the current map for complete cleanup (takes longer)',
+    )
 
     args = parser.parse_args()
 

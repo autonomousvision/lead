@@ -35,7 +35,9 @@ class UniformSampleScheduler(AbstractMixedDatasetSampleScheduler):
 
     @beartype
     def __init__(
-        self, config: TrainingConfig, datasets: list[torch.utils.data.Dataset]
+        self,
+        config: TrainingConfig,
+        datasets: list[torch.utils.data.Dataset],
     ):
         self.config = config
         self.datasets = datasets
@@ -48,8 +50,8 @@ class UniformSampleScheduler(AbstractMixedDatasetSampleScheduler):
                 1.0
                 / self.num_datasets
                 * self.config.batch_size
-                / torch.cuda.device_count()
-            )
+                / torch.cuda.device_count(),
+            ),
         ] * self.num_datasets
 
 
@@ -59,7 +61,9 @@ class Sim2RealSampleScheduler(AbstractMixedDatasetSampleScheduler):
 
     @beartype
     def __init__(
-        self, config: TrainingConfig, datasets: list[torch.utils.data.Dataset]
+        self,
+        config: TrainingConfig,
+        datasets: list[torch.utils.data.Dataset],
     ):
         from data_loader.carla_dataset import CARLAData
 
@@ -153,7 +157,7 @@ class MixedSampler(torch.utils.data.BatchSampler):
         """
         self.samplers = samplers
         LOG.info(
-            f"MixedSampler using {len(samplers)} samplers. Each sampler size: {[len(s) for s in samplers]}"
+            f"MixedSampler using {len(samplers)} samplers. Each sampler size: {[len(s) for s in samplers]}",
         )
         assert all(len(samplers[0]) == len(s) for s in samplers), (
             "All samplers must have the same length."

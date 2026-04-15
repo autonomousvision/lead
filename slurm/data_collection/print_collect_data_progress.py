@@ -41,7 +41,7 @@ def is_failed(json_path):
     condition5 = results_route["status"] == "Failed - Agent crashed"
     if condition1:
         print(
-            f"{json_path} Failed due to score: {results_route['scores']['score_composed']}"
+            f"{json_path} Failed due to score: {results_route['scores']['score_composed']}",
         )
     if condition2:
         print(f"{json_path} Failed due to agent setup issue")
@@ -90,7 +90,7 @@ for scenario_name in os.listdir(results_root):
     dataset_success += total - failed
 for k, v in sorted(scenario_stats.items()):
     print(
-        f"{k:<35} Success: {v['success_percent']:>5.1f}% | Failed: {v['failed_percent']:>5.1f}% ({v['failed']}/{v['total']})"
+        f"{k:<35} Success: {v['success_percent']:>5.1f}% | Failed: {v['failed_percent']:>5.1f}% ({v['failed']}/{v['total']})",
     )
 print(f"Total: {dataset_total}. Success: {dataset_success}")
 

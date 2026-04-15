@@ -96,7 +96,7 @@ class MapImage:
         parking_surface = np.zeros((width_in_pixels, width_in_pixels))
         sidewalk_surface = np.zeros((width_in_pixels, width_in_pixels))
         lane_marking_yellow_broken_surface = np.zeros(
-            (width_in_pixels, width_in_pixels)
+            (width_in_pixels, width_in_pixels),
         )
         lane_marking_yellow_solid_surface = np.zeros((width_in_pixels, width_in_pixels))
         lane_marking_white_broken_surface = np.zeros((width_in_pixels, width_in_pixels))
@@ -228,10 +228,14 @@ class MapImage:
             for loc_left, loc_right in stopline_vertices:
                 stopline_points = [
                     MapImage.world_to_pixel(
-                        loc_left, pixels_per_meter_local, world_offset
+                        loc_left,
+                        pixels_per_meter_local,
+                        world_offset,
                     ),
                     MapImage.world_to_pixel(
-                        loc_right, pixels_per_meter_local, world_offset
+                        loc_right,
+                        pixels_per_meter_local,
+                        world_offset,
                     ),
                 ]
                 MapImage.draw_line(stopline_surface, stopline_points, 2)
@@ -247,7 +251,7 @@ class MapImage:
             "parking": _make_mask(parking_surface),
             "sidewalk": _make_mask(sidewalk_surface),
             "lane_marking_yellow_broken": _make_mask(
-                lane_marking_yellow_broken_surface
+                lane_marking_yellow_broken_surface,
             ),
             "lane_marking_yellow_solid": _make_mask(lane_marking_yellow_solid_surface),
             "lane_marking_white_broken": _make_mask(lane_marking_white_broken_surface),
@@ -380,7 +384,8 @@ class MapImage:
             marking_2 = [
                 MapImage.world_to_pixel(
                     MapImage.lateral_shift(
-                        w.transform, sign * (w.lane_width * 0.5 + margin * 2)
+                        w.transform,
+                        sign * (w.lane_width * 0.5 + margin * 2),
                     ),
                     pixels_per_meter_local,
                     world_offset,
@@ -414,7 +419,11 @@ class MapImage:
         """Draws solid lines in a surface given a set of points, width and color"""
         if len(points) >= 2:
             cv.polylines(
-                surface, np.array([points], dtype=np.int32), False, 255, thickness=1
+                surface,
+                np.array([points], dtype=np.int32),
+                False,
+                255,
+                thickness=1,
             )
 
     @staticmethod
@@ -453,11 +462,13 @@ class MapImage:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--save_dir", default="carla_gym/core/obs_manager/birdview/maps"
+        "--save_dir",
+        default="carla_gym/core/obs_manager/birdview/maps",
     )
     parser.add_argument("--pixels_per_meter", type=float, default=2.0)
     parser.add_argument(
-        "--carla_sh_path", default="/home/ubuntu/apps/carla/carla994/CarlaUE4.sh"
+        "--carla_sh_path",
+        default="/home/ubuntu/apps/carla/carla994/CarlaUE4.sh",
     )
     parser.add_argument(
         "--carla_root",
@@ -466,7 +477,10 @@ if __name__ == "__main__":
         help="folder containing carla",
     )
     parser.add_argument(
-        "--gpu_id", default=0, type=int, help="id to run the carla server on"
+        "--gpu_id",
+        default=0,
+        type=int,
+        help="id to run the carla server on",
     )
 
     args = parser.parse_args()
@@ -481,7 +495,7 @@ if __name__ == "__main__":
         subprocess.Popen(  # pylint: disable=locally-disabled, consider-using-with
             f"bash {args.carla_root}/CarlaUE4.sh -carla-rpc-port={current_port_0} -nosound -nullrhi -RenderOffScreen -carla-streaming-port={current_port_1} -graphicsadapter={args.gpu_id}",  # noqa: E501
             shell=True,
-        )
+        ),
     )
     time.sleep(60)
     if carla_servers[0].poll() is not None:
@@ -529,12 +543,12 @@ if __name__ == "__main__":
             map_hf.close()
             if np.isclose(hf_pixels_per_meter, pixels_per_meter):
                 print(
-                    f"{carla_map}.h5 with pixels_per_meter={pixels_per_meter:.2f} already exists."
+                    f"{carla_map}.h5 with pixels_per_meter={pixels_per_meter:.2f} already exists.",
                 )
                 continue
 
         print(
-            f"Generating {carla_map}.h5 with pixels_per_meter={pixels_per_meter:.2f}."
+            f"Generating {carla_map}.h5 with pixels_per_meter={pixels_per_meter:.2f}.",
         )
         world = client.load_world(carla_map, reset_settings=False)
 
@@ -546,7 +560,10 @@ if __name__ == "__main__":
             hf.attrs["width_in_meters"] = dict_masks["width_in_meters"]
             hf.attrs["width_in_pixels"] = dict_masks["width_in_pixels"]
             hf.create_dataset(
-                "road", data=dict_masks["road"], compression="gzip", compression_opts=9
+                "road",
+                data=dict_masks["road"],
+                compression="gzip",
+                compression_opts=9,
             )
             hf.create_dataset(
                 "shoulder",

@@ -75,14 +75,14 @@ class ExpertBase(BaseAgent, autonomous_agent_local.AutonomousAgent):
 
         # Check if the vehicle starts from a parking spot
         distance_to_road = self.org_dense_route_world_coord[0][0].location.distance(
-            self.ego_vehicle.get_location()
+            self.ego_vehicle.get_location(),
         )
 
         # The first waypoint starts at the lane center, hence it's more than 2 m away from the center of the
         # ego vehicle at the beginning.
         starts_with_parking_exit = distance_to_road > 2
         LOG.info(
-            f"Vehicle starts {'with' if starts_with_parking_exit else 'without'} parking exit."
+            f"Vehicle starts {'with' if starts_with_parking_exit else 'without'} parking exit.",
         )
 
         # Set up the route planner and extrapolation
@@ -96,7 +96,7 @@ class ExpertBase(BaseAgent, autonomous_agent_local.AutonomousAgent):
         )
         self.privileged_route_planner.save()
         LOG.info(
-            f"Route setup with {len(self.privileged_route_planner.route_waypoints)} waypoints."
+            f"Route setup with {len(self.privileged_route_planner.route_waypoints)} waypoints.",
         )
 
         # Preprocess traffic lights
@@ -104,7 +104,8 @@ class ExpertBase(BaseAgent, autonomous_agent_local.AutonomousAgent):
         for actor in all_actors:
             if "traffic_light" in actor.type_id:
                 center, waypoints = expert_utils.get_traffic_light_waypoints(
-                    actor, self.carla_world_map
+                    actor,
+                    self.carla_world_map,
                 )
                 self.list_traffic_lights.append((actor, center, waypoints))
 
@@ -123,13 +124,15 @@ class ExpertBase(BaseAgent, autonomous_agent_local.AutonomousAgent):
     @step_cached_property
     def leading_vehicle_ids(self):
         return self.privileged_route_planner.compute_leading_vehicles(
-            self.vehicles_inside_bev, self.ego_vehicle.id
+            self.vehicles_inside_bev,
+            self.ego_vehicle.id,
         )
 
     @step_cached_property
     def trailing_vehicle_ids(self):
         return self.privileged_route_planner.compute_trailing_vehicles(
-            self.vehicles_inside_bev, self.ego_vehicle.id
+            self.vehicles_inside_bev,
+            self.ego_vehicle.id,
         )
 
     @step_cached_property
@@ -221,7 +224,7 @@ class ExpertBase(BaseAgent, autonomous_agent_local.AutonomousAgent):
         self.carla_world = self.ego_vehicle.get_world()
         # Check if the vehicle starts from a parking spot
         distance_to_road = self.org_dense_route_world_coord[0][0].location.distance(
-            self.ego_vehicle.get_location()
+            self.ego_vehicle.get_location(),
         )
         # The first waypoint starts at the lane center, hence it's more than 2 m away from the center of the
         # ego vehicle at the beginning.
@@ -298,7 +301,8 @@ class ExpertBase(BaseAgent, autonomous_agent_local.AutonomousAgent):
         ]:
             intersection_index_ego = (
                 CarlaDataProvider.get_current_scenario_memory().get(
-                    "intersection_index_ego", None
+                    "intersection_index_ego",
+                    None,
                 )
             )
             if intersection_index_ego is not None:
@@ -391,7 +395,7 @@ class ExpertBase(BaseAgent, autonomous_agent_local.AutonomousAgent):
                     self.distance_to_accident_site,
                     self.distance_to_construction_site,
                     self.distance_to_parked_obstacle,
-                ]
+                ],
             )
             <= 40
             or self.current_active_scenario_type == "HazardAtSideLane"
@@ -649,20 +653,21 @@ class ExpertBase(BaseAgent, autonomous_agent_local.AutonomousAgent):
                                             * 1.6
                                         )  # Urban, we need more time to reach intersection. Only empirical observations.
                                 safe_threshold = min(
-                                    safe_threshold, 22
+                                    safe_threshold,
+                                    22,
                                 )  # Don't go too far, otherwise we ignore all actors
                                 if (
                                     adversarial_actor.get_location().distance(
-                                        intersection_point
+                                        intersection_point,
                                     )
                                     < safe_threshold
                                 ):  # If actor is/was near enough to the intersection point, we can safely ignore it
                                     safe_adversarial_actors_ids.append(
-                                        adversarial_actor.id
+                                        adversarial_actor.id,
                                     )
                                 else:
                                     dangerous_adversarial_actors_ids.append(
-                                        adversarial_actor.id
+                                        adversarial_actor.id,
                                     )
                             elif scenario in [
                                 "SignalizedJunctionRightTurn",
@@ -685,24 +690,25 @@ class ExpertBase(BaseAgent, autonomous_agent_local.AutonomousAgent):
                                             * 1.6
                                         )  # Urban, we need more time to reach intersection. Only empirical observations.
                                 safe_threshold = min(
-                                    safe_threshold, 22
+                                    safe_threshold,
+                                    22,
                                 )  # Don't go too far, otherwise we ignore all actors
                                 if self.distance_to_intersection_index_ego < 5:
                                     safe_adversarial_actors_ids.append(
-                                        adversarial_actor.id
+                                        adversarial_actor.id,
                                     )  # If we are very close to the intersection, we really want to commit
                                 elif (
                                     adversarial_actor.get_location().distance(
-                                        intersection_point
+                                        intersection_point,
                                     )
                                     < safe_threshold
                                 ):  # If actor is/was near enough to the intersection point, we can safely ignore it
                                     safe_adversarial_actors_ids.append(
-                                        adversarial_actor.id
+                                        adversarial_actor.id,
                                     )
                                 else:
                                     dangerous_adversarial_actors_ids.append(
-                                        adversarial_actor.id
+                                        adversarial_actor.id,
                                     )
                             elif scenario in [
                                 "SignalizedJunctionLeftTurnEnterFlow",
@@ -719,21 +725,21 @@ class ExpertBase(BaseAgent, autonomous_agent_local.AutonomousAgent):
                                                 adversarial_actor_location.x,
                                                 adversarial_actor_location.y,
                                                 adversarial_actor_location.z,
-                                            ]
+                                            ],
                                         ),
                                     )
                                     > 1.0
                                 ):
                                     # If actor is further than the intersection point in the route, we can safely ignore it
                                     safe_adversarial_actors_ids.append(
-                                        adversarial_actor.id
+                                        adversarial_actor.id,
                                     )
                                     LOG.info(
-                                        "Adversarial actor went out of route. ignore"
+                                        "Adversarial actor went out of route. ignore",
                                     )
                                 else:
                                     dangerous_adversarial_actors_ids.append(
-                                        adversarial_actor.id
+                                        adversarial_actor.id,
                                     )
                         else:
                             ignored_adversarial_actors_ids = [
@@ -906,7 +912,8 @@ class ExpertBase(BaseAgent, autonomous_agent_local.AutonomousAgent):
             z=self.config_expert.camera_3rd_person_calibration["z"],
         )
         world_camera_location = common_utils.get_world_coordinate_2d(
-            self.ego_vehicle.get_transform(), ego_camera_location
+            self.ego_vehicle.get_transform(),
+            ego_camera_location,
         )
         return carla.Transform(
             world_camera_location,
@@ -1081,7 +1088,7 @@ class ExpertBase(BaseAgent, autonomous_agent_local.AutonomousAgent):
                 self.distance_to_construction_site,
                 self.distance_to_parked_obstacle,
                 self.distance_to_vehicle_opens_door,
-            ]
+            ],
         )
 
     @step_cached_property
@@ -1131,7 +1138,7 @@ class ExpertBase(BaseAgent, autonomous_agent_local.AutonomousAgent):
     @step_cached_property
     def distance_to_vehicle_opens_door(self) -> float:
         if self.current_active_scenario_type in [
-            "VehicleOpensDoorTwoWays"
+            "VehicleOpensDoorTwoWays",
         ] or self.previous_active_scenario_type in ["VehicleOpensDoorTwoWays"]:
             distances = []
             num_scenario_cars = 0
@@ -1182,7 +1189,8 @@ class ExpertBase(BaseAgent, autonomous_agent_local.AutonomousAgent):
 
         # Find the closest pedestrian
         closest_pedestrian = min(
-            pedestrians, key=lambda p: ego_location.distance(p.get_location())
+            pedestrians,
+            key=lambda p: ego_location.distance(p.get_location()),
         )
         return ego_location.distance(closest_pedestrian.get_location())
 
@@ -1203,7 +1211,8 @@ class ExpertBase(BaseAgent, autonomous_agent_local.AutonomousAgent):
 
         # Find the closest biker
         closest_biker = min(
-            bikers, key=lambda b: ego_location.distance(b.get_location())
+            bikers,
+            key=lambda b: ego_location.distance(b.get_location()),
         )
         return ego_location.distance(closest_biker.get_location())
 
@@ -1360,7 +1369,7 @@ class ExpertBase(BaseAgent, autonomous_agent_local.AutonomousAgent):
             # get distance to ego vehicle
         elif len(next_lane_wps_ego) > 0 and next_lane_wps_ego[0].is_junction:
             distance_to_junction_ego = next_lane_wps_ego[0].transform.location.distance(
-                ego_wp.transform.location
+                ego_wp.transform.location,
             )
         else:
             distance_to_junction_ego = np.inf

@@ -44,7 +44,10 @@ class SensorData:
 
     @beartype
     def compress(
-        self, raw_image_bytes, config: TrainingConfig, current_measurement: dict
+        self,
+        raw_image_bytes,
+        config: TrainingConfig,
+        current_measurement: dict,
     ) -> CompressedSensorData:
         # LiDAR BEV
         compressed_lidar_bev = None
@@ -60,7 +63,8 @@ class SensorData:
         compressed_bev_semantic = None
         if self.hdmap is not None:
             compressed_bev_semantic = compress_integer_image_lossless(
-                self.hdmap, config
+                self.hdmap,
+                config,
             )
 
         # Depth
@@ -73,14 +77,16 @@ class SensorData:
         compressed_bev_occupancy = None
         if self.bev_occupancy is not None:
             compressed_bev_occupancy = compress_integer_image_lossless(
-                self.bev_occupancy, config
+                self.bev_occupancy,
+                config,
             )
 
         # BEV 3rd person image
         compressed_bev_3rd_person_image = None
         if self.bev_3rd_person_image is not None:
             compressed_bev_3rd_person_image = compress_integer_image_lossy(
-                self.bev_3rd_person_image, current_measurement["jpeg_storage_quality"]
+                self.bev_3rd_person_image,
+                current_measurement["jpeg_storage_quality"],
             )
 
         # Radars
@@ -150,7 +156,8 @@ class CompressedSensorData:
         decompressed_image = None
         if self.image is not None:
             decompressed_image = cv2.imdecode(
-                np.frombuffer(self.image, np.uint8), cv2.IMREAD_UNCHANGED
+                np.frombuffer(self.image, np.uint8),
+                cv2.IMREAD_UNCHANGED,
             )
             decompressed_image = cv2.cvtColor(decompressed_image, cv2.COLOR_BGR2RGB)
 
@@ -168,7 +175,8 @@ class CompressedSensorData:
         decompressed_bev_semantic = None
         if self.bev_semantic is not None:
             decompressed_bev_semantic = cv2.imdecode(
-                self.bev_semantic, cv2.IMREAD_UNCHANGED
+                self.bev_semantic,
+                cv2.IMREAD_UNCHANGED,
             )
 
         # Depth
@@ -181,14 +189,16 @@ class CompressedSensorData:
         decompressed_bev_occupancy = None
         if self.bev_occupancy is not None:
             decompressed_bev_occupancy = cv2.imdecode(
-                self.bev_occupancy, cv2.IMREAD_UNCHANGED
+                self.bev_occupancy,
+                cv2.IMREAD_UNCHANGED,
             )
 
         # BEV 3rd person image
         decompressed_bev_3rd_person_image = None
         if self.bev_3rd_person_image is not None:
             decompressed_bev_3rd_person_image = cv2.imdecode(
-                self.bev_3rd_person_image, cv2.IMREAD_UNCHANGED
+                self.bev_3rd_person_image,
+                cv2.IMREAD_UNCHANGED,
             )
 
         # Radars
@@ -197,7 +207,7 @@ class CompressedSensorData:
             decompressed_radars_list = []
             for compressed_radar in self.radars:
                 decompressed_radars_list.append(
-                    decompress_radar_lossless(compressed_radar)
+                    decompress_radar_lossless(compressed_radar),
                 )
             decompressed_radars = tuple(decompressed_radars_list)
 
@@ -272,7 +282,8 @@ class PersistentCache:
 
 @beartype
 def compress_float_image(
-    image: npt.NDArray, config: TrainingConfig
+    image: npt.NDArray,
+    config: TrainingConfig,
 ) -> jt.UInt8[npt.NDArray, " N"]:
     """Compress a float image to PNG format for storage efficiency.
 
@@ -321,7 +332,8 @@ def decompress_float_image(
 
 @beartype
 def compress_integer_image_lossless(
-    image: npt.NDArray, config: TrainingConfig
+    image: npt.NDArray,
+    config: TrainingConfig,
 ) -> jt.UInt8[npt.NDArray, " N"]:
     """Compress an integer image to PNG format using lossless compression.
 
@@ -356,7 +368,9 @@ def compress_integer_image_lossy(image: npt.NDArray, jpeg_quality: int) -> bytes
     """
     assert image.dtype == np.uint8, "Image must be of type np.uint8"
     success, compressed = cv2.imencode(
-        ".jpg", image, [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality]
+        ".jpg",
+        image,
+        [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality],
     )
     if not success:
         raise RuntimeError("Failed to compress integer image lossy")

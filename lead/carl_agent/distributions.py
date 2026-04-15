@@ -36,16 +36,20 @@ class DiagGaussianDistribution(nn.Module):
         self.log_std_min = -20
 
         self.suggest_go = nn.Parameter(
-            torch.FloatTensor([0.66, -3]), requires_grad=False
+            torch.FloatTensor([0.66, -3]),
+            requires_grad=False,
         )
         self.suggest_stop = nn.Parameter(
-            torch.FloatTensor([-0.66, -3]), requires_grad=False
+            torch.FloatTensor([-0.66, -3]),
+            requires_grad=False,
         )
         self.suggest_turn = nn.Parameter(
-            torch.FloatTensor([0.0, -1]), requires_grad=False
+            torch.FloatTensor([0.0, -1]),
+            requires_grad=False,
         )
         self.suggest_straight = nn.Parameter(
-            torch.FloatTensor([3.0, 3.0]), requires_grad=False
+            torch.FloatTensor([3.0, 3.0]),
+            requires_grad=False,
         )
 
     def proba_distribution_net(self, latent_dim: int) -> tuple[nn.Module, nn.Parameter]:
@@ -54,7 +58,8 @@ class DiagGaussianDistribution(nn.Module):
             log_std = nn.Linear(latent_dim, self.action_dim)
         else:
             log_std = nn.Parameter(
-                -2.0 * torch.ones(self.action_dim), requires_grad=True
+                -2.0 * torch.ones(self.action_dim),
+                requires_grad=True,
             )
 
         if self.dist_init is not None:
@@ -65,14 +70,16 @@ class DiagGaussianDistribution(nn.Module):
                 log_std.bias.data[1] = self.dist_init[1][1]
             else:
                 init_tensor = torch.FloatTensor(
-                    [self.dist_init[0][1], self.dist_init[1][1]]
+                    [self.dist_init[0][1], self.dist_init[1][1]],
                 )
                 log_std = nn.Parameter(init_tensor, requires_grad=True)
 
         return mean_actions, log_std
 
     def proba_distribution(
-        self, mean_actions: torch.Tensor, log_std: torch.Tensor
+        self,
+        mean_actions: torch.Tensor,
+        log_std: torch.Tensor,
     ) -> "DiagGaussianDistribution":
         if self.action_dependent_std:
             log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
@@ -106,7 +113,8 @@ class DiagGaussianDistribution(nn.Module):
 
         dist_ent = Normal(mu, sigma)
         exploration_loss = torch.distributions.kl_divergence(
-            dist_ent, self.distribution
+            dist_ent,
+            self.distribution,
         )
         return torch.mean(exploration_loss)
 
@@ -134,13 +142,16 @@ class BetaDistribution(nn.Module):
         self.high = 1.0
 
         self.suggest_go = nn.Parameter(
-            torch.FloatTensor([2.5, 1.0]), requires_grad=False
+            torch.FloatTensor([2.5, 1.0]),
+            requires_grad=False,
         )
         self.suggest_stop = nn.Parameter(
-            torch.FloatTensor([1.0, 1.5]), requires_grad=False
+            torch.FloatTensor([1.0, 1.5]),
+            requires_grad=False,
         )
         self.suggest_turn = nn.Parameter(
-            torch.FloatTensor([1.0, 1.0]), requires_grad=False
+            torch.FloatTensor([1.0, 1.0]),
+            requires_grad=False,
         )
 
     def proba_distribution_net(self, latent_dim: int) -> tuple[nn.Module, nn.Module]:
@@ -187,7 +198,8 @@ class BetaDistribution(nn.Module):
 
         dist_ent = Beta(alpha, beta)
         exploration_loss = torch.distributions.kl_divergence(
-            self.distribution, dist_ent
+            self.distribution,
+            dist_ent,
         )
         return torch.mean(exploration_loss)
 
@@ -235,13 +247,16 @@ class BetaUniformMixtureDistribution(nn.Module):
         self.uniform_perc = uniform_percentage_z
 
         self.suggest_go = nn.Parameter(
-            torch.FloatTensor([2.5, 1.0]), requires_grad=False
+            torch.FloatTensor([2.5, 1.0]),
+            requires_grad=False,
         )
         self.suggest_stop = nn.Parameter(
-            torch.FloatTensor([1.0, 1.5]), requires_grad=False
+            torch.FloatTensor([1.0, 1.5]),
+            requires_grad=False,
         )
         self.suggest_turn = nn.Parameter(
-            torch.FloatTensor([1.0, 1.0]), requires_grad=False
+            torch.FloatTensor([1.0, 1.0]),
+            requires_grad=False,
         )
 
     def proba_distribution_net(self, latent_dim: int) -> tuple[nn.Module, nn.Module]:
@@ -263,14 +278,17 @@ class BetaUniformMixtureDistribution(nn.Module):
         lower_bound = torch.zeros_like(alpha, requires_grad=False, device=alpha.device)
         upper_bound = torch.ones_like(alpha, requires_grad=False, device=alpha.device)
         self.uniform_distribution = torch.distributions.uniform.Uniform(
-            lower_bound, upper_bound
+            lower_bound,
+            upper_bound,
         )
         self.distribution = Beta(alpha, beta)
         return self
 
     def log_prob(self, actions: torch.Tensor) -> torch.Tensor:
         uniform_pdf = torch.ones_like(
-            actions, device=actions.device, requires_grad=False
+            actions,
+            device=actions.device,
+            requires_grad=False,
         )
         pdf = (
             self.beta_perc * self.distribution.log_prob(actions).exp()
@@ -301,7 +319,8 @@ class BetaUniformMixtureDistribution(nn.Module):
 
         dist_ent = Beta(alpha, beta)
         exploration_loss = torch.distributions.kl_divergence(
-            self.distribution, dist_ent
+            self.distribution,
+            dist_ent,
         )
         return torch.mean(exploration_loss)
 

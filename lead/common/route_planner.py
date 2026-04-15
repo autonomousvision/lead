@@ -166,7 +166,7 @@ class RoutePlanner:
                     stop,
                     speed_limit,
                     corrected_speed_limit,
-                )
+                ),
             )
 
         self.saved_route = deque(self.saved_route)
@@ -228,7 +228,9 @@ def interpolate_trajectory(
                 for wp, connection in interpolated_trace:
                     route.append((wp.transform, connection))
                     gps_coord = _location_to_gps(
-                        lat_ref, lon_ref, wp.transform.location
+                        lat_ref,
+                        lon_ref,
+                        wp.transform.location,
                     )
                     gps_route.append((gps_coord, connection))
 
@@ -268,7 +270,9 @@ def _get_latlon_ref(world_map: carla.Map) -> tuple[float, float]:
 
 
 def _location_to_gps(
-    lat_ref: float, lon_ref: float, location: carla.Location
+    lat_ref: float,
+    lon_ref: float,
+    location: carla.Location,
 ) -> dict[str, float]:
     """Convert from world coordinates to GPS coordinates.
 

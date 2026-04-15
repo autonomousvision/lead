@@ -34,7 +34,7 @@ def merge_route_json(folder_path):
                             print(rd["route_id"])
         except Exception:
             print(
-                f"-----------------------Warning: {file_path} is not a valid json file."
+                f"-----------------------Warning: {file_path} is not a valid json file.",
             )
     merged_records = sorted(merged_records, key=lambda d: d["route_id"], reverse=True)
     _checkpoint = {"records": merged_records}

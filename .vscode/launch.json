@@ -57,9 +57,17 @@
             "name": "Pretrain DDP",
             "type": "debugpy",
             "request": "launch",
-            "program": "lead/training/train.py",
+            "module": "torch.distributed.run",
             "console": "integratedTerminal",
             "justMyCode": false,
+            "subProcess": true,
+            "args": [
+                "--standalone",
+                "--nnodes=1",
+                "--nproc_per_node=4",
+                "--max_restarts=0",
+                "lead/training/train.py"
+            ],
             "env": {
                 "PYTHONDONTWRITEBYTECODE": "1",
                 "LEAD_TRAINING_CONFIG": "debug_mode=true logdir=outputs/local_training/pretrain",
@@ -74,9 +82,17 @@
             "name": "Posttrain DDP",
             "type": "debugpy",
             "request": "launch",
-            "program": "lead/training/train.py",
+            "module": "torch.distributed.run",
             "console": "integratedTerminal",
             "justMyCode": false,
+            "subProcess": true,
+            "args": [
+                "--standalone",
+                "--nnodes=1",
+                "--nproc_per_node=4",
+                "--max_restarts=0",
+                "lead/training/train.py"
+            ],
             "env": {
                 "PYTHONDONTWRITEBYTECODE": "1",
                 "LEAD_TRAINING_CONFIG": "debug_mode=true logdir=outputs/local_training/posttrain load_file=outputs/local_training/pretrain/model_0030.pth use_planning_decoder=true",

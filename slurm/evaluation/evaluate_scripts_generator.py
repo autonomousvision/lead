@@ -12,7 +12,7 @@ def is_on_tcml():
 
 def make_bash(bash_file, route_file, route_id, args):
     env_exports = "\n".join(
-        [f"export {key}='{value}'" for key, value in os.environ.items()]
+        [f"export {key}='{value}'" for key, value in os.environ.items()],
     )
 
     # Select evaluator scripts based on expert mode
@@ -204,10 +204,16 @@ def main():
         help="Folder for TransFuser checkpoint.",
     )
     parser.add_argument(
-        "--team_agent", type=str, action="store", help="Agent under test."
+        "--team_agent",
+        type=str,
+        action="store",
+        help="Agent under test.",
     )
     parser.add_argument(
-        "--team_config", type=str, action="store", help="Config of the agent"
+        "--team_config",
+        type=str,
+        action="store",
+        help="Config of the agent",
     )
     parser.add_argument(
         "--route_folder",
@@ -231,7 +237,10 @@ def main():
     )
     parser.add_argument("--slurm_timeout", default="0-04:00:00", help="Slurm timeout.")
     parser.add_argument(
-        "--repetitions", default=1, type=int, help="Number of repetitions."
+        "--repetitions",
+        default=1,
+        type=int,
+        help="Number of repetitions.",
     )
     parser.add_argument(
         "--expert",
@@ -242,7 +251,8 @@ def main():
 
     # Load all route XML files, including from subdirectories
     route_files: list[str] = glob.glob(
-        os.path.join(args.route_folder, "**", "*.xml"), recursive=True
+        os.path.join(args.route_folder, "**", "*.xml"),
+        recursive=True,
     )
     bash_save_path = f"{args.base_checkpoint_endpoint}/scripts/"
     os.makedirs(bash_save_path, exist_ok=True)

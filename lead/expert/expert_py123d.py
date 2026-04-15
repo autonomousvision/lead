@@ -199,29 +199,30 @@ class ExpertPy123D(Expert):
 
             # Get CARLA root
             carla_root = Path(
-                os.environ.get("CARLA_ROOT", os.getcwd() + "/3rd_party/CARLA_0915")
+                os.environ.get("CARLA_ROOT", os.getcwd() + "/3rd_party/CARLA_0915"),
             )
             LOG.info(f"CARLA_ROOT: {carla_root.absolute()}")
 
             if not carla_root.exists():
                 LOG.warning(
-                    f"CARLA_ROOT not found: {carla_root.absolute()}. Map conversion skipped."
+                    f"CARLA_ROOT not found: {carla_root.absolute()}. Map conversion skipped.",
                 )
             else:
                 xodr_file = carla_root / constants.CARLA_MAP_PATHS.get(
-                    self._location, ""
+                    self._location,
+                    "",
                 )
                 LOG.info(f"Looking for OpenDRIVE file: {xodr_file.absolute()}")
 
                 if xodr_file.exists():
                     try:
                         LOG.info(
-                            f"Starting map conversion from: {xodr_file.absolute()}"
+                            f"Starting map conversion from: {xodr_file.absolute()}",
                         )
                         for map_object in iter_xodr_map_objects(xodr_file):
                             self._py123d_map_writer.write_map_object(map_object)
                         LOG.info(
-                            f"Map conversion complete. Saved to: {self._py123d_maps_root.absolute()}"
+                            f"Map conversion complete. Saved to: {self._py123d_maps_root.absolute()}",
                         )
                     except Exception as e:
                         LOG.error(f"Map conversion failed: {e}")
@@ -239,14 +240,14 @@ class ExpertPy123D(Expert):
         )
         if map_arrow_path.exists():
             self._py123d_map_api: ArrowMapAPI | None = get_lru_cached_map_api(
-                map_arrow_path
+                map_arrow_path,
             )
             LOG.info(f"Loaded map API from: {map_arrow_path.absolute()}")
         else:
             self._py123d_map_api = None
             LOG.warning(
                 f"Map Arrow file not found at {map_arrow_path.absolute()}. "
-                "Traffic-light lane lookups will be skipped."
+                "Traffic-light lane lookups will be skipped.",
             )
 
     @beartype
@@ -274,11 +275,11 @@ class ExpertPy123D(Expert):
         )
 
         LOG.info(
-            f"Log metadata created - log_name={self._log_name}, location={self._location}"
+            f"Log metadata created - log_name={self._log_name}, location={self._location}",
         )
         self._py123d_log_writer.reset(log_metadata)
         LOG.info(
-            f"Log writer initialized. Data will be saved to: {self._py123d_logs_root.absolute()}/{self._log_name}"
+            f"Log writer initialized. Data will be saved to: {self._py123d_logs_root.absolute()}/{self._log_name}",
         )
 
     @beartype
@@ -302,7 +303,10 @@ class ExpertPy123D(Expert):
             cy = height / 2.0
 
             intrinsics = PinholeIntrinsics(
-                fx=focal_length, fy=focal_length, cx=cx, cy=cy
+                fx=focal_length,
+                fy=focal_length,
+                cx=cx,
+                cy=cy,
             )
 
             # Get camera extrinsic relative to IMU (rear axle)
@@ -339,7 +343,7 @@ class ExpertPy123D(Expert):
         lidar_rot = self.config_expert.lidar_rot_1
 
         quaternion = expert_py123d_utils.quaternion_from_carla_rotation(
-            carla.Rotation(roll=lidar_rot[0], pitch=lidar_rot[1], yaw=lidar_rot[2])
+            carla.Rotation(roll=lidar_rot[0], pitch=lidar_rot[1], yaw=lidar_rot[2]),
         )
 
         lidar_to_imu_se3 = PoseSE3(
@@ -387,14 +391,14 @@ class ExpertPy123D(Expert):
             self._py123d_log_writer.write_sync(modalities_sync)
             if self.step % self.config_expert.py123d_log_interval == 0:
                 LOG.info(
-                    f"Saved Py123D data at step {self.step} (timestamp={timestamp:.2f}s)"
+                    f"Saved Py123D data at step {self.step} (timestamp={timestamp:.2f}s)",
                 )
         elif (
             self.step % self.config_expert.py123d_debug_log_interval == 0
             and self.config_expert.datagen
         ):
             LOG.debug(
-                f"Step {self.step} - Py123D data saving ongoing to: {self._py123d_logs_root.absolute()}/{self._log_name}"
+                f"Step {self.step} - Py123D data saving ongoing to: {self._py123d_logs_root.absolute()}/{self._log_name}",
             )
 
         return control
@@ -465,21 +469,21 @@ class ExpertPy123D(Expert):
                     ego_velocity.x,
                     -ego_velocity.y,
                     ego_velocity.z,
-                ]
+                ],
             ),
             acceleration=Vector3D.from_list(
                 [
                     ego_acceleration.x,
                     -ego_acceleration.y,
                     ego_acceleration.z,
-                ]
+                ],
             ),
             angular_velocity=Vector3D.from_list(
                 [
                     ego_angular_velocity.x,
                     ego_angular_velocity.y,
                     ego_angular_velocity.z,
-                ]
+                ],
             ),
         )
 
@@ -492,7 +496,9 @@ class ExpertPy123D(Expert):
 
     @beartype
     def _extract_py123d_box_detections(
-        self, input_data: dict, timestamp: Timestamp
+        self,
+        input_data: dict,
+        timestamp: Timestamp,
     ) -> BoxDetectionsSE3:
         """Convert LEAD's bounding boxes format to Py123D.
 
@@ -523,12 +529,12 @@ class ExpertPy123D(Expert):
                         track_token=str(vehicle.id),
                     ),
                     bounding_box_se3=expert_py123d_utils.get_actor_bounding_box_se3(
-                        vehicle
+                        vehicle,
                     ),
                     velocity_3d=expert_py123d_utils.carla_velocity_to_vector3d(
-                        vehicle.get_velocity()
+                        vehicle.get_velocity(),
                     ),
-                )
+                ),
             )
 
         # Pedestrians
@@ -540,12 +546,12 @@ class ExpertPy123D(Expert):
                         track_token=str(walker.id),
                     ),
                     bounding_box_se3=expert_py123d_utils.get_actor_bounding_box_se3(
-                        walker
+                        walker,
                     ),
                     velocity_3d=expert_py123d_utils.carla_velocity_to_vector3d(
-                        walker.get_velocity()
+                        walker.get_velocity(),
                     ),
-                )
+                ),
             )
 
         # Static bounding boxes
@@ -566,12 +572,12 @@ class ExpertPy123D(Expert):
                                 track_token=str(bb["id"]),
                             ),
                             bounding_box_se3=expert_py123d_utils.get_bounding_box_se3(
-                                bb
+                                bb,
                             ),
                             velocity_3d=expert_py123d_utils.get_bounding_box_velocity(
-                                bb
+                                bb,
                             ),
-                        )
+                        ),
                     )
                     LOG.debug(f"Parking car detected: {bb['mesh_path']}")
                 elif actor is None:  # static_prob_car that is not spawned as an actor
@@ -583,12 +589,12 @@ class ExpertPy123D(Expert):
                                 track_token=str(bb["id"]),
                             ),
                             bounding_box_se3=expert_py123d_utils.get_bounding_box_se3(
-                                bb
+                                bb,
                             ),
                             velocity_3d=expert_py123d_utils.get_bounding_box_velocity(
-                                bb
+                                bb,
                             ),
-                        )
+                        ),
                     )
                 else:
                     type_id_to_py123d_mapping = {
@@ -614,12 +620,13 @@ class ExpertPy123D(Expert):
                                     track_token=str(actor.id),
                                 ),
                                 bounding_box_se3=expert_py123d_utils.get_actor_bounding_box_se3(
-                                    actor, overwrite_extent=overwrite_extent
+                                    actor,
+                                    overwrite_extent=overwrite_extent,
                                 ),
                                 velocity_3d=expert_py123d_utils.get_actor_velocity(
-                                    actor
+                                    actor,
                                 ),
-                            )
+                            ),
                         )
 
         return BoxDetectionsSE3(
@@ -630,7 +637,10 @@ class ExpertPy123D(Expert):
 
     @beartype
     def _extract_py123d_camera_data(
-        self, input_data: dict, timestamp: Timestamp, ego_state: EgoStateSE3
+        self,
+        input_data: dict,
+        timestamp: Timestamp,
+        ego_state: EgoStateSE3,
     ) -> list[Camera]:
         """Extract camera data from LEAD's input_data.
 
@@ -666,13 +676,14 @@ class ExpertPy123D(Expert):
                     image=rgb_image,
                     camera_to_global_se3=camera_to_global,
                     timestamp=timestamp,
-                )
+                ),
             )
         return cameras
 
     @beartype
     def _extract_py123d_traffic_lights(
-        self, timestamp: Timestamp
+        self,
+        timestamp: Timestamp,
     ) -> TrafficLightDetections:
         """Extract traffic light detections from CARLA.
 
@@ -710,7 +721,7 @@ class ExpertPy123D(Expert):
                 lights_in_radius += 1
                 py123d_tf_status = (
                     expert_py123d_utils.carla_traffic_light_status_to_py123d(
-                        actor.state
+                        actor.state,
                     )
                 )
                 query_points.append(geom.Point(lane_loc.x, -lane_loc.y))
@@ -719,7 +730,7 @@ class ExpertPy123D(Expert):
         if lights_in_radius == 0:
             LOG.info(
                 f"Traffic-light map query skipped: no traffic lights within "
-                f"{TRAFFIC_LIGHT_LOG_RADIUS_M:.0f} m."
+                f"{TRAFFIC_LIGHT_LOG_RADIUS_M:.0f} m.",
             )
             return TrafficLightDetections(detections=[], timestamp=timestamp)
 
@@ -744,7 +755,8 @@ class ExpertPy123D(Expert):
             qp = query_points[point_idx]
             for lane_id in lane_ids:
                 lane = self._py123d_map_api.get_map_object_in_layer(
-                    lane_id, MapLayer.LANE
+                    lane_id,
+                    MapLayer.LANE,
                 )
                 if lane is None:
                     rejected += 1
@@ -759,7 +771,7 @@ class ExpertPy123D(Expert):
                 elif existing != status:
                     LOG.warning(
                         f"Conflicting traffic-light status for lane {lane_id}: "
-                        f"keeping {existing.name}, ignoring {status.name}."
+                        f"keeping {existing.name}, ignoring {status.name}.",
                     )
         detections = [
             TrafficLightDetection(lane_id=lane_id, status=status)
@@ -792,7 +804,9 @@ class ExpertPy123D(Expert):
         num_points = lidar_pc.shape[0]
         point_cloud_features = {
             LidarFeature.IDS.serialize(): np.full(
-                num_points, int(LidarID.LIDAR_TOP.value), dtype=np.uint8
+                num_points,
+                int(LidarID.LIDAR_TOP.value),
+                dtype=np.uint8,
             ),
             LidarFeature.INTENSITY.serialize(): np.ones(num_points, dtype=np.uint8),
         }
@@ -814,7 +828,7 @@ class ExpertPy123D(Expert):
         """
         LOG.info("Closing Py123D writers...")
         LOG.info(
-            f"Final log location: {self._py123d_logs_root.absolute()}/{self._log_name}"
+            f"Final log location: {self._py123d_logs_root.absolute()}/{self._log_name}",
         )
         LOG.info(f"Final map location: {self._py123d_maps_root.absolute()}")
         self._py123d_log_writer.close()

@@ -14,12 +14,13 @@ import gymnasium as gym
 import numpy as np
 import timm
 import torch
+from torch import nn
+
 from lead.carl_agent.distributions import (
     BetaDistribution,
     BetaUniformMixtureDistribution,
     DiagGaussianDistribution,
 )
-from torch import nn
 
 
 class CustomCnn(nn.Module):
@@ -34,11 +35,11 @@ class CustomCnn(nn.Module):
         )
         final_width = int(
             self.config.bev_semantics_width
-            / self.image_encoder.feature_info.info[-1]["reduction"]
+            / self.image_encoder.feature_info.info[-1]["reduction"],
         )
         final_height = int(
             self.config.bev_semantics_height
-            / self.image_encoder.feature_info.info[-1]["reduction"]
+            / self.image_encoder.feature_info.info[-1]["reduction"],
         )
         final_total_pxiels = final_height * final_width
         self.out_channels = int(1024 / final_total_pxiels)
@@ -132,7 +133,7 @@ class XtMaCNN(nn.Module):
 
         with torch.no_grad():
             sample_bev = torch.as_tensor(
-                observation_space["bev_semantics"].sample()[None]
+                observation_space["bev_semantics"].sample()[None],
             ).float()
             if self.config.use_positional_encoding:
                 x = torch.linspace(-1, 1, self.config.bev_semantics_height)
@@ -165,12 +166,12 @@ class XtMaCNN(nn.Module):
             )
 
         states_neurons = [observation_space["measurements"].shape[0]] + list(
-            states_neurons
+            states_neurons,
         )
         self.state_linear = []
         for i in range(len(states_neurons) - 1):
             self.state_linear.append(
-                nn.Linear(states_neurons[i], states_neurons[i + 1])
+                nn.Linear(states_neurons[i], states_neurons[i + 1]),
             )
             if self.config.use_layer_norm:
                 self.state_linear.append(nn.LayerNorm(states_neurons[i + 1]))
@@ -229,7 +230,9 @@ class PPOPolicy(nn.Module):
         self.config = config
 
         self.features_extractor = XtMaCNN(
-            observation_space, config=config, states_neurons=states_neurons
+            observation_space,
+            config=config,
+            states_neurons=states_neurons,
         )
 
         if self.config.use_lstm:
@@ -259,7 +262,7 @@ class PPOPolicy(nn.Module):
             )
         else:
             raise ValueError(
-                "Distribution selected that is not implemented. Options: beta, normal, beta_uni_mix"
+                "Distribution selected that is not implemented. Options: beta, normal, beta_uni_mix",
             )
 
         self.policy_head_arch = list(policy_head_arch)
@@ -267,10 +270,12 @@ class PPOPolicy(nn.Module):
         self.activation_fn = nn.ReLU
 
         self.action_space_low = nn.Parameter(
-            torch.from_numpy(self.action_space.low), requires_grad=False
+            torch.from_numpy(self.action_space.low),
+            requires_grad=False,
         )
         self.action_space_high = nn.Parameter(
-            torch.from_numpy(self.action_space.high), requires_grad=False
+            torch.from_numpy(self.action_space.high),
+            requires_grad=False,
         )
 
         self.build()
@@ -287,7 +292,7 @@ class PPOPolicy(nn.Module):
 
         self.policy_head = nn.Sequential(*policy_net)
         self.dist_mu, self.dist_sigma = self.action_dist.proba_distribution_net(
-            last_layer_dim_pi
+            last_layer_dim_pi,
         )
 
         if self.config.use_temperature:
@@ -314,7 +319,7 @@ class PPOPolicy(nn.Module):
 
         if self.config.use_hl_gauss_value_loss:
             value_net.append(
-                nn.Linear(last_layer_dim_vf, self.config.hl_gauss_num_classes)
+                nn.Linear(last_layer_dim_vf, self.config.hl_gauss_num_classes),
             )
         else:
             value_net.append(nn.Linear(last_layer_dim_vf, 1))
@@ -334,7 +339,8 @@ class PPOPolicy(nn.Module):
 
         if actions is not None and self.config.use_rpo:
             z = torch.zeros(mu.shape, dtype=torch.float32, device=mu.device).uniform_(
-                -self.config.rpo_alpha, self.config.rpo_alpha
+                -self.config.rpo_alpha,
+                self.config.rpo_alpha,
             )
             mu = mu + z
 
@@ -348,7 +354,8 @@ class PPOPolicy(nn.Module):
             temperature = self.temperature_layer(latent_pi)
             mu_temperature = temperature[:, : self.action_dist.action_dim]
             sigma_temperature = temperature[
-                :, self.action_dist.action_dim : self.action_dist.action_dim * 2
+                :,
+                self.action_dist.action_dim : self.action_dist.action_dim * 2,
             ]
             mu_temperature = (
                 1.0 - self.config.min_temperature
@@ -370,7 +377,7 @@ class PPOPolicy(nn.Module):
         hidden = features.reshape((-1, batch_size, self.lstm.input_size))
         done = done.reshape((-1, batch_size))
         new_hidden = []
-        for h, d in zip(hidden, done):
+        for h, d in zip(hidden, done, strict=True):
             h, lstm_state = self.lstm(
                 h.unsqueeze(0),
                 (
@@ -400,7 +407,8 @@ class PPOPolicy(nn.Module):
 
         if self.config.use_value_measurements:
             value_features = torch.cat(
-                (features, obs_dict["value_measurements"]), dim=1
+                (features, obs_dict["value_measurements"]),
+                dim=1,
             )
         else:
             value_features = features

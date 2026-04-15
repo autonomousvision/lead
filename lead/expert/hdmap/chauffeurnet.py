@@ -35,11 +35,12 @@ class ObsManager(ObsManagerBase):
         self._scale_bbox = obs_configs.get("scale_bbox", True)
         self._scale_mask_col = obs_configs.get("scale_mask_col", 1.1)
         maxlen_queue = max(
-            max(obs_configs["history_idx"]) + 1, -min(obs_configs["history_idx"])
+            max(obs_configs["history_idx"]) + 1,
+            -min(obs_configs["history_idx"]),
         )
         self._history_queue = deque(maxlen=maxlen_queue)
         self.visualize = int(os.environ.get("DEBUG_CHALLENGE", 0)) or int(
-            os.environ.get("TMP_VISU", 0)
+            os.environ.get("TMP_VISU", 0),
         )
         self.config = config
 
@@ -72,7 +73,7 @@ class ObsManager(ObsManagerBase):
                     shape=(self._masks_channels, self._width, self._width),
                     dtype=np.uint8,
                 ),
-            }
+            },
         )
 
     def attach_ego_vehicle(self, vehicle, criteria_stop):
@@ -88,19 +89,23 @@ class ObsManager(ObsManagerBase):
             self._road = np.array(hf["road"], dtype=np.uint8)
             self._lane_marking_all = np.array(hf["lane_marking_all"], dtype=np.uint8)
             self._lane_marking_white_broken = np.array(
-                hf["lane_marking_white_broken"], dtype=np.uint8
+                hf["lane_marking_white_broken"],
+                dtype=np.uint8,
             )
 
             self._world_offset = np.array(
-                hf.attrs["world_offset_in_meters"], dtype=np.float32
+                hf.attrs["world_offset_in_meters"],
+                dtype=np.float32,
             )
             # in case they aren't close, print them to know what values they should be
             if not np.isclose(
-                self._pixels_per_meter, float(hf.attrs["pixels_per_meter"])
+                self._pixels_per_meter,
+                float(hf.attrs["pixels_per_meter"]),
             ):
                 print(self._pixels_per_meter, float(hf.attrs["pixels_per_meter"]))
             assert np.isclose(
-                self._pixels_per_meter, float(hf.attrs["pixels_per_meter"])
+                self._pixels_per_meter,
+                float(hf.attrs["pixels_per_meter"]),
             )
 
         self._distance_threshold = np.ceil(self._width / self._pixels_per_meter)
@@ -117,20 +122,27 @@ class ObsManager(ObsManagerBase):
 
         # road_mask, lane_mask
         road_mask = cv.warpAffine(
-            self._road, m_warp, (self._width, self._width)
+            self._road,
+            m_warp,
+            (self._width, self._width),
         ).astype(bool)
         lane_mask_all = cv.warpAffine(
-            self._lane_marking_all, m_warp, (self._width, self._width)
+            self._lane_marking_all,
+            m_warp,
+            (self._width, self._width),
         ).astype(bool)
         lane_mask_broken = cv.warpAffine(
-            self._lane_marking_white_broken, m_warp, (self._width, self._width)
+            self._lane_marking_white_broken,
+            m_warp,
+            (self._width, self._width),
         ).astype(bool)
 
         # render
         if self.visualize:
             # ev_mask
             ev_mask = self._get_mask_from_actor_list(
-                [(ev_transform, ev_bbox.location, ev_bbox.extent)], m_warp
+                [(ev_transform, ev_bbox.location, ev_bbox.extent)],
+                m_warp,
             )
 
             image = np.zeros([self._width, self._width, 3], dtype=np.uint8)
@@ -169,7 +181,7 @@ class ObsManager(ObsManagerBase):
 
             corners = [actor_transform.transform(corner) for corner in corners]
             corners_in_pixel = np.array(
-                [[self._world_to_pixel(corner)] for corner in corners]
+                [[self._world_to_pixel(corner)] for corner in corners],
             )
             corners_warped = cv.transform(corners_in_pixel, m_warp)
 
@@ -200,10 +212,11 @@ class ObsManager(ObsManagerBase):
         )
 
         src_pts = np.stack((bottom_left, top_left, top_right), axis=0).astype(
-            np.float32
+            np.float32,
         )
         dst_pts = np.array(
-            [[0, self._width - 1], [0, 0], [self._width - 1, 0]], dtype=np.float32
+            [[0, self._width - 1], [0, 0], [self._width - 1, 0]],
+            dtype=np.float32,
         )
         return cv.getAffineTransform(src_pts, dst_pts)
 

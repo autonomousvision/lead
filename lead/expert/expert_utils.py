@@ -125,7 +125,9 @@ def get_horizontal_distance(actor1: carla.Actor, actor2: carla.Actor) -> float:
 
     # Compute the distance vector (ignoring the z-coordinate)
     diff_vector = carla.Vector3D(
-        location1.x - location2.x, location1.y - location2.y, 0
+        location1.x - location2.x,
+        location1.y - location2.y,
+        0,
     )
 
     norm: float = diff_vector.length()
@@ -176,13 +178,15 @@ def compute_global_route(
         [
             [wp.transform.location.x, wp.transform.location.y, wp.transform.location.z]
             for wp, _ in route
-        ]
+        ],
     )
 
 
 @beartype
 def intersection_of_routes(
-    points_a: npt.NDArray, points_b: npt.NDArray, epsilon: float = 0.5
+    points_a: npt.NDArray,
+    points_b: npt.NDArray,
+    epsilon: float = 0.5,
 ) -> tuple[carla.Location | None, int | None]:
     """
     Args:
@@ -270,11 +274,12 @@ def get_separating_plane(
     obb1_projection = (
         abs(
             dot_product(
-                obb1.rotation.get_forward_vector() * obb1.extent.x, plane_normal
-            )
+                obb1.rotation.get_forward_vector() * obb1.extent.x,
+                plane_normal,
+            ),
         )
         + abs(
-            dot_product(obb1.rotation.get_right_vector() * obb1.extent.y, plane_normal)
+            dot_product(obb1.rotation.get_right_vector() * obb1.extent.y, plane_normal),
         )
         + abs(dot_product(obb1.rotation.get_up_vector() * obb1.extent.z, plane_normal))
     )
@@ -282,11 +287,12 @@ def get_separating_plane(
     obb2_projection = (
         abs(
             dot_product(
-                obb2.rotation.get_forward_vector() * obb2.extent.x, plane_normal
-            )
+                obb2.rotation.get_forward_vector() * obb2.extent.x,
+                plane_normal,
+            ),
         )
         + abs(
-            dot_product(obb2.rotation.get_right_vector() * obb2.extent.y, plane_normal)
+            dot_product(obb2.rotation.get_right_vector() * obb2.extent.y, plane_normal),
         )
         + abs(dot_product(obb2.rotation.get_up_vector() * obb2.extent.z, plane_normal))
     )
@@ -312,22 +318,40 @@ def check_obb_intersection(obb1: carla.BoundingBox, obb2: carla.BoundingBox) -> 
     # Check for separating planes along the axes of both OBBs
     if (
         get_separating_plane(
-            relative_position, obb1.rotation.get_forward_vector(), obb1, obb2
+            relative_position,
+            obb1.rotation.get_forward_vector(),
+            obb1,
+            obb2,
         )
         or get_separating_plane(
-            relative_position, obb1.rotation.get_right_vector(), obb1, obb2
+            relative_position,
+            obb1.rotation.get_right_vector(),
+            obb1,
+            obb2,
         )
         or get_separating_plane(
-            relative_position, obb1.rotation.get_up_vector(), obb1, obb2
+            relative_position,
+            obb1.rotation.get_up_vector(),
+            obb1,
+            obb2,
         )
         or get_separating_plane(
-            relative_position, obb2.rotation.get_forward_vector(), obb1, obb2
+            relative_position,
+            obb2.rotation.get_forward_vector(),
+            obb1,
+            obb2,
         )
         or get_separating_plane(
-            relative_position, obb2.rotation.get_right_vector(), obb1, obb2
+            relative_position,
+            obb2.rotation.get_right_vector(),
+            obb1,
+            obb2,
         )
         or get_separating_plane(
-            relative_position, obb2.rotation.get_up_vector(), obb1, obb2
+            relative_position,
+            obb2.rotation.get_up_vector(),
+            obb1,
+            obb2,
         )
     ):
         return False
@@ -337,7 +361,8 @@ def check_obb_intersection(obb1: carla.BoundingBox, obb2: carla.BoundingBox) -> 
         get_separating_plane(
             relative_position,
             cross_product(
-                obb1.rotation.get_forward_vector(), obb2.rotation.get_forward_vector()
+                obb1.rotation.get_forward_vector(),
+                obb2.rotation.get_forward_vector(),
             ),
             obb1,
             obb2,
@@ -345,7 +370,8 @@ def check_obb_intersection(obb1: carla.BoundingBox, obb2: carla.BoundingBox) -> 
         or get_separating_plane(
             relative_position,
             cross_product(
-                obb1.rotation.get_forward_vector(), obb2.rotation.get_right_vector()
+                obb1.rotation.get_forward_vector(),
+                obb2.rotation.get_right_vector(),
             ),
             obb1,
             obb2,
@@ -353,7 +379,8 @@ def check_obb_intersection(obb1: carla.BoundingBox, obb2: carla.BoundingBox) -> 
         or get_separating_plane(
             relative_position,
             cross_product(
-                obb1.rotation.get_forward_vector(), obb2.rotation.get_up_vector()
+                obb1.rotation.get_forward_vector(),
+                obb2.rotation.get_up_vector(),
             ),
             obb1,
             obb2,
@@ -361,7 +388,8 @@ def check_obb_intersection(obb1: carla.BoundingBox, obb2: carla.BoundingBox) -> 
         or get_separating_plane(
             relative_position,
             cross_product(
-                obb1.rotation.get_right_vector(), obb2.rotation.get_forward_vector()
+                obb1.rotation.get_right_vector(),
+                obb2.rotation.get_forward_vector(),
             ),
             obb1,
             obb2,
@@ -369,7 +397,8 @@ def check_obb_intersection(obb1: carla.BoundingBox, obb2: carla.BoundingBox) -> 
         or get_separating_plane(
             relative_position,
             cross_product(
-                obb1.rotation.get_right_vector(), obb2.rotation.get_right_vector()
+                obb1.rotation.get_right_vector(),
+                obb2.rotation.get_right_vector(),
             ),
             obb1,
             obb2,
@@ -377,7 +406,8 @@ def check_obb_intersection(obb1: carla.BoundingBox, obb2: carla.BoundingBox) -> 
         or get_separating_plane(
             relative_position,
             cross_product(
-                obb1.rotation.get_right_vector(), obb2.rotation.get_up_vector()
+                obb1.rotation.get_right_vector(),
+                obb2.rotation.get_up_vector(),
             ),
             obb1,
             obb2,
@@ -385,7 +415,8 @@ def check_obb_intersection(obb1: carla.BoundingBox, obb2: carla.BoundingBox) -> 
         or get_separating_plane(
             relative_position,
             cross_product(
-                obb1.rotation.get_up_vector(), obb2.rotation.get_forward_vector()
+                obb1.rotation.get_up_vector(),
+                obb2.rotation.get_forward_vector(),
             ),
             obb1,
             obb2,
@@ -393,7 +424,8 @@ def check_obb_intersection(obb1: carla.BoundingBox, obb2: carla.BoundingBox) -> 
         or get_separating_plane(
             relative_position,
             cross_product(
-                obb1.rotation.get_up_vector(), obb2.rotation.get_right_vector()
+                obb1.rotation.get_up_vector(),
+                obb2.rotation.get_right_vector(),
             ),
             obb1,
             obb2,
@@ -470,7 +502,10 @@ def get_steer(
     """
     # Calculate the steering angle using the turn controller
     steering_angle = turn_controller.step(
-        route_points, current_speed, current_position, current_heading
+        route_points,
+        current_speed,
+        current_position,
+        current_heading,
     )
     steering_angle = round(steering_angle, 3)
     return steering_angle
@@ -559,7 +594,8 @@ def compute_target_speed_idm(
 
 @beartype
 def get_previous_road_lane_ids(
-    config: ExpertConfig, starting_waypoint: carla.Waypoint
+    config: ExpertConfig,
+    starting_waypoint: carla.Waypoint,
 ) -> list[tuple[int, int]]:
     """
     Retrieves the previous road and lane IDs for a given starting waypoint.
@@ -587,7 +623,7 @@ def get_previous_road_lane_ids(
             current_waypoint.lane_id,
         ) not in previous_lane_ids:
             previous_lane_ids.append(
-                (current_waypoint.road_id, current_waypoint.lane_id)
+                (current_waypoint.road_id, current_waypoint.lane_id),
             )
 
     return previous_lane_ids
@@ -595,7 +631,10 @@ def get_previous_road_lane_ids(
 
 @beartype
 def compute_min_time_for_distance(
-    config: ExpertConfig, distance: float, target_speed: float, ego_speed: float
+    config: ExpertConfig,
+    distance: float,
+    target_speed: float,
+    ego_speed: float,
 ) -> float:
     """
     Computes the minimum time the ego vehicle needs to travel a given distance.
@@ -636,7 +675,9 @@ def compute_min_time_for_distance(
             np.inf,
         )
         current_speed = np.clip(
-            120 * (normalized_speed + speed_change), 0, target_speed
+            120 * (normalized_speed + speed_change),
+            0,
+            target_speed,
         )
 
     # Add remaining time at the current speed
@@ -690,7 +731,8 @@ def get_night_mode(weather) -> bool:
 
     altitude_dist = weather.sun_altitude_angle - SUN_ALTITUDE_THRESHOLD_1
     altitude_dist = min(
-        altitude_dist, SUN_ALTITUDE_THRESHOLD_2 - weather.sun_altitude_angle
+        altitude_dist,
+        SUN_ALTITUDE_THRESHOLD_2 - weather.sun_altitude_angle,
     )
     cloudiness_dist = CLOUDINESS_THRESHOLD - weather.cloudiness
     fog_density_dist = FOG_THRESHOLD - weather.fog_density
@@ -767,7 +809,7 @@ def perturbated_sensor_cfg(
     y = float(transformed_pos[1])
 
     camera_rot_new = torch.tensor(
-        [camera_rot[0], camera_rot[1], camera_rot[2] + perturbation_rotation]
+        [camera_rot[0], camera_rot[1], camera_rot[2] + perturbation_rotation],
     )
     camera_pos_new = torch.tensor([x, y, camera_pos[2]])
     return camera_rot_new, camera_pos_new
@@ -828,7 +870,10 @@ def unproject_camera(
     device: torch.device,
 ) -> torch.Tensor:
     camera_rot, camera_pos = perturbated_sensor_cfg(
-        camera_rot, camera_pos, perturbation_translation, perturbation_rotation
+        camera_rot,
+        camera_pos,
+        perturbation_translation,
+        perturbation_rotation,
     )
 
     # Projecting instance segmentation to ego space
@@ -857,13 +902,17 @@ def unproject_camera(
 
     # Transform to ego space - use custom euler to rotation matrix function
     rot = euler_to_rotation_matrix(
-        float(camera_rot[0]), float(camera_rot[1]), float(camera_rot[2])
+        float(camera_rot[0]),
+        float(camera_rot[1]),
+        float(camera_rot[2]),
     ).to(dtype=torch.float32, device=device)
     trans = camera_pos.to(dtype=torch.float32, device=device)
 
     # From camera frame (OpenCV) to CARLA ego frame
     T_camera_to_ego = torch.tensor(
-        [[0, 0, 1], [1, 0, 0], [0, -1, 0]], device=device, dtype=torch.float32
+        [[0, 0, 1], [1, 0, 0], [0, -1, 0]],
+        device=device,
+        dtype=torch.float32,
     )
 
     points = (points_cam @ T_camera_to_ego.T) @ rot.T + trans
@@ -977,7 +1026,9 @@ def match_unreal_engine_ids_to_carla_bounding_boxes_ids(
 
     # --- Construct cost matrix mapping carla to unreal---
     cost_matrix = np.full(
-        (len(carla_boxes), len(unreal_instance_ids_list)), 0, dtype=np.float32
+        (len(carla_boxes), len(unreal_instance_ids_list)),
+        0,
+        dtype=np.float32,
     )
     for carla_index, carla_box in enumerate(carla_boxes):
         for instance_index, unreal_instance_id in enumerate(unreal_instance_ids_list):
@@ -1010,7 +1061,9 @@ def match_unreal_engine_ids_to_carla_bounding_boxes_ids(
     matched_carla_indices, matched_unreal_indices = linear_sum_assignment(cost_matrix)
     map_unreal_id_to_carla_id = {}
     for carla_index, unreal_index in zip(
-        matched_carla_indices, matched_unreal_indices, strict=False
+        matched_carla_indices,
+        matched_unreal_indices,
+        strict=False,
     ):
         if cost_matrix[carla_index, unreal_index] < 0:
             map_unreal_id_to_carla_id[int(unreal_instance_ids_list[unreal_index])] = (
@@ -1049,7 +1102,10 @@ def match_unreal_engine_ids_to_carla_actors_ids(
         for actor in carla_actors
     ]
     return match_unreal_engine_ids_to_carla_bounding_boxes_ids(
-        ego_matrix, actors_original_semantic_id, carla_boxes, ego_camera_pc
+        ego_matrix,
+        actors_original_semantic_id,
+        carla_boxes,
+        ego_camera_pc,
     )
 
 
@@ -1076,17 +1132,20 @@ def get_num_points_in_actor(
                     actor.bounding_box.extent.x,
                     actor.bounding_box.extent.y,
                     actor.bounding_box.extent.z,
-                ]
+                ],
             ),
             ego_point_cloud,
             pad,
-        )
+        ),
     )
 
 
 @beartype
 def get_num_points_in_bbox(
-    ego: carla.Vehicle, bbox: dict, ego_point_cloud: npt.NDArray, pad: bool = False
+    ego: carla.Vehicle,
+    bbox: dict,
+    ego_point_cloud: npt.NDArray,
+    pad: bool = False,
 ) -> int:
     """
     Checks for a given bounding box in ego coordinate system, how many LiDAR hit there are in its bounding box.
@@ -1102,13 +1161,15 @@ def get_num_points_in_bbox(
             np.array(bbox["extent"]),
             ego_point_cloud,
             pad,
-        )
+        ),
     )
 
 
 @beartype
 def transform_points_to_actor_frame(
-    ego_matrix: npt.NDArray, actor_matrix: npt.NDArray, ego_point_cloud: npt.NDArray
+    ego_matrix: npt.NDArray,
+    actor_matrix: npt.NDArray,
+    ego_point_cloud: npt.NDArray,
 ) -> npt.NDArray:
     if ego_point_cloud.shape[0] == 0:
         return np.array([])
@@ -1149,7 +1210,9 @@ def get_points_in_actor_frame_and_in_bbox(
     :return: Returns the points within the bounding box of the actor
     """
     vehicle_lidar = transform_points_to_actor_frame(
-        ego_matrix, actor_matrix, ego_point_cloud
+        ego_matrix,
+        actor_matrix,
+        ego_point_cloud,
     )
     if len(vehicle_lidar) == 0:
         return np.array([])
@@ -1194,7 +1257,9 @@ def enhance_semantics_segmentation(
 
 @beartype
 def sample_sensor_perturbation_parameters(
-    config: ExpertConfig, max_speed_limit_route: float, min_lane_width_route: float
+    config: ExpertConfig,
+    max_speed_limit_route: float,
+    min_lane_width_route: float,
 ) -> tuple[float, float]:
     """
     Sample sensor perturbation parameters (translation and rotation) based on the route's speed limit and lane width.
@@ -1259,7 +1324,7 @@ def sample_sensor_perturbation_parameters(
     LOG.info(f"Translation perturbation range: [-{tmax:.2f}m, {tmax:.2f}m].")
     LOG.info(f"Sampled translation: {perturbation_translation:.2f}m.")
     LOG.info(
-        f"rotation range: [{rmin:.2f}°, {rmax:.2f}°], sampled rotation: {perturbation_rotation:.2f}°"
+        f"rotation range: [{rmin:.2f}°, {rmax:.2f}°], sampled rotation: {perturbation_rotation:.2f}°",
     )
 
     return perturbation_translation, perturbation_rotation
@@ -1267,7 +1332,8 @@ def sample_sensor_perturbation_parameters(
 
 @beartype
 def get_weather_name(
-    weather_parameter: carla.WeatherParameters, config: ExpertConfig
+    weather_parameter: carla.WeatherParameters,
+    config: ExpertConfig,
 ) -> str:
     """
     Return the name of the weather preset matching the given CARLA WeatherParameters.
@@ -1459,7 +1525,9 @@ def get_traffic_light_waypoints(traffic_light: carla.Actor, carla_map: carla.Map
     # Discretize the trigger box into points
     area_ext = traffic_light.trigger_volume.extent
     x_values = np.arange(
-        -0.9 * area_ext.x, 0.9 * area_ext.x, 1.0
+        -0.9 * area_ext.x,
+        0.9 * area_ext.x,
+        1.0,
     )  # 0.9 to avoid crossing to adjacent lanes
 
     area = []
@@ -1511,7 +1579,8 @@ def get_traffic_light_waypoints(traffic_light: carla.Actor, carla_map: carla.Map
 
 @beartype
 def get_same_direction_lanes(
-    waypoint: carla.Waypoint, max_lane_search: int = 10
+    waypoint: carla.Waypoint,
+    max_lane_search: int = 10,
 ) -> list[carla.Waypoint]:
     """
     Find all waypoints in the same direction (left and right lanes)
@@ -1562,7 +1631,8 @@ def get_same_direction_lanes(
 
 @beartype
 def get_stop_waypoints(
-    ego_waypoint: carla.Waypoint, traffic_light: carla.TrafficLight
+    ego_waypoint: carla.Waypoint,
+    traffic_light: carla.TrafficLight,
 ) -> list[carla.Waypoint]:
     """
     Get all waypoints at the intersection controlled by this traffic light in the same direction.
@@ -1604,7 +1674,8 @@ def get_stop_waypoints(
 
 @beartype
 def create_bounding_box_for_waypoint(
-    original_bbox: carla.BoundingBox, waypoint: carla.Waypoint
+    original_bbox: carla.BoundingBox,
+    waypoint: carla.Waypoint,
 ) -> carla.BoundingBox:
     """
     Create a new bounding box positioned at the given waypoint

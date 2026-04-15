@@ -24,7 +24,8 @@ class RoutePlanner:
         location = carla.Location(x=gps[0], y=gps[1])
 
         for index in range(
-            self.index, min(self.index + self.windows_size + 1, self.route_length)
+            self.index,
+            min(self.index + self.windows_size + 1, self.route_length),
         ):
             route_transform = self.route[index]
             route_location = route_transform[0].location

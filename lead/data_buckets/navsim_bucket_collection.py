@@ -118,14 +118,16 @@ class NavSimBucketCollection(AbstractBucketCollection):
 
             if sample["visual_visibility"] > WeatherVisibility.CLEAR:
                 self.buckets[NavsimPretrainSim2RealBuckets.BAD_WEATHER].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             # Scenario-specific mining
             elif sample[
                 "scenario_type"
             ] == "Accident" and self._check_accident_scenario(sample):
                 self.buckets[NavsimPretrainSim2RealBuckets.ACCIDENT_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample[
                 "scenario_type"
@@ -142,7 +144,7 @@ class NavSimBucketCollection(AbstractBucketCollection):
             elif sample[
                 "scenario_type"
             ] == "ConstructionObstacle" and self._check_construction_obstacle_scenario(
-                sample
+                sample,
             ):
                 self.buckets[
                     NavsimPretrainSim2RealBuckets.CONSTRUCTION_OBSTACLE_SCENARIO
@@ -157,7 +159,8 @@ class NavSimBucketCollection(AbstractBucketCollection):
             elif sample[
                 "current_active_scenario_type"
             ] == "CrossingBicycleFlow" and self._check_scenario_actor_close(
-                sample, max_distance=10.0
+                sample,
+                max_distance=10.0,
             ):
                 self.buckets[
                     NavsimPretrainSim2RealBuckets.CROSSING_BICYCLE_FLOW_SCENARIO
@@ -165,7 +168,8 @@ class NavSimBucketCollection(AbstractBucketCollection):
             elif sample[
                 "current_active_scenario_type"
             ] == "CrossJunctionDefectTrafficLight" and self._check_scenario_actor_close(
-                sample, max_distance=10.0
+                sample,
+                max_distance=10.0,
             ):
                 self.buckets[
                     NavsimPretrainSim2RealBuckets.CROSS_JUNCTION_DEFECT_TRAFFIC_LIGHT_SCENARIO
@@ -173,7 +177,8 @@ class NavSimBucketCollection(AbstractBucketCollection):
             elif sample[
                 "current_active_scenario_type"
             ] == "DynamicObjectCrossing" and self._check_scenario_actor_close(
-                sample, max_distance=20.0
+                sample,
+                max_distance=20.0,
             ):
                 self.buckets[
                     NavsimPretrainSim2RealBuckets.DYNAMIC_OBJECT_CROSSING_SCENARIO
@@ -190,7 +195,8 @@ class NavSimBucketCollection(AbstractBucketCollection):
             elif sample[
                 "current_active_scenario_type"
             ] == "HazardAtSideLane" and self._check_scenario_actor_close(
-                sample, max_distance=20.0
+                sample,
+                max_distance=20.0,
             ):
                 self.buckets[
                     NavsimPretrainSim2RealBuckets.HAZARD_AT_SIDE_LANE_SCENARIO
@@ -198,14 +204,16 @@ class NavSimBucketCollection(AbstractBucketCollection):
             elif sample[
                 "current_active_scenario_type"
             ] == "HazardAtSideLaneTwoWays" and self._check_scenario_actor_close(
-                sample, max_distance=20.0
+                sample,
+                max_distance=20.0,
             ):
                 self.buckets[
                     NavsimPretrainSim2RealBuckets.HAZARD_AT_SIDE_LANE_TWO_WAYS_SCENARIO
                 ].add(route_dir, frame_number)
             elif self._check_highway_cutin_scenario(sample):
                 self.buckets[NavsimPretrainSim2RealBuckets.HIGHWAY_CUT_IN_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 sample["current_active_scenario_type"] == "InterurbanActorFlow"
@@ -227,7 +235,8 @@ class NavSimBucketCollection(AbstractBucketCollection):
                 "scenario_type"
             ] == "InvadingTurn" and self._check_invading_turn_scenario(sample):
                 self.buckets[NavsimPretrainSim2RealBuckets.INVADING_TURN_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
                 self.buckets[
                     NavsimPretrainSim2RealBuckets.MERGER_INTO_SLOW_TRAFFIC_V2_SCENARIO
@@ -276,7 +285,7 @@ class NavSimBucketCollection(AbstractBucketCollection):
             elif sample[
                 "scenario_type"
             ] == "ParkedObstacleTwoWays" and self._check_parked_obstacle_scenario(
-                sample
+                sample,
             ):
                 self.buckets[
                     NavsimPretrainSim2RealBuckets.PARKED_OBSTACLE_TWO_WAYS_SCENARIO
@@ -284,7 +293,8 @@ class NavSimBucketCollection(AbstractBucketCollection):
             elif sample[
                 "current_active_scenario_type"
             ] == "ParkingCrossingPedestrian" and self._check_scenario_actor_close(
-                sample, max_distance=20.0
+                sample,
+                max_distance=20.0,
             ):
                 self.buckets[
                     NavsimPretrainSim2RealBuckets.PARKING_CROSSING_PEDESTRIAN_SCENARIO
@@ -294,11 +304,13 @@ class NavSimBucketCollection(AbstractBucketCollection):
                 and float(sample["dist_to_cutin_vehicle"]) < 20
             ):
                 self.buckets[NavsimPretrainSim2RealBuckets.PARKING_CUT_IN_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample["current_active_scenario_type"] == "ParkingExit":
                 self.buckets[NavsimPretrainSim2RealBuckets.PARKING_EXIT_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 sample["current_active_scenario_type"] == "PedestrianCrossing"
@@ -350,12 +362,13 @@ class NavSimBucketCollection(AbstractBucketCollection):
                 and float(sample["dist_to_cutin_vehicle"]) < 20
             ):
                 self.buckets[NavsimPretrainSim2RealBuckets.STATIC_CUT_IN_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample[
                 "scenario_type"
             ] == "VehicleOpensDoorTwoWays" and self._check_vehicle_opens_door_scenario(
-                sample
+                sample,
             ):
                 self.buckets[
                     NavsimPretrainSim2RealBuckets.VEHICLE_OPENS_DOOR_TWO_WAYS_SCENARIO
@@ -392,22 +405,26 @@ class NavSimBucketCollection(AbstractBucketCollection):
                 and float(sample["distance_to_next_junction"]) < 5.0
             ):
                 self.buckets[NavsimPretrainSim2RealBuckets.OCCLUDED_JUNCTION].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif abs(float(sample["privileged_acceleration"])) > 17.5:
                 self.buckets[NavsimPretrainSim2RealBuckets.HIGH_ACCELERATION].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif self._check_large_lateral_deviation(sample):
                 self.buckets[NavsimPretrainSim2RealBuckets.LARGE_LATERAL_DEVIATION].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 bool(sample["stop_sign_hazard"])
                 and float(sample["distance_to_next_junction"]) < 10.0
             ):
                 self.buckets[NavsimPretrainSim2RealBuckets.STOP_SIGN_HAZARD].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 0.0 < float(sample["distance_to_next_junction"]) < 3.5
@@ -415,14 +432,16 @@ class NavSimBucketCollection(AbstractBucketCollection):
                 and float(sample["privileged_acceleration"]) > 2.0
             ):
                 self.buckets[NavsimPretrainSim2RealBuckets.ENTERING_JUNCTION].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 float(sample["distance_to_next_junction"]) < 1.0
                 and float(sample["speed_limit"]) < 50.0 / 3.6
             ):
                 self.buckets[NavsimPretrainSim2RealBuckets.CLOSE_TO_JUNCTION].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample["target_point"][0] < 0:
                 self.buckets[
@@ -430,45 +449,54 @@ class NavSimBucketCollection(AbstractBucketCollection):
                 ].add(route_dir, frame_number)
             elif bool(sample["vehicle_hazard"]):
                 self.buckets[NavsimPretrainSim2RealBuckets.VEHICLE_HAZARD].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 self._check_red_traffic_light(sample)
                 and float(sample["distance_to_next_junction"]) < 5.0
             ):
                 self.buckets[NavsimPretrainSim2RealBuckets.RED_TRAFFIC_LIGHT].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample["town"] == "Town15":
                 self.buckets[NavsimPretrainSim2RealBuckets.TOWN15].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 np.linalg.norm(sample["target_point"]) > 175.0
                 and abs(sample["target_point"][0]) > 10
             ):
                 self.buckets[NavsimPretrainSim2RealBuckets.FAR_TARGET_POINT].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif abs(float(sample["privileged_acceleration"])) > 15.0:
                 self.buckets[NavsimPretrainSim2RealBuckets.MEDIUM_ACCELERATION].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif abs(float(sample["privileged_acceleration"])) > 12.5:
                 self.buckets[NavsimPretrainSim2RealBuckets.LOW_ACCELERATION].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample["route_labels_curvature"] > 0.15 and sample["speed"] > 0.1:
                 self.buckets[NavsimPretrainSim2RealBuckets.HIGH_ROUTE_CURVATURE].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample["route_labels_curvature"] > 0.075 and sample["speed"] > 0.1:
                 self.buckets[NavsimPretrainSim2RealBuckets.MEDIUM_ROUTE_CURVATURE].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             else:
                 self.buckets[NavsimPretrainSim2RealBuckets.OTHERS].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
 
         self.print_statistic()
@@ -832,7 +860,7 @@ class NavSimBucketCollection(AbstractBucketCollection):
         for i, ratio in self.buckets_mixture_per_epoch(0).items():
             bucket_name = NavsimPretrainSim2RealBuckets.member_at(i).name
             print(
-                f"Bucket {i:2d} - {bucket_name:60s}: {ratio:.2f} {int(ratio * len(self.buckets[i]))}"
+                f"Bucket {i:2d} - {bucket_name:60s}: {ratio:.2f} {int(ratio * len(self.buckets[i]))}",
             )
 
 

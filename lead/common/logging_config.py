@@ -143,5 +143,6 @@ def setup_logging(level: str = None, format_string: str = None):
     logging.getLogger("lead").setLevel(level)
 
     logger.info(
-        "Logging configured: level=%s for 'lead' modules", logging.getLevelName(level)
+        "Logging configured: level=%s for 'lead' modules",
+        logging.getLevelName(level),
     )

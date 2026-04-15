@@ -111,30 +111,34 @@ class WaymoBucketCollection(AbstractBucketCollection):
             frame_number = int(sample["frame_number"])
 
             if sample["scenario_type"] == "Accident" and self._check_accident_scenario(
-                sample
+                sample,
             ):
                 self.buckets[WaymoSim2RealBuckets.ACCIDENT_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample[
                 "scenario_type"
             ] == "AccidentTwoWays" and self._check_accident_scenario(sample):
                 self.buckets[WaymoSim2RealBuckets.ACCIDENT_TWO_WAYS_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample[
                 "current_active_scenario_type"
             ] == "BlockedIntersection" and self._check_blocked_intersection(sample):
                 self.buckets[WaymoSim2RealBuckets.BLOCKED_INTERSECTION_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample[
                 "scenario_type"
             ] == "ConstructionObstacle" and self._check_construction_obstacle_scenario(
-                sample
+                sample,
             ):
                 self.buckets[WaymoSim2RealBuckets.CONSTRUCTION_OBSTACLE_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 sample["scenario_type"] == "ConstructionObstacleTwoWays"
@@ -146,15 +150,18 @@ class WaymoBucketCollection(AbstractBucketCollection):
             elif sample[
                 "current_active_scenario_type"
             ] == "CrossingBicycleFlow" and self._check_scenario_actor_close(
-                sample, max_distance=10.0
+                sample,
+                max_distance=10.0,
             ):
                 self.buckets[WaymoSim2RealBuckets.CROSSING_BICYCLE_FLOW_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample[
                 "current_active_scenario_type"
             ] == "CrossJunctionDefectTrafficLight" and self._check_scenario_actor_close(
-                sample, max_distance=10.0
+                sample,
+                max_distance=10.0,
             ):
                 self.buckets[
                     WaymoSim2RealBuckets.CROSS_JUNCTION_DEFECT_TRAFFIC_LIGHT_SCENARIO
@@ -162,36 +169,43 @@ class WaymoBucketCollection(AbstractBucketCollection):
             elif sample[
                 "current_active_scenario_type"
             ] == "DynamicObjectCrossing" and self._check_scenario_actor_close(
-                sample, max_distance=20.0
+                sample,
+                max_distance=20.0,
             ):
                 self.buckets[WaymoSim2RealBuckets.DYNAMIC_OBJECT_CROSSING_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample[
                 "current_active_scenario_type"
             ] == "HardBreakRoute" and self._check_is_hard_break_route(sample):
                 self.buckets[WaymoSim2RealBuckets.HARD_BREAK_ROUTE_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample[
                 "current_active_scenario_type"
             ] == "HazardAtSideLane" and self._check_scenario_actor_close(
-                sample, max_distance=20.0
+                sample,
+                max_distance=20.0,
             ):
                 self.buckets[WaymoSim2RealBuckets.HAZARD_AT_SIDE_LANE_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample[
                 "current_active_scenario_type"
             ] == "HazardAtSideLaneTwoWays" and self._check_scenario_actor_close(
-                sample, max_distance=20.0
+                sample,
+                max_distance=20.0,
             ):
                 self.buckets[
                     WaymoSim2RealBuckets.HAZARD_AT_SIDE_LANE_TWO_WAYS_SCENARIO
                 ].add(route_dir, frame_number)
             elif self._check_highway_cutin_scenario(sample):
                 self.buckets[WaymoSim2RealBuckets.HIGHWAY_CUT_IN_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 sample["current_active_scenario_type"] == "InterurbanActorFlow"
@@ -199,7 +213,8 @@ class WaymoBucketCollection(AbstractBucketCollection):
                 and float(sample["distance_to_next_junction"]) < 5.0
             ):
                 self.buckets[WaymoSim2RealBuckets.INTERURBAN_ACTOR_FLOW_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 sample["current_active_scenario_type"] == "InterurbanAdvancedActorFlow"
@@ -213,7 +228,8 @@ class WaymoBucketCollection(AbstractBucketCollection):
                 "scenario_type"
             ] == "InvadingTurn" and self._check_invading_turn_scenario(sample):
                 self.buckets[WaymoSim2RealBuckets.INVADING_TURN_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
                 self.buckets[
                     WaymoSim2RealBuckets.MERGER_INTO_SLOW_TRAFFIC_V2_SCENARIO
@@ -257,12 +273,13 @@ class WaymoBucketCollection(AbstractBucketCollection):
                 "scenario_type"
             ] == "ParkedObstacle" and self._check_parked_obstacle_scenario(sample):
                 self.buckets[WaymoSim2RealBuckets.PARKED_OBSTACLE_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample[
                 "scenario_type"
             ] == "ParkedObstacleTwoWays" and self._check_parked_obstacle_scenario(
-                sample
+                sample,
             ):
                 self.buckets[
                     WaymoSim2RealBuckets.PARKED_OBSTACLE_TWO_WAYS_SCENARIO
@@ -270,7 +287,8 @@ class WaymoBucketCollection(AbstractBucketCollection):
             elif sample[
                 "current_active_scenario_type"
             ] == "ParkingCrossingPedestrian" and self._check_scenario_actor_close(
-                sample, max_distance=20.0
+                sample,
+                max_distance=20.0,
             ):
                 self.buckets[
                     WaymoSim2RealBuckets.PARKING_CROSSING_PEDESTRIAN_SCENARIO
@@ -280,25 +298,29 @@ class WaymoBucketCollection(AbstractBucketCollection):
                 and float(sample["dist_to_cutin_vehicle"]) < 20
             ):
                 self.buckets[WaymoSim2RealBuckets.PARKING_CUT_IN_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample["current_active_scenario_type"] == "ParkingExit":
                 self.buckets[WaymoSim2RealBuckets.PARKING_EXIT_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 sample["current_active_scenario_type"] == "PedestrianCrossing"
                 and len(sample["scenario_actors_ids"]) > 0
             ):
                 self.buckets[WaymoSim2RealBuckets.PEDESTRIAN_CROSSING_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 sample["current_active_scenario_type"] == "PriorityAtJunction"
                 and float(sample["distance_to_next_junction"]) < 5.0
             ):
                 self.buckets[WaymoSim2RealBuckets.PRIORITY_AT_JUNCTION_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample[
                 "current_active_scenario_type"
@@ -336,12 +358,13 @@ class WaymoBucketCollection(AbstractBucketCollection):
                 and float(sample["dist_to_cutin_vehicle"]) < 20
             ):
                 self.buckets[WaymoSim2RealBuckets.STATIC_CUT_IN_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample[
                 "scenario_type"
             ] == "VehicleOpensDoorTwoWays" and self._check_vehicle_opens_door_scenario(
-                sample
+                sample,
             ):
                 self.buckets[
                     WaymoSim2RealBuckets.VEHICLE_OPENS_DOOR_TWO_WAYS_SCENARIO
@@ -352,7 +375,8 @@ class WaymoBucketCollection(AbstractBucketCollection):
                 and self._check_vehicle_turning_route(sample)
             ):
                 self.buckets[WaymoSim2RealBuckets.VEHICLE_TURNING_ROUTE_SCENARIO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 sample["current_active_scenario_type"]
@@ -367,33 +391,39 @@ class WaymoBucketCollection(AbstractBucketCollection):
             # Non-scenario-specific mining
             elif self._check_red_overhead_traffic_light(sample):
                 self.buckets[WaymoSim2RealBuckets.RED_OVERHEAD_TRAFFIC_LIGHT].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif self._check_red_europe_traffic_light(sample):
                 self.buckets[WaymoSim2RealBuckets.RED_EUROPE_TRAFFIC_LIGHT].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 bool(sample["slower_occluded_junction"])
                 and float(sample["distance_to_next_junction"]) < 5.0
             ):
                 self.buckets[WaymoSim2RealBuckets.OCCLUDED_JUNCTION].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif abs(float(sample["privileged_acceleration"])) > 17.5:
                 self.buckets[WaymoSim2RealBuckets.HIGH_ACCELERATION].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif self._check_large_lateral_deviation(sample):
                 self.buckets[WaymoSim2RealBuckets.LARGE_LATERAL_DEVIATION].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 bool(sample["stop_sign_hazard"])
                 and float(sample["distance_to_next_junction"]) < 10.0
             ):
                 self.buckets[WaymoSim2RealBuckets.STOP_SIGN_HAZARD].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 0.0 < float(sample["distance_to_next_junction"]) < 3.5
@@ -401,29 +431,34 @@ class WaymoBucketCollection(AbstractBucketCollection):
                 and float(sample["privileged_acceleration"]) > 2.0
             ):
                 self.buckets[WaymoSim2RealBuckets.ENTERING_JUNCTION].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 float(sample["distance_to_next_junction"]) < 1.0
                 and float(sample["speed_limit"]) < 50.0 / 3.6
             ):
                 self.buckets[WaymoSim2RealBuckets.CLOSE_TO_JUNCTION].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample["target_point"][0] < 0:
                 self.buckets[WaymoSim2RealBuckets.CURRENT_TARGET_POINT_BEHIND_EGO].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif bool(sample["vehicle_hazard"]):
                 self.buckets[WaymoSim2RealBuckets.VEHICLE_HAZARD].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif (
                 self._check_red_traffic_light(sample)
                 and float(sample["distance_to_next_junction"]) < 5.0
             ):
                 self.buckets[WaymoSim2RealBuckets.RED_TRAFFIC_LIGHT].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample["town"] == "Town15":
                 self.buckets[WaymoSim2RealBuckets.TOWN15].add(route_dir, frame_number)
@@ -432,23 +467,28 @@ class WaymoBucketCollection(AbstractBucketCollection):
                 and abs(sample["target_point"][0]) > 10
             ):
                 self.buckets[WaymoSim2RealBuckets.FAR_TARGET_POINT].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif abs(float(sample["privileged_acceleration"])) > 15.0:
                 self.buckets[WaymoSim2RealBuckets.MEDIUM_ACCELERATION].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif abs(float(sample["privileged_acceleration"])) > 12.5:
                 self.buckets[WaymoSim2RealBuckets.LOW_ACCELERATION].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample["route_labels_curvature"] > 0.15 and sample["speed"] > 0.1:
                 self.buckets[WaymoSim2RealBuckets.HIGH_ROUTE_CURVATURE].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             elif sample["route_labels_curvature"] > 0.075 and sample["speed"] > 0.1:
                 self.buckets[WaymoSim2RealBuckets.MEDIUM_ROUTE_CURVATURE].add(
-                    route_dir, frame_number
+                    route_dir,
+                    frame_number,
                 )
             else:
                 self.buckets[WaymoSim2RealBuckets.OTHERS].add(route_dir, frame_number)
@@ -776,7 +816,7 @@ class WaymoBucketCollection(AbstractBucketCollection):
         for i, ratio in self.buckets_mixture_per_epoch(0).items():
             bucket_name = WaymoSim2RealBuckets.member_at(i).name
             print(
-                f"Bucket {i:2d} - {bucket_name:60s}: {ratio:.2f} {int(ratio * len(self.buckets[i]))}"
+                f"Bucket {i:2d} - {bucket_name:60s}: {ratio:.2f} {int(ratio * len(self.buckets[i]))}",
             )
 
 

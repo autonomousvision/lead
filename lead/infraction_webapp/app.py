@@ -63,7 +63,7 @@ def list_output_directories():
 
     if not base_path.exists():
         return jsonify(
-            {"error": "Evaluation directory not found", "directories": []}
+            {"error": "Evaluation directory not found", "directories": []},
         ), 404
 
     directories = []
@@ -124,7 +124,7 @@ def list_output_directories():
                             "benchmark": benchmark_seed,
                             "timestamp": timestamp,
                             "infraction_count": total_infractions,
-                        }
+                        },
                     )
 
     return jsonify({"directories": directories, "base_path": str(base_path)})
@@ -165,7 +165,7 @@ def list_routes():
                 if has_infractions:
                     try:
                         infraction_data = load_infractions_data(
-                            route_dir / "infractions.json"
+                            route_dir / "infractions.json",
                         )
                         infractions = infraction_data["infractions"]
                         # Filter out min speed and completion infractions
@@ -199,7 +199,7 @@ def get_infractions(route_name):
                 "error": "Infractions file not found",
                 "infractions": [],
                 "video_fps": None,
-            }
+            },
         ), 404
 
     try:
@@ -209,7 +209,7 @@ def get_infractions(route_name):
                 "infractions": infraction_data["infractions"],
                 "video_fps": infraction_data["video_fps"],
                 "is_legacy_format": infraction_data["is_legacy_format"],
-            }
+            },
         )
     except Exception as e:
         return jsonify({"error": str(e), "infractions": [], "video_fps": None}), 500
@@ -249,7 +249,7 @@ def get_video_info(route_name):
             {
                 "video_fps": infraction_data["video_fps"],
                 "is_legacy_format": infraction_data["is_legacy_format"],
-            }
+            },
         )
     except Exception as e:
         return jsonify({"error": str(e), "video_fps": None}), 500
@@ -298,7 +298,8 @@ def serve_video(route_name, video_type):
 
         response = Response(data, 206, mimetype="video/mp4", direct_passthrough=True)
         response.headers.add(
-            "Content-Range", f"bytes {byte_start}-{byte_end}/{file_size}"
+            "Content-Range",
+            f"bytes {byte_start}-{byte_end}/{file_size}",
         )
         response.headers.add("Accept-Ranges", "bytes")
         response.headers.add("Content-Length", str(length))
@@ -382,7 +383,7 @@ def cut_video():
 
     if not input_video.exists():
         return jsonify(
-            {"error": f"Video file {video_files[video_type]} not found"}
+            {"error": f"Video file {video_files[video_type]} not found"},
         ), 404
 
     # Calculate start and duration
@@ -433,7 +434,7 @@ def cut_video():
                 "start_time": start_time,
                 "duration": duration,
                 "buffer": buffer_seconds,
-            }
+            },
         )
 
     except subprocess.CalledProcessError as e:
@@ -520,7 +521,7 @@ def cut_custom_video():
                 "output_path": str(output_path),
                 "filename": output_filename,
                 "duration": duration,
-            }
+            },
         )
 
     except subprocess.CalledProcessError as e:
@@ -531,7 +532,7 @@ def cut_custom_video():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Infraction Dashboard - CARLA Evaluation Viewer"
+        description="Infraction Dashboard - CARLA Evaluation Viewer",
     )
     parser.add_argument(
         "--read-only",
@@ -545,7 +546,9 @@ if __name__ == "__main__":
         help="Port to run the server on (default: 5000)",
     )
     parser.add_argument(
-        "--host", default="0.0.0.0", help="Host to run the server on (default: 0.0.0.0)"
+        "--host",
+        default="0.0.0.0",
+        help="Host to run the server on (default: 0.0.0.0)",
     )
     args = parser.parse_args()
 

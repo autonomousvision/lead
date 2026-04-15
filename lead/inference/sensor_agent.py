@@ -68,7 +68,8 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
         if self.config_closed_loop.is_bench2drive:
             path_to_conf_file = path_to_conf_file.split("+")[0]
         with open(
-            os.path.join(path_to_conf_file, "config.json"), encoding="utf-8"
+            os.path.join(path_to_conf_file, "config.json"),
+            encoding="utf-8",
         ) as f:
             json_config = f.read()
             json_config = json.loads(json_config)
@@ -116,7 +117,7 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
 
         if not shutil.which("ffmpeg"):
             raise RuntimeError(
-                "ffmpeg is not installed or not found in PATH. Please install ffmpeg to use video compression."
+                "ffmpeg is not installed or not found in PATH. Please install ffmpeg to use video compression.",
             )
 
     @beartype
@@ -186,7 +187,7 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
 
         if weather_name is not None:
             weather = carla.WeatherParameters(
-                **self.config_expert.weather_settings[weather_name]
+                **self.config_expert.weather_settings[weather_name],
             )
             self._world.set_weather(weather)
             LOG.info(f"Set weather to: {weather_name}")
@@ -197,8 +198,8 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
                     vehicle.set_light_state(
                         carla.VehicleLightState(
                             carla.VehicleLightState.Position
-                            | carla.VehicleLightState.LowBeam
-                        )
+                            | carla.VehicleLightState.LowBeam,
+                        ),
                     )
             else:
                 for vehicle in vehicles:
@@ -242,7 +243,9 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
                 else input_data["noisy_state"][:2]
             )
             return common_utils.inverse_conversion_2d(
-                np.array(point), np.array(ego_position), self.compass
+                np.array(point),
+                np.array(ego_position),
+                self.compass,
             )
 
         next_target_points = [tp[0].tolist() for tp in planner.route]
@@ -274,7 +277,7 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
 
         input_data["command"] = carla_dataset_utils.command_to_one_hot(next_commands[0])
         input_data["next_command"] = carla_dataset_utils.command_to_one_hot(
-            next_commands[1]
+            next_commands[1],
         )
 
     @beartype
@@ -282,7 +285,8 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
     def tick(self, input_data: dict) -> dict:
         """Pre-processes sensor data"""
         input_data = super().tick(
-            input_data, use_kalman_filter=self.training_config.use_kalman_filter_for_gps
+            input_data,
+            use_kalman_filter=self.training_config.use_kalman_filter_for_gps,
         )
 
         # Simulate JPEG compression to avoid train-test mismatch
@@ -336,12 +340,13 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
 
         # Plan next target point and command.
         self.set_target_points(
-            input_data, pop_distance=self.config_closed_loop.route_planner_min_distance
+            input_data,
+            pop_distance=self.config_closed_loop.route_planner_min_distance,
         )
         if self.config_closed_loop.sensor_agent_pop_distance_adaptive:
             dense_points = (
                 np.linalg.norm(
-                    input_data["target_point"] - input_data["target_point_next"]
+                    input_data["target_point"] - input_data["target_point_next"],
                 )
                 < 10.0
                 and min(
@@ -352,7 +357,7 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
             )
             dense_points = dense_points or (
                 np.linalg.norm(
-                    input_data["target_point_previous"] - input_data["target_point"]
+                    input_data["target_point_previous"] - input_data["target_point"],
                 )
                 < 10.0
                 and min(
@@ -394,15 +399,17 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
 
         # Convert to pseudo image
         input_data["rasterized_lidar"] = rasterize_lidar(
-            config=self.training_config, lidar=lidar[:, :3]
+            config=self.training_config,
+            lidar=lidar[:, :3],
         )[..., None]
 
         # Simulate training time compression to avoid train-test mismatch
         input_data["rasterized_lidar"] = training_cache.compress_float_image(
-            input_data["rasterized_lidar"], self.training_config
+            input_data["rasterized_lidar"],
+            self.training_config,
         )
         input_data["rasterized_lidar"] = training_cache.decompress_float_image(
-            input_data["rasterized_lidar"]
+            input_data["rasterized_lidar"],
         ).squeeze()[None, None]
 
         # Radar input preprocessing
@@ -410,7 +417,8 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
             # Preprocess radar input using the same function as during training
             input_data["radar"] = np.concatenate(
                 carla_dataset_utils.preprocess_radar_input(
-                    self.training_config, input_data
+                    self.training_config,
+                    input_data,
                 ),
                 axis=0,
             )
@@ -442,7 +450,8 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
                 None
             ],
             "rasterized_lidar": torch.Tensor(input_data["rasterized_lidar"]).to(
-                self.device, dtype=torch.float32
+                self.device,
+                dtype=torch.float32,
             ),
             "target_point_previous": torch.Tensor(input_data["target_point_previous"])
             .to(self.device, dtype=torch.float32)
@@ -452,7 +461,8 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
             .view(1, 2),
             "target_point_next": (
                 torch.Tensor(input_data["target_point_next"]).to(
-                    self.device, dtype=torch.float32
+                    self.device,
+                    dtype=torch.float32,
                 )
             ).view(1, 2),
             "speed": torch.Tensor([input_data["speed"]])
@@ -470,7 +480,8 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
         # Add radar data if available
         if self.training_config.use_radars and "radar" in input_data:
             input_data_tensors["radar"] = torch.Tensor(input_data["radar"]).to(
-                self.device, dtype=torch.float32
+                self.device,
+                dtype=torch.float32,
             )[None]
 
         # Save input log if need
@@ -484,7 +495,8 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
                     for k, v in input_data_tensors.items()
                 },
                 os.path.join(
-                    self.config_closed_loop.input_log_path, str(self.step).zfill(5)
+                    self.config_closed_loop.input_log_path,
+                    str(self.step).zfill(5),
                 )
                 + ".pth",
             )
@@ -499,7 +511,7 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
             and len(closed_loop_prediction.pred_bounding_box_vehicle_system) > 0
         ):
             self.bb_buffer.append(
-                closed_loop_prediction.pred_bounding_box_vehicle_system
+                closed_loop_prediction.pred_bounding_box_vehicle_system,
             )
 
         # Post-processing heuristic
@@ -553,24 +565,24 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
                     [
                         self.stop_sign_post_processor.stop_sign_buffer[0].norm
                         if len(self.stop_sign_post_processor.stop_sign_buffer) > 0
-                        else np.inf
-                    ]
+                        else np.inf,
+                    ],
                 ),
                 "stuck_detector": torch.Tensor(
-                    [int(self.force_move_post_processor.stuck_detector)]
+                    [int(self.force_move_post_processor.stuck_detector)],
                 ).int(),
                 "force_move": torch.Tensor(
-                    [int(self.force_move_post_processor.force_move)]
+                    [int(self.force_move_post_processor.force_move)],
                 ).int(),
                 "route_curvature": torch.Tensor(
                     [
                         common_utils.waypoints_curvature(
-                            closed_loop_prediction.pred_route.squeeze()
-                        )
-                    ]
+                            closed_loop_prediction.pred_route.squeeze(),
+                        ),
+                    ],
                 ),
                 "meters_travelled": torch.Tensor([self.meters_travelled]),
-            }
+            },
         )
 
         # Save input images as PNG and video
@@ -642,7 +654,8 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
             metric = self.get_metric_info()
             self.metric_info[self.step] = metric
             with open(
-                f"{self.config_closed_loop.save_path}/metric_info.json", "w"
+                f"{self.config_closed_loop.save_path}/metric_info.json",
+                "w",
             ) as outfile:
                 json.dump(self.metric_info, outfile, indent=4)
         return self.control
@@ -771,8 +784,13 @@ class StopSignPostProcessor:
         if len(self.stop_sign_buffer) != 0:
             self.stop_sign_buffer.append(
                 self.stop_sign_buffer[0].update(
-                    x, y, orientation, x_target, y_target, orientation_target
-                )
+                    x,
+                    y,
+                    orientation,
+                    x_target,
+                    y_target,
+                    orientation_target,
+                ),
             )
 
 
@@ -794,7 +812,10 @@ class ForceMovePostProcessor:
 
     @beartype
     def adjust(
-        self, ego_speed: float, current_throttle: float, current_brake: float
+        self,
+        ego_speed: float,
+        current_throttle: float,
+        current_brake: float,
     ) -> tuple[float, float]:
         if not self.config_test_time.sensor_agent_creeping:
             return current_throttle, current_brake
@@ -833,7 +854,8 @@ class ForceMovePostProcessor:
             if not emergency_stop:
                 LOG.info("Detected agent being stuck.")
                 current_throttle = max(
-                    self.config_test_time.sensor_agent_stuck_throttle, current_throttle
+                    self.config_test_time.sensor_agent_stuck_throttle,
+                    current_throttle,
                 )
                 current_brake = 0.0
                 self.force_move -= 1

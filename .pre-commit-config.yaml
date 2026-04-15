@@ -47,13 +47,12 @@ repos:
             --check-return-types=false,
             --exclude=lead/training/rfs.py,
             --check-yield-types=false,
-            lead/
+            lead/,
           ]
         pass_filenames: false
         always_run: true
         types: [python]
 
-    # Markdown linting
   - repo: https://github.com/executablebooks/mdformat
     rev: 0.7.17
     hooks:
@@ -64,13 +63,18 @@ repos:
         pass_filenames: false
         always_run: true
 
-    # Markdown linting
-  - repo: https://github.com/executablebooks/mdformat
-    rev: 0.7.17
+  - repo: https://github.com/tox-dev/pyproject-fmt
+    rev: "v2.21.1"
     hooks:
-      - id: mdformat
-        additional_dependencies:
-          - mdformat-gfm
-          - mdformat-black
+      - id: pyproject-fmt
         pass_filenames: false
         always_run: true
+        args:
+          [
+            pyproject.toml
+          ]
+
+  - repo: https://github.com/asottile/add-trailing-comma
+    rev: v4.0.0
+    hooks:
+    -   id: add-trailing-comma

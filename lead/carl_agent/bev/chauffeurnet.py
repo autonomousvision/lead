@@ -15,6 +15,7 @@ import carla
 import cv2 as cv
 import h5py
 import numpy as np
+
 from lead.carl_agent.bev.obs_manager import ObsManagerBase
 from lead.carl_agent.bev.traffic_light import TrafficLightHandler
 
@@ -77,10 +78,12 @@ class ObsManager(ObsManagerBase):
             maps_h5_path = self._map_dir / (world_map.name.rsplit("/", 1)[1] + ".h5")
             hf = h5py.File(maps_h5_path, "r", libver="latest", swmr=True)
             self._world_offset = np.array(
-                hf.attrs["world_offset_in_meters"], dtype=np.float32
+                hf.attrs["world_offset_in_meters"],
+                dtype=np.float32,
             )
             assert np.isclose(
-                self._pixels_per_meter, float(hf.attrs["pixels_per_meter"])
+                self._pixels_per_meter,
+                float(hf.attrs["pixels_per_meter"]),
             )
             self._map_h, self._map_w = hf["road"].shape
             # OpenCV warpAffine requires src dimensions < SHRT_MAX (32767).
@@ -174,7 +177,8 @@ class ObsManager(ObsManagerBase):
             walker_location = walker_transform.location
             transform = carla.Transform(walker_location)
             bounding_box = carla.BoundingBox(
-                transform.location, walker.bounding_box.extent
+                transform.location,
+                walker.bounding_box.extent,
             )
             bounding_box.rotation = carla.Rotation(
                 pitch=walker.bounding_box.rotation.pitch
@@ -186,24 +190,30 @@ class ObsManager(ObsManagerBase):
 
         if self._scale_bbox:
             vehicles = self._get_surrounding_actors(
-                vehicle_bbox_list, is_within_distance, 1.0
+                vehicle_bbox_list,
+                is_within_distance,
+                1.0,
             )
             walkers = self._get_surrounding_actors(
-                walker_bbox_list, is_within_distance, 2.0
+                walker_bbox_list,
+                is_within_distance,
+                2.0,
             )
         else:
             vehicles = self._get_surrounding_actors(
-                vehicle_bbox_list, is_within_distance
+                vehicle_bbox_list,
+                is_within_distance,
             )
             walkers = self._get_surrounding_actors(walker_bbox_list, is_within_distance)
 
         tl_green, tl_yellow, tl_red, _ = TrafficLightHandler.get_stopline_vtx(
-            ev_loc, self._distance_threshold
+            ev_loc,
+            self._distance_threshold,
         )
         stops = self._get_stops(self.criteria_stop)
 
         self._history_queue.append(
-            (vehicles, walkers, tl_green, tl_yellow, tl_red, stops)
+            (vehicles, walkers, tl_green, tl_yellow, tl_red, stops),
         )
 
         m_warp = self._get_warp_transform(ev_loc, ev_rot)
@@ -232,11 +242,15 @@ class ObsManager(ObsManagerBase):
             m_warp_crop[0, 2] += m_warp[0, 0] * col0 + m_warp[0, 1] * row0
             m_warp_crop[1, 2] += m_warp[1, 0] * col0 + m_warp[1, 1] * row0
             warped_hd_map = cv.warpAffine(
-                hd_map_crop, m_warp_crop, (self._width, self._width)
+                hd_map_crop,
+                m_warp_crop,
+                (self._width, self._width),
             )
         else:
             warped_hd_map = cv.warpAffine(
-                self.hd_map_array, m_warp, (self._width, self._width)
+                self.hd_map_array,
+                m_warp,
+                (self._width, self._width),
             )
         lane_mask_broken = warped_hd_map[:, :, 2].astype(bool)
 
@@ -274,7 +288,8 @@ class ObsManager(ObsManagerBase):
             lane_mask_all = warped_hd_map[:, :, 1].astype(bool)
             route_mask_bool = route_mask.astype(bool)
             ev_mask = self._get_mask_from_actor_list(
-                [(ev_transform, ev_bbox.location, ev_bbox.extent)], m_warp
+                [(ev_transform, ev_bbox.location, ev_bbox.extent)],
+                m_warp,
             )
 
             image = np.zeros([self._width, self._width, 3], dtype=np.uint8)
@@ -339,7 +354,7 @@ class ObsManager(ObsManagerBase):
 
         obs_dict["collision_px"] = np.any(ev_mask_col & walker_masks[-1])
         obs_dict["percentage_off_road"] = np.sum(
-            ev_mask_col & np.logical_not(c_road.astype(bool))
+            ev_mask_col & np.logical_not(c_road.astype(bool)),
         ) / np.sum(ev_mask_col)
 
         return obs_dict
@@ -378,7 +393,8 @@ class ObsManager(ObsManagerBase):
         mask = np.zeros([self._width, self._width], dtype=np.uint8)
         for sp_locs in stopline_vtx:
             stopline_in_pixel = np.array(
-                [[x.x, x.y] for x in sp_locs], dtype=np.float32
+                [[x.x, x.y] for x in sp_locs],
+                dtype=np.float32,
             )
             stopline_in_pixel[:, 0:2] = self._pixels_per_meter * (
                 stopline_in_pixel[:, 0:2] - self._world_offset[0:2]
@@ -395,21 +411,22 @@ class ObsManager(ObsManagerBase):
         for actor_transform, bb_loc, bb_ext in actor_list:
             corners2 = [
                 actor_transform.transform(
-                    bb_loc + carla.Location(x=-bb_ext.x, y=-bb_ext.y)
+                    bb_loc + carla.Location(x=-bb_ext.x, y=-bb_ext.y),
                 ),
                 actor_transform.transform(
-                    bb_loc + carla.Location(x=bb_ext.x, y=-bb_ext.y)
+                    bb_loc + carla.Location(x=bb_ext.x, y=-bb_ext.y),
                 ),
                 actor_transform.transform(bb_loc + carla.Location(x=bb_ext.x, y=0)),
                 actor_transform.transform(
-                    bb_loc + carla.Location(x=bb_ext.x, y=bb_ext.y)
+                    bb_loc + carla.Location(x=bb_ext.x, y=bb_ext.y),
                 ),
                 actor_transform.transform(
-                    bb_loc + carla.Location(x=-bb_ext.x, y=bb_ext.y)
+                    bb_loc + carla.Location(x=-bb_ext.x, y=bb_ext.y),
                 ),
             ]
             corners3 = np.array(
-                [[corner.x, corner.y] for corner in corners2], dtype=np.float32
+                [[corner.x, corner.y] for corner in corners2],
+                dtype=np.float32,
             )
             corners_in_pixel = self._world_to_pixel_batch(corners3)[:, np.newaxis, :]
             corners_warped = cv.transform(corners_in_pixel, m_warp)
@@ -429,7 +446,7 @@ class ObsManager(ObsManagerBase):
                     bb_ext.x = max(bb_ext.x, 0.8)
                     bb_ext.y = max(bb_ext.y, 0.8)
                 actors.append(
-                    (carla.Transform(bbox.location, bbox.rotation), bb_loc, bb_ext)
+                    (carla.Transform(bbox.location, bbox.rotation), bb_loc, bb_ext),
                 )
         return actors
 
@@ -457,10 +474,11 @@ class ObsManager(ObsManagerBase):
         )
 
         src_pts = np.stack((bottom_left, top_left, top_right), axis=0).astype(
-            np.float32
+            np.float32,
         )
         dst_pts = np.array(
-            [[0, self._width - 1], [0, 0], [self._width - 1, 0]], dtype=np.float32
+            [[0, self._width - 1], [0, 0], [self._width - 1, 0]],
+            dtype=np.float32,
         )
         return cv.getAffineTransform(src_pts, dst_pts)
 

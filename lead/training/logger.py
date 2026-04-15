@@ -68,10 +68,10 @@ class Logger:
                 )
                 self.step = max(self.step, wandb.run.step)
                 LOG.info(
-                    f"WandB logger will log scalar every {self.config.log_scalars_frequency} steps"
+                    f"WandB logger will log scalar every {self.config.log_scalars_frequency} steps",
                 )
                 LOG.info(
-                    f"WandB logger will log images every {self.config.log_images_frequency} steps"
+                    f"WandB logger will log images every {self.config.log_images_frequency} steps",
                 )
             else:
                 LOG.info("WandB is disabled. Only TensorBoard logging is enabled.")
@@ -171,7 +171,7 @@ class Logger:
                 message["debug/allocated_cpus"] = self.config.assigned_cpu_cores
                 message["debug/gradient_steps_skipped"] = gradient_steps_skipped
                 message["debug/max_gpu_mem"] = torch.cuda.max_memory_allocated(
-                    self.config.device
+                    self.config.device,
                 ) / (1024**3)  # Convert to GB
                 message["debug/average_loading_time"] = (
                     data["loading_time"].cpu().numpy().mean()

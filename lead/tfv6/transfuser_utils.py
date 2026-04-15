@@ -55,13 +55,15 @@ def patch_norm_fp32(module: torch.nn.Module) -> torch.nn.Module:
     """
     for child in module.modules():
         if isinstance(
-            child, nn.modules.batchnorm._BatchNorm | nn.GroupNorm | nn.LayerNorm
+            child,
+            nn.modules.batchnorm._BatchNorm | nn.GroupNorm | nn.LayerNorm,
         ):
             # Ensure parameters are in FP32
             child.float()
             # Patch the forward method to handle input/output dtype conversion
             child.forward = _fp32_forward_wrapper(child.forward).__get__(
-                child, type(child)
+                child,
+                type(child),
             )
     return module
 
@@ -131,7 +133,8 @@ def force_fp32(apply_to: tuple[str, ...] | None = None):
 
 @beartype
 def gen_sineembed_for_position(
-    pos_tensor: jt.Float[torch.Tensor, "B 2"], hidden_dim: int = 64
+    pos_tensor: jt.Float[torch.Tensor, "B 2"],
+    hidden_dim: int = 64,
 ):
     """Mostly copy-paste from https://github.com/IDEA-opensource/DAB-DETR
     Args:
@@ -152,10 +155,12 @@ def gen_sineembed_for_position(
     pos_x = x_embed[..., None] / dim_t
     pos_y = y_embed[..., None] / dim_t
     pos_x = torch.stack(
-        (pos_x[..., 0::2].sin(), pos_x[..., 1::2].cos()), dim=-1
+        (pos_x[..., 0::2].sin(), pos_x[..., 1::2].cos()),
+        dim=-1,
     ).flatten(-2)
     pos_y = torch.stack(
-        (pos_y[..., 0::2].sin(), pos_y[..., 1::2].cos()), dim=-1
+        (pos_y[..., 0::2].sin(), pos_y[..., 1::2].cos()),
+        dim=-1,
     ).flatten(-2)
     pos = torch.cat((pos_y, pos_x), dim=-1)
     return pos
@@ -163,7 +168,8 @@ def gen_sineembed_for_position(
 
 @beartype
 def unit_normalize_bev_points(
-    points: jt.Float[npt.NDArray | torch.Tensor, "... 2"], config: TrainingConfig
+    points: jt.Float[npt.NDArray | torch.Tensor, "... 2"],
+    config: TrainingConfig,
 ) -> jt.Float[npt.NDArray | torch.Tensor, "... 2"]:
     """Unit normalize BEV points to range [0, 1].
 
@@ -219,7 +225,10 @@ def bev_grid_sample(
     grid = grid.view(B, N, 1, 2)  # (B, N, 1, 2)
 
     sampled = F.grid_sample(
-        bev, grid, mode="bilinear", align_corners=True
+        bev,
+        grid,
+        mode="bilinear",
+        align_corners=True,
     )  # (B, D, N, 1)
 
     return sampled.squeeze(-1).permute(0, 2, 1)  # (B, N, D)

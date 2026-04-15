@@ -62,7 +62,8 @@ class OpenLoopInference:
                     weights_only=True,
                 )
                 net.load_state_dict(
-                    state_dict, strict=config_open_loop.strict_weight_load
+                    state_dict,
+                    strict=config_open_loop.strict_weight_load,
                 )
                 net.cuda(device=self.device).eval()
                 self.nets.append(net)
@@ -70,7 +71,8 @@ class OpenLoopInference:
 
     @beartype
     def ensemble_planning_decoder(
-        self, predictions: list[Prediction]
+        self,
+        predictions: list[Prediction],
     ) -> tuple[
         jt.Float[torch.Tensor, "1 num_waypoints 2"] | None,
         jt.Float[torch.Tensor, "1 num_checkpoints 2"] | None,
@@ -95,11 +97,12 @@ class OpenLoopInference:
         if self.config_training.use_planning_decoder:
             if self.config_training.predict_target_speed:
                 pred_target_speed_logits = torch.stack(
-                    [pred.pred_target_speed_distribution[0] for pred in predictions]
+                    [pred.pred_target_speed_distribution[0] for pred in predictions],
                 ).mean(dim=0, keepdim=True)  # Average target speed logits.
 
                 pred_target_speed_distribution = F.softmax(
-                    pred_target_speed_logits, dim=-1
+                    pred_target_speed_logits,
+                    dim=-1,
                 )  # softmax probabilities.
                 pred_target_speed_scalar = decode_two_hot(
                     pred_target_speed_distribution,
@@ -120,12 +123,12 @@ class OpenLoopInference:
 
             if self.config_training.predict_temporal_spatial_waypoints:
                 pred_future_waypoints = torch.stack(
-                    [pred.pred_future_waypoints[0] for pred in predictions]
+                    [pred.pred_future_waypoints[0] for pred in predictions],
                 ).mean(dim=0, keepdim=True)  # Average waypoints.
 
             if self.config_training.predict_spatial_path:
                 pred_routes = torch.stack(
-                    [pred.pred_route[0] for pred in predictions]
+                    [pred.pred_route[0] for pred in predictions],
                 ).mean(dim=0, keepdim=True)  # Average route.
 
             if (
@@ -133,7 +136,7 @@ class OpenLoopInference:
                 and predictions[0].pred_headings is not None
             ):
                 pred_future_headings = torch.stack(
-                    [pred.pred_headings[0] for pred in predictions]
+                    [pred.pred_headings[0] for pred in predictions],
                 ).mean(dim=0, keepdim=True)  # Average headings.
 
         return (
@@ -146,7 +149,8 @@ class OpenLoopInference:
 
     @beartype
     def ensemble_bounding_boxes(
-        self, predictions: list[Prediction]
+        self,
+        predictions: list[Prediction],
     ) -> tuple[list[PredictedBoundingBox], list[PredictedBoundingBox]]:
         """
         Args:
@@ -159,7 +163,8 @@ class OpenLoopInference:
         if self.config_training.detect_boxes:
             for prediction in predictions:
                 pred_bb = prediction.pred_bounding_box.pred_bounding_box_vehicle_system.squeeze().reshape(
-                    -1, 9
+                    -1,
+                    9,
                 )
                 if len(pred_bb) > 0:
                     pred_bounding_boxes_vehicle_system.append(pred_bb)
@@ -215,7 +220,8 @@ class OpenLoopInference:
 
     @beartype
     def ensemble_bev_semantic(
-        self, predictions: list[Prediction]
+        self,
+        predictions: list[Prediction],
     ) -> jt.Float[torch.Tensor, "B num_classes bev_height bev_width"] | None:
         """
         Args:
@@ -228,7 +234,8 @@ class OpenLoopInference:
             for prediction in predictions:
                 pred_bev_semantic.append(prediction.pred_bev_semantic)
             stacked = torch.stack(
-                pred_bev_semantic, dim=0
+                pred_bev_semantic,
+                dim=0,
             )  # (num_models, num_batches, num_classes, H, W)
             ch0 = (
                 stacked[:, :, 0].min(dim=0).values.unsqueeze(1)
@@ -241,7 +248,8 @@ class OpenLoopInference:
 
     @beartype
     def ensemble_depth(
-        self, predictions: list[Prediction]
+        self,
+        predictions: list[Prediction],
     ) -> jt.Float[torch.Tensor, "B img_height img_width"] | None:
         """
         Args:
@@ -259,7 +267,8 @@ class OpenLoopInference:
 
     @beartype
     def ensemble_semantic_segmentation(
-        self, predictions: list[Prediction]
+        self,
+        predictions: list[Prediction],
     ) -> jt.Float[torch.Tensor, "B num_classes img_height img_width"] | None:
         """
         Args:
@@ -272,7 +281,8 @@ class OpenLoopInference:
             for prediction in predictions:
                 pred_semantic.append(prediction.pred_semantic)
             stacked = torch.stack(
-                pred_semantic, dim=0
+                pred_semantic,
+                dim=0,
             )  # (num_models, num_batches, num_classes, H, W)
             ch0 = (
                 stacked[:, :, 0].min(dim=0).values.unsqueeze(1)

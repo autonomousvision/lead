@@ -10,9 +10,10 @@ Code adapted from https://github.com/zhejz/carla-roach
 
 from collections import deque
 
-import lead.carl_agent.bev.transforms as trans_utils
 import carla
 import numpy as np
+
+import lead.carl_agent.bev.transforms as trans_utils
 
 
 def _get_traffic_light_waypoints(traffic_light, carla_map):
@@ -144,18 +145,20 @@ class TrafficLightHandler:
                         and last_pos.distance(route_wp.transform.location) < 10.0
                     ):
                         if does_tf_affect_ego(
-                            route_wp, TrafficLightHandler.list_stopline_wps[idx]
+                            route_wp,
+                            TrafficLightHandler.list_stopline_wps[idx],
                         ):
                             TrafficLightHandler.tl_ids_affecting_ego[-1][1] = i
                             last_pos = route_wp.transform.location
                         continue
                     if does_tf_affect_ego(
-                        route_wp, TrafficLightHandler.list_stopline_wps[idx]
+                        route_wp,
+                        TrafficLightHandler.list_stopline_wps[idx],
                     ):
                         last_tl_id = tl_actor.id
                         last_pos = route_wp.transform.location
                         TrafficLightHandler.tl_ids_affecting_ego.append(
-                            [tl_actor.id, i]
+                            [tl_actor.id, i],
                         )
 
     @staticmethod
@@ -177,7 +180,7 @@ class TrafficLightHandler:
             )
 
             distance = np.sqrt(
-                (tv_loc.x - hit_loc.x) ** 2 + (tv_loc.y - hit_loc.y) ** 2
+                (tv_loc.x - hit_loc.x) ** 2 + (tv_loc.y - hit_loc.y) ** 2,
             )
             if distance > dist_threshold:
                 continue
@@ -198,10 +201,12 @@ class TrafficLightHandler:
 
                 if (same_road or same_road_1) and dot_ve_wp > 0:
                     loc_in_ev = trans_utils.loc_global_to_ref(
-                        wp.transform.location, vec_tra
+                        wp.transform.location,
+                        vec_tra,
                     )
                     light_loc = np.array(
-                        [loc_in_ev.x, loc_in_ev.y, loc_in_ev.z], dtype=np.float32
+                        [loc_in_ev.x, loc_in_ev.y, loc_in_ev.z],
+                        dtype=np.float32,
                     )
                     light_state = traffic_light.state
                     light_id = traffic_light.id

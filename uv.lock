@@ -1237,19 +1237,6 @@ wheels = [
 ]
 
 [[package]]
-name = "ipython-beartype"
-version = "0.2.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "beartype" },
-    { name = "ipython" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/01/ce/d214c97bdee971021b528b0d87758fe2540a764f0b85c0aa0749e5cf23a8/ipython_beartype-0.2.0.tar.gz", hash = "sha256:83deb80fb90ee92138e3ebd3368d1b368fd4974c45cbd49c617a50b9172ef7e8", size = 18445, upload-time = "2025-07-15T21:38:01.944Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/52/a63ad6df0d74ca74019b4f4498a5a00483cdaf2e5f17efea261d1f05e3b8/ipython_beartype-0.2.0-py3-none-any.whl", hash = "sha256:9f79b5264a8ccbaeba487639fb37d6818c9576a0d270f79b7f5a8e6ef352340c", size = 4461, upload-time = "2025-07-15T21:38:00.933Z" },
-]
-
-[[package]]
 name = "ipywidgets"
 version = "8.1.8"
 source = { registry = "https://pypi.org/simple" }
@@ -1338,6 +1325,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/9c/4b/6f8906aaf67d501e259b0adab4d312945bb7211e8b8d4dcc77c92320edaa/json5-0.14.0.tar.gz", hash = "sha256:b3f492fad9f6cdbced8b7d40b28b9b1c9701c5f561bef0d33b81c2ff433fefcb", size = 52656, upload-time = "2026-03-27T22:50:48.108Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b8/42/cf027b4ac873b076189d935b135397675dac80cb29acb13e1ab86ad6c631/json5-0.14.0-py3-none-any.whl", hash = "sha256:56cf861bab076b1178eb8c92e1311d273a9b9acea2ccc82c276abf839ebaef3a", size = 36271, upload-time = "2026-03-27T22:50:47.073Z" },
+]
+
+[[package]]
+name = "jsonpickle"
+version = "3.0.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/05/68/38c6c809fd3203e507c0c95ebede5e682bdc84f2e81fc6f818d7926c6a41/jsonpickle-3.0.3.tar.gz", hash = "sha256:5691f44495327858ab3a95b9c440a79b41e35421be1a6e09a47b6c9b9421fd06", size = 264902, upload-time = "2024-02-20T03:43:07.496Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d6/be/c11f919e02622f15b942c0f2867dff6c3836ce32cd617627dda73bc9e5b7/jsonpickle-3.0.3-py3-none-any.whl", hash = "sha256:e8d6dcc58f6722bea0321cd328fbda81c582461185688a535df02be0f699afb4", size = 40822, upload-time = "2024-02-20T03:42:47.13Z" },
 ]
 
 [[package]]
@@ -1685,6 +1681,7 @@ dependencies = [
     { name = "h5py" },
     { name = "imgaug" },
     { name = "jaxtyping" },
+    { name = "jsonpickle" },
     { name = "laspy" },
     { name = "lxml" },
     { name = "matplotlib" },
@@ -1725,8 +1722,9 @@ dependencies = [
 [package.optional-dependencies]
 dev = [
     { name = "basedpyright" },
-    { name = "ipython-beartype" },
     { name = "jupyter" },
+    { name = "nbconvert" },
+    { name = "nbformat" },
     { name = "nbstripout" },
     { name = "pre-commit" },
     { name = "pydoclint" },
@@ -1752,12 +1750,14 @@ requires-dist = [
     { name = "gymnasium", specifier = "==1.2.3" },
     { name = "h5py", specifier = "==3.7.0" },
     { name = "imgaug", specifier = "==0.4.0" },
-    { name = "ipython-beartype", marker = "extra == 'dev'", specifier = "==0.2.0" },
     { name = "jaxtyping", specifier = "==0.3.2" },
+    { name = "jsonpickle", specifier = "==3.0.3" },
     { name = "jupyter", marker = "extra == 'dev'", specifier = ">=1.1.1" },
     { name = "laspy", specifier = "==2.5.4" },
     { name = "lxml", specifier = "==5.1.0" },
     { name = "matplotlib", specifier = "==3.10.3" },
+    { name = "nbconvert", marker = "extra == 'dev'", specifier = "==7.16.6" },
+    { name = "nbformat", marker = "extra == 'dev'", specifier = "==5.10.4" },
     { name = "nbstripout", marker = "extra == 'dev'", specifier = "==0.8.1" },
     { name = "networkx", specifier = "==3.4.2" },
     { name = "numba", specifier = "==0.61.2" },
@@ -1770,7 +1770,7 @@ requires-dist = [
     { name = "pre-commit", marker = "extra == 'dev'", specifier = "==4.2.0" },
     { name = "psutil", specifier = "==5.9.8" },
     { name = "py-trees", specifier = "==0.8.3" },
-    { name = "py123d", specifier = "==0.1.0" },
+    { name = "py123d", specifier = "==0.2.0" },
     { name = "pydoclint", marker = "extra == 'dev'", specifier = "==0.6.10" },
     { name = "pyqt5" },
     { name = "pytest", marker = "extra == 'dev'", specifier = "==9.0.2" },
@@ -2066,7 +2066,7 @@ wheels = [
 
 [[package]]
 name = "nbconvert"
-version = "7.17.1"
+version = "7.16.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -2084,9 +2084,9 @@ dependencies = [
     { name = "pygments" },
     { name = "traitlets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/01/b1/708e53fe2e429c103c6e6e159106bcf0357ac41aa4c28772bd8402339051/nbconvert-7.17.1.tar.gz", hash = "sha256:34d0d0a7e73ce3cbab6c5aae8f4f468797280b01fd8bd2ca746da8569eddd7d2", size = 865311, upload-time = "2026-04-08T00:44:14.914Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/59/f28e15fc47ffb73af68a8d9b47367a8630d76e97ae85ad18271b9db96fdf/nbconvert-7.16.6.tar.gz", hash = "sha256:576a7e37c6480da7b8465eefa66c17844243816ce1ccc372633c6b71c3c0f582", size = 857715, upload-time = "2025-01-28T09:29:14.724Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/67/f8/bb0a9d5f46819c821dc1f004aa2cc29b1d91453297dbf5ff20470f00f193/nbconvert-7.17.1-py3-none-any.whl", hash = "sha256:aa85c087b435e7bf1ffd03319f658e285f2b89eccab33bc1ba7025495ab3e7c8", size = 261927, upload-time = "2026-04-08T00:44:12.845Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/9a/cd673b2f773a12c992f41309ef81b99da1690426bd2f96957a7ade0d3ed7/nbconvert-7.16.6-py3-none-any.whl", hash = "sha256:1375a7b67e0c2883678c48e506dc320febb57685e5ee67faa51b18a90f3a712b", size = 258525, upload-time = "2025-01-28T09:29:12.551Z" },
 ]
 
 [[package]]
@@ -2748,7 +2748,7 @@ wheels = [
 
 [[package]]
 name = "py123d"
-version = "0.1.0"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cachetools" },
@@ -2777,9 +2777,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "viser" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/33/30/69abe6dc84e44ccda093365c26e88223763839f0a4d650145e08fbebb04d/py123d-0.1.0.tar.gz", hash = "sha256:ee1f11b9fc987a859c326cd82e6abd33b443a966646db45ac08a1c8856331ea9", size = 23229888, upload-time = "2026-03-22T17:04:59.47Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/36/1a/4563e0c9ccbc71102f8878e6da4e591a5819eec8b5b123d0ed49896df344/py123d-0.2.0.tar.gz", hash = "sha256:3ed1f84435008fc02230bc1cc09b3013f3bae51c4c562834ced1c90f9c7d7a51", size = 23237370, upload-time = "2026-04-14T21:44:57.239Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0d/0d/3fbf459084ef8ff2525ae9566f6c92d6faafa50bd71334121b3260f46755/py123d-0.1.0-py3-none-any.whl", hash = "sha256:5ce8f043cfe943bf9764cdda7af37c814263e1b897628fb41bc2b2f4508c8ca9", size = 23364231, upload-time = "2026-03-22T17:04:56.352Z" },
+    { url = "https://files.pythonhosted.org/packages/6a/ea/6032297e3f569de7c042dfce311a17ffe3e2759c130384ec7e2fabeeaa57/py123d-0.2.0-py3-none-any.whl", hash = "sha256:ddc1d317f5cd133a6445b12c98f22e84ded5de0af37c50e44e44be59a5e151fe", size = 23373313, upload-time = "2026-04-14T21:44:54.179Z" },
 ]
 
 [[package]]

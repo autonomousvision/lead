@@ -12,14 +12,17 @@ from slurm.evaluation.evaluate_utils import did_route_crash, is_on_slurm, load_j
 
 class WandBLogger:
     def __init__(
-        self, closed_loop_config: ClosedLoopConfig, num_routes, project_name="lead_eval"
+        self,
+        closed_loop_config: ClosedLoopConfig,
+        num_routes,
+        project_name="lead_eval",
     ):
         """
         Initialize the WandBLogger, set up a run with the project name and optional job name.
         """
         self.num_routes = num_routes  # Total routes to log
         self.metrics = defaultdict(
-            lambda: [0] * num_routes
+            lambda: [0] * num_routes,
         )  # Initialize default values for metrics
         self.config_slurm = ConfigSlurm()
         if is_on_slurm():
@@ -37,7 +40,8 @@ class WandBLogger:
     def __del__(self):
         if is_on_slurm() and not self.finished:
             self.run.alert(
-                title="Evaluation crashed", text="Experiment crashed before finishing."
+                title="Evaluation crashed",
+                text="Experiment crashed before finishing.",
             )
             self.run.finish(exit_code=1)
 
@@ -61,14 +65,15 @@ class WandBLogger:
                 else:
                     try:
                         self._update_metrics(
-                            data["_checkpoint"]["records"][0], route_idx
+                            data["_checkpoint"]["records"][0],
+                            route_idx,
                         )
                         self.metrics["meta/crashed"][route_idx] = int(
-                            did_route_crash(data)
+                            did_route_crash(data),
                         )
                     except Exception as e:
                         print(
-                            f"Error updating metrics for record {carla_route_id}: {e}"
+                            f"Error updating metrics for record {carla_route_id}: {e}",
                         )
                         print(traceback.format_exc())
                         self.metrics["meta/crashed"][route_idx] = 1
@@ -93,11 +98,12 @@ class WandBLogger:
                 )
             else:
                 raise ValueError(
-                    f"Unknown EVALUATION_DATASET: {self.config_slurm.evaluation_dataset}"
+                    f"Unknown EVALUATION_DATASET: {self.config_slurm.evaluation_dataset}",
                 )
             for i, (metric_name, values) in enumerate(iterable=self.metrics.items()):
                 self.run.log(
-                    {metric_name: values[route_idx]}, commit=i == len(self.metrics) - 1
+                    {metric_name: values[route_idx]},
+                    commit=i == len(self.metrics) - 1,
                 )
             print(f"Logged evaluation results for record {carla_route_id} to wandb")
             return bool(self.metrics["scores/success"][route_idx])
@@ -115,22 +121,22 @@ class WandBLogger:
                         {
                             f"{self.config_slurm.evaluation_dataset}/driving_score": metrics[
                                 "driving score"
-                            ]
-                        }
+                            ],
+                        },
                     )
                     self.run.log(
                         {
                             f"{self.config_slurm.evaluation_dataset}/success_rate": metrics[
                                 "success rate"
-                            ]
-                        }
+                            ],
+                        },
                     )
                     self.run.log(
                         {
                             f"{self.config_slurm.evaluation_dataset}/eval_num": metrics[
                                 "eval num"
-                            ]
-                        }
+                            ],
+                        },
                     )
             except Exception as e:
                 print(f"Error loading metrics from merged.json: {e}")
@@ -156,16 +162,16 @@ class WandBLogger:
             self.metrics[f"scores/{key}"][route_idx] = value
         self.metrics["scores/success"][route_idx] = int(
             (scores.get("score_penalty", 0.0) == 1.0)
-            and (scores.get("score_composed", 0.0) == 100.0)
+            and (scores.get("score_composed", 0.0) == 100.0),
         )  # success = perfect score
 
         for key, value in meta.items():
             self.metrics[f"meta/{key}"][route_idx] = value
 
         self.metrics["ids/town"][route_idx] = int(
-            record.get("town_name", "Town999").replace("Town", "").replace("HD", "")
+            record.get("town_name", "Town999").replace("Town", "").replace("HD", ""),
         )
         self.logged_ds.append(self.metrics["scores/score_composed"][route_idx])
         self.metrics["scores/running_avg"][route_idx] = sum(self.logged_ds) / len(
-            self.logged_ds
+            self.logged_ds,
         )

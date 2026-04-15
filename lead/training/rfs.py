@@ -34,7 +34,9 @@ def get_lat_lng_thresholds(
     lat_thresholds = _BASE_THRESHOLDS * lat_threshold_multiplier  # [2]
     lng_thresholds = _BASE_THRESHOLDS * lng_threshold_multiplier  # [2]
     scale_by_init_speed = np.clip(
-        0.5 + 0.5 * (init_speed - 1.4) / (11 - 1.4), 0.5, 1.0
+        0.5 + 0.5 * (init_speed - 1.4) / (11 - 1.4),
+        0.5,
+        1.0,
     )  # [B]
     lat_thresholds = scale_by_init_speed[..., None] * lat_thresholds  # [B, 2]
     lng_thresholds = scale_by_init_speed[..., None] * lng_thresholds  # [B, 2]
@@ -76,7 +78,7 @@ def process_rater_specified_trajectories(
     """
     if len(trajectory_batches) != len(trajectory_labels_batches):
         raise ValueError(
-            "The number of trajectory batches and label batches must be the same."
+            "The number of trajectory batches and label batches must be the same.",
         )
 
     processed_trajectory_batches_list = []
@@ -88,7 +90,7 @@ def process_rater_specified_trajectories(
         current_labels_batch = trajectory_labels_batches[i]
         if len(current_trajectory_batch) != len(current_labels_batch):
             raise ValueError(
-                "In each batch, the number of trajectories and labels must be the same."
+                "In each batch, the number of trajectories and labels must be the same.",
             )
 
         # --- Step 1: Truncate or pad the number of trajectories in the
@@ -131,10 +133,11 @@ def process_rater_specified_trajectories(
                 # Pad waypoints by duplicating the last waypoint
                 last_waypoint = trajectory[-1]
                 padding_waypoints = np.array(
-                    [last_waypoint] * (target_num_waypoints - num_waypoints)
+                    [last_waypoint] * (target_num_waypoints - num_waypoints),
                 )
                 processed_trajectory = np.concatenate(
-                    (trajectory, padding_waypoints), axis=0
+                    (trajectory, padding_waypoints),
+                    axis=0,
                 )
 
             else:
@@ -143,7 +146,7 @@ def process_rater_specified_trajectories(
             final_trajectories_for_current_batch.append(processed_trajectory)
 
         processed_trajectory_batches_list.append(
-            np.array(final_trajectories_for_current_batch)
+            np.array(final_trajectories_for_current_batch),
         )
 
         # Labels are already processed at the batch level (number of trajectories)
@@ -225,12 +228,12 @@ def get_rater_feedback_score(
 
     if inference_trajectories.shape[-2] != rater_specified_trajectories.shape[-2]:
         raise ValueError(
-            "Inference and rater-specified trajectories must have the same number of timesteps."
+            "Inference and rater-specified trajectories must have the same number of timesteps.",
         )
 
     if inference_trajectories.shape[-2] < _THRESHOLD_TIME_SECONDS.max() * frequency:
         raise ValueError(
-            f"Inference trajectories must have at least {_THRESHOLD_TIME_SECONDS.max()} timesteps."
+            f"Inference trajectories must have at least {_THRESHOLD_TIME_SECONDS.max()} timesteps.",
         )
 
     # Make rater-specified trajectories to include the origin
@@ -283,15 +286,20 @@ def get_rater_feedback_score(
     # Lateral directions are 90-degree counterclockwise rotation of longitudinal
     # directions, i.e., (x_new, y_new) = (-y, x)
     lat_directions = np.stack(
-        [lng_directions[..., 1] * -1, lng_directions[..., 0]], axis=-1
+        [lng_directions[..., 1] * -1, lng_directions[..., 0]],
+        axis=-1,
     )  # [B, P, T, 2]
 
     # Normalize directions
     lng_directions = lng_directions / np.linalg.norm(
-        lng_directions, axis=-1, keepdims=True
+        lng_directions,
+        axis=-1,
+        keepdims=True,
     )  # [B, P, T, 2]
     lat_directions = lat_directions / np.linalg.norm(
-        lat_directions, axis=-1, keepdims=True
+        lat_directions,
+        axis=-1,
+        keepdims=True,
     )  # [B, P, T, 2]
 
     # Get longitudinal and lateral distances from rater-specified trajectories
@@ -316,7 +324,8 @@ def get_rater_feedback_score(
     lat_distances = lat_distances[..., selected_indices]  # [B, P, I, 2]
 
     lat_thresholds, lng_thresholds = get_lat_lng_thresholds(
-        init_speed, lat_lng_threshold_multipliers
+        init_speed,
+        lat_lng_threshold_multipliers,
     )
 
     outputs = {}
@@ -326,10 +335,12 @@ def get_rater_feedback_score(
     # ---------------------------------------------------------------------------
     if output_trust_region_visualization:
         center_x = rater_specified_trajectories[..., selected_indices, :][
-            ..., 0
+            ...,
+            0,
         ]  # [B, P, T (=2)]
         center_y = rater_specified_trajectories[..., selected_indices, :][
-            ..., 1
+            ...,
+            1,
         ]  # [B, P, T (=2)]
         width = 2 * lng_thresholds  # [B, 2]
         height = 2 * lat_thresholds  # [B, 2]
@@ -337,7 +348,7 @@ def get_rater_feedback_score(
             np.arctan2(
                 displacement_vectors[..., selected_indices, :][..., 1],
                 displacement_vectors[..., selected_indices, :][..., 0],
-            )
+            ),
         )  # [B, P, T (=2)]
 
         outputs.update(
@@ -347,7 +358,7 @@ def get_rater_feedback_score(
                 "trust_region_width": width,  # [B, 2]
                 "trust_region_height": height,  # [B, 2]
                 "trust_region_angle": angle,  # [B, I, 2]
-            }
+            },
         )
 
     # ---------------------------------------------------------------------------
@@ -364,7 +375,8 @@ def get_rater_feedback_score(
 
     # Pick the maximum of the two normalized distances
     normalized_distances = np.maximum(
-        normalized_lng_distances, normalized_lat_distances
+        normalized_lng_distances,
+        normalized_lat_distances,
     )  # [B, P, I, 2]
 
     # Mask to indicate if the inference trajectory is fully within the trust
@@ -373,7 +385,8 @@ def get_rater_feedback_score(
     # `minimum_score_outside_trust_region` during score computation below.
     # [B, P, I, 2] -> [B, I]
     is_fully_within_trust_region = np.any(
-        np.all(normalized_distances <= 1.0, axis=3), axis=1
+        np.all(normalized_distances <= 1.0, axis=3),
+        axis=1,
     )
     outputs["is_fully_within_trust_region"] = is_fully_within_trust_region  # [B, I]
 
@@ -389,7 +402,8 @@ def get_rater_feedback_score(
     # Each inference trajectory is assigned a score based on its best match with
     # a rated trajectory.
     rater_feedback_score_per_axis_per_inference = np.amax(
-        rater_feedback_scores_per_axis_pairwise, axis=1
+        rater_feedback_scores_per_axis_pairwise,
+        axis=1,
     )  # [B, I, 2]
 
     # Scores for each inference trajectory averaged over x,y axes.
@@ -406,7 +420,8 @@ def get_rater_feedback_score(
 
     # Weighted sum over scores for each inference trajectory.
     rater_feedback_score = np.sum(
-        rater_feedback_score_per_inference * inference_probs, axis=-1
+        rater_feedback_score_per_inference * inference_probs,
+        axis=-1,
     )  # [B]
     outputs["rater_feedback_score"] = rater_feedback_score  # [B]
     # Updated the truncated or padded rater-specified trajectories.
@@ -444,7 +459,7 @@ def compute_rfs(
     rater_feedback_metrics = get_rater_feedback_score(
         prediction_trajectories,
         np.ones(
-            (prediction_trajectories.shape[0], prediction_trajectories.shape[1])
+            (prediction_trajectories.shape[0], prediction_trajectories.shape[1]),
         ),  # Default probabilities
         rater_specified_trajectories,
         rater_scores,

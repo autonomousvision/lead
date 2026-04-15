@@ -23,7 +23,8 @@ class BaseAgent:
     @beartype
     def setup(self, sensor_agent: bool = False):
         self.noisy_lat_ref, self.noisy_lon_ref = common_utils.find_gps_ref(
-            self._global_plan_world_coord, self._global_plan
+            self._global_plan_world_coord,
+            self._global_plan,
         )
         LOG.info(
             "Noisy lat ref: %s, Noisy lon ref: %s",
@@ -34,17 +35,17 @@ class BaseAgent:
         self.kalman_filter = KalmanFilter(self.config_expert)
 
         self.yaws_queue = deque(
-            maxlen=self.config_expert.ego_num_temporal_data_points_saved + 1
+            maxlen=self.config_expert.ego_num_temporal_data_points_saved + 1,
         )
         self.speeds_queue = deque(
-            maxlen=self.config_expert.ego_num_temporal_data_points_saved + 1
+            maxlen=self.config_expert.ego_num_temporal_data_points_saved + 1,
         )
 
         self.lidar_pc_queue = deque(
-            maxlen=self.config_expert.lidar_stack_size
+            maxlen=self.config_expert.lidar_stack_size,
         )  # For stacking LiDAR
         self.radar_pc_queue = deque(
-            maxlen=2 * self.config_expert.lidar_stack_size
+            maxlen=2 * self.config_expert.lidar_stack_size,
         )  # For stacking radar as LiDAR
 
         self.control = carla.VehicleControl(steer=0.0, throttle=0.0, brake=1.0)
@@ -53,7 +54,9 @@ class BaseAgent:
 
         # --- Run this once to save Numba cache ---
         ransac.remove_ground(
-            np.random.rand(1000, 3), self.config_expert, parallel=True
+            np.random.rand(1000, 3),
+            self.config_expert,
+            parallel=True,
         )  # Pre-compile numba code
 
         # --- Route planner ---
@@ -65,7 +68,8 @@ class BaseAgent:
         self.gps_waypoint_planners_dict: dict[float, RoutePlanner] = {}
         for dist in route_planner_config.tp_distances:
             planner = RoutePlanner(
-                dist, route_planner_config.route_planner_max_distance
+                dist,
+                route_planner_config.route_planner_max_distance,
             )
             planner.set_route(
                 self._global_plan,
@@ -84,7 +88,7 @@ class BaseAgent:
         # Preprocess the compass data from the IMU
         self.previous_compass = self.compass
         self.compass = common_utils.preprocess_compass(
-            input_data["imu"][1][-1]
+            input_data["imu"][1][-1],
         )  # Range [-pi,pi]
         if self.previous_compass is not None:
             self.compass = np.unwrap([self.previous_compass, self.compass])[
@@ -94,7 +98,9 @@ class BaseAgent:
 
         # Filter the GPS position with Kalman filter
         noisy_gps_pos = common_utils.convert_gps_to_carla(
-            input_data["gps"][1], self.noisy_lat_ref, self.noisy_lon_ref
+            input_data["gps"][1],
+            self.noisy_lat_ref,
+            self.noisy_lon_ref,
         )
         self.filtered_state = self.kalman_filter.step(
             noisy_position=noisy_gps_pos,
@@ -104,7 +110,8 @@ class BaseAgent:
         )
         self.smooth_history = self.kalman_filter.smooth()
         self.filtered_history = np.array([self.kalman_filter.history_x]).reshape(-1, 4)[
-            :, :2
+            :,
+            :2,
         ]
 
         # Use filtered or noisy position based on config (for sensor agents at inference time)
@@ -127,7 +134,7 @@ class BaseAgent:
                 "angular_velocity_y": input_data["imu"][1][4],
                 "angular_velocity_z": input_data["imu"][1][5],
                 "speed": speed,
-            }
+            },
         )
 
         # --- LiDAR ---
@@ -189,14 +196,17 @@ class BaseAgent:
                         axis=0,
                     )
                     input_data["lidar"] = np.concatenate(
-                        [input_data["lidar"], radar_near_ego], axis=0
+                        [input_data["lidar"], radar_near_ego],
+                        axis=0,
                     )
 
         # Remove lidar points on ground
         lidar_x, lidar_y = input_data["lidar"][:, 0], input_data["lidar"][:, 1]
         if self.config_expert.save_only_non_ground_lidar:
             ground_mask = ransac.remove_ground(
-                input_data["lidar"], self.config_expert, parallel=True
+                input_data["lidar"],
+                self.config_expert,
+                parallel=True,
             )
             input_data["lidar"] = input_data["lidar"][~ground_mask]
             # Also remove ground points from radar_pc_queue if radar points are appended to LiDAR
@@ -253,7 +263,7 @@ class BaseAgent:
             [
                 [np.cos(-current_yaw), -np.sin(-current_yaw)],
                 [np.sin(-current_yaw), np.cos(-current_yaw)],
-            ]
+            ],
         )
         return tuple(((smoothed_states - current_pos) @ R_world_to_current.T).tolist())
 
@@ -270,7 +280,7 @@ class BaseAgent:
             [
                 [np.cos(-current_yaw), -np.sin(-current_yaw)],
                 [np.sin(-current_yaw), np.cos(-current_yaw)],
-            ]
+            ],
         )
         return tuple(((past_states - current_pos) @ R_world_to_current.T).tolist())
 
@@ -308,7 +318,9 @@ class BaseAgent:
             dx, dy = past_positions[i]
             dyaw = past_yaws[i]
             lidar_pc = common_utils.align_lidar(
-                lidar_pc, np.array([-dx, -dy, 0.0]), -dyaw
+                lidar_pc,
+                np.array([-dx, -dy, 0.0]),
+                -dyaw,
             )
 
             # Add time stamp as the 4th dimension
@@ -333,7 +345,9 @@ class BaseAgent:
 
             if self.config_expert.save_radar_pc_as_lidar:
                 radar_pc = common_utils.align_lidar(
-                    radar_pc, np.array([-dx, -dy, 0.0]), -dyaw
+                    radar_pc,
+                    np.array([-dx, -dy, 0.0]),
+                    -dyaw,
                 )
                 if self.config_expert.duplicate_radar_near_ego:
                     radar_near_ego = radar_pc[

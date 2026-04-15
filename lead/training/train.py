@@ -22,7 +22,8 @@ LOG = logging.getLogger(__name__)
 
 warnings.filterwarnings("error")
 warnings.filterwarnings(
-    "ignore", message="Grad strides do not match bucket view strides"
+    "ignore",
+    message="Grad strides do not match bucket view strides",
 )
 warnings.filterwarnings(
     "ignore",
@@ -54,13 +55,15 @@ class Trainer:
         self.ssd_cache = training_utils.initialize_training_session_cache(self.config)
         self.num_worker = training_utils.initialize_torch(self.config)
         self.model_wrapper, self.cur_epoch = training_utils.initialize_model(
-            self.config
+            self.config,
         )
         self.model = self.model_wrapper
         if isinstance(self.model_wrapper, torch.nn.parallel.DistributedDataParallel):
             self.model = self.model_wrapper.module
         self.dataloader, self.sampler = training_utils.initialize_dataloader(
-            self.config, self.ssd_cache, self.num_worker
+            self.config,
+            self.ssd_cache,
+            self.num_worker,
         )
 
         # Predict how long the training will take
@@ -71,7 +74,7 @@ class Trainer:
             LOG.info(
                 f"Training for {self.config.epochs} epochs, "
                 f"{self.gradient_steps_per_epoch} gradient steps per epoch, "
-                f"total {self.total_gradient_steps} gradient steps."
+                f"total {self.total_gradient_steps} gradient steps.",
             )
 
         # Set up optimizer
@@ -105,17 +108,20 @@ class Trainer:
         self.detailed_loss_weights = {}
         if self.config.use_carla_data:
             carla_loss_weights = self.config.detailed_loss_weights(
-                SourceDataset.CARLA, epoch
+                SourceDataset.CARLA,
+                epoch,
             )
             self.detailed_loss_weights.update(carla_loss_weights)
         if self.config.use_navsim_data:
             navsim_loss_weights = self.config.detailed_loss_weights(
-                SourceDataset.NAVSIM, epoch
+                SourceDataset.NAVSIM,
+                epoch,
             )
             self.detailed_loss_weights.update(navsim_loss_weights)
         if self.config.use_waymo_e2e_data:
             waymo_e2e_loss_weights = self.config.detailed_loss_weights(
-                SourceDataset.WAYMO_E2E_2025, epoch
+                SourceDataset.WAYMO_E2E_2025,
+                epoch,
             )
             self.detailed_loss_weights.update(waymo_e2e_loss_weights)
 
@@ -157,10 +163,12 @@ class Trainer:
                 islice(self.dataloader, self.gradient_steps_per_epoch),
                 total=self.gradient_steps_per_epoch,
                 disable=self.config.rank != 0,
-            )
+            ),
         ):
             loss = torch.zeros(
-                1, dtype=self.config.torch_float_type, device=self.config.device
+                1,
+                dtype=self.config.torch_float_type,
+                device=self.config.device,
             )
             data["iteration"] = epoch_iteration
             data["training_step"] = self.step
@@ -172,14 +180,15 @@ class Trainer:
                 # Forward pass
                 predictions = self.model_wrapper(data=data)
                 losses, log = self.model.compute_loss(
-                    predictions=predictions, data=data
+                    predictions=predictions,
+                    data=data,
                 )
                 self.step += 1
 
                 # Sum up losses
                 for key, value in losses.items():
                     loss += self.detailed_loss_weights[key] * value.reshape(
-                        1
+                        1,
                     )  # Reshape as sanity check if the loss is a scalar
                 scaled_loss = {
                     key: self.detailed_loss_weights[key] * value
@@ -193,11 +202,11 @@ class Trainer:
             self.scaler.step(self.optimizer)
             self.scaler.update()
             self.gradient_steps_skipped += int(
-                scale_before > self.scaler.get_scale()
+                scale_before > self.scaler.get_scale(),
             )  # Count how many times the scale changed
             if not (scale_before > self.scaler.get_scale()):
                 self.scheduler.step(
-                    self.gradient_steps_per_epoch * self.cur_epoch + epoch_iteration
+                    self.gradient_steps_per_epoch * self.cur_epoch + epoch_iteration,
                 )
             if self.scaler.get_scale() > self.config.grad_scaler_max_grad_scale:
                 self.scaler.update(new_scale=self.config.grad_scaler_max_grad_scale)
@@ -250,7 +259,7 @@ class Trainer:
                     potential_path,
                 )
                 LOG.info(
-                    f"New best Waymo E2E RFM score: {rfm_score:.4f}, saved model to {potential_path}"
+                    f"New best Waymo E2E RFM score: {rfm_score:.4f}, saved model to {potential_path}",
                 )
                 new_best = True
             if new_best:
@@ -286,7 +295,8 @@ class Trainer:
             LOG.info(f"Saved scaler checkpoint for epoch {self.cur_epoch}.")
         with open(
             os.path.join(
-                self.config.logdir, f"gradient_steps_skipped_{self.cur_epoch:04d}.txt"
+                self.config.logdir,
+                f"gradient_steps_skipped_{self.cur_epoch:04d}.txt",
             ),
             "w",
         ) as f:
@@ -296,16 +306,20 @@ class Trainer:
         # Remove last epochs files to avoid accumulating storage
         if self.cur_epoch > 0:
             last_model_file = os.path.join(
-                self.config.logdir, f"model_{self.cur_epoch - 1:04d}.pth"
+                self.config.logdir,
+                f"model_{self.cur_epoch - 1:04d}.pth",
             )
             last_optimizer_file = os.path.join(
-                self.config.logdir, f"optimizer_{self.cur_epoch - 1:04d}.pth"
+                self.config.logdir,
+                f"optimizer_{self.cur_epoch - 1:04d}.pth",
             )
             last_scheduler_file = os.path.join(
-                self.config.logdir, f"scheduler_{self.cur_epoch - 1:04d}.pth"
+                self.config.logdir,
+                f"scheduler_{self.cur_epoch - 1:04d}.pth",
             )
             last_scaler_file = os.path.join(
-                self.config.logdir, f"scaler_{self.cur_epoch - 1:04d}.pth"
+                self.config.logdir,
+                f"scaler_{self.cur_epoch - 1:04d}.pth",
             )
             last_gradient_steps_skipped_file = os.path.join(
                 self.config.logdir,
@@ -321,12 +335,12 @@ class Trainer:
             if os.path.isfile(last_optimizer_file):
                 os.remove(last_optimizer_file)
                 LOG.info(
-                    f"Removed optimizer checkpoint for epoch {self.cur_epoch - 1}."
+                    f"Removed optimizer checkpoint for epoch {self.cur_epoch - 1}.",
                 )
             if os.path.isfile(last_scheduler_file):
                 os.remove(last_scheduler_file)
                 LOG.info(
-                    f"Removed scheduler checkpoint for epoch {self.cur_epoch - 1}."
+                    f"Removed scheduler checkpoint for epoch {self.cur_epoch - 1}.",
                 )
             if os.path.isfile(last_scaler_file):
                 os.remove(last_scaler_file)
@@ -334,7 +348,7 @@ class Trainer:
             if os.path.isfile(last_gradient_steps_skipped_file):
                 os.remove(last_gradient_steps_skipped_file)
                 LOG.info(
-                    f"Removed gradient steps skipped for epoch {self.cur_epoch - 1}."
+                    f"Removed gradient steps skipped for epoch {self.cur_epoch - 1}.",
                 )
 
 

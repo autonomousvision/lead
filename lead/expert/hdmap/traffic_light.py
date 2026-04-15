@@ -20,7 +20,9 @@ def _get_traffic_light_waypoints(traffic_light, carla_map):
 
     # Discretize the trigger box into points
     x_values = np.arange(
-        -0.9 * tv_ext.x, 0.9 * tv_ext.x, 1.0
+        -0.9 * tv_ext.x,
+        0.9 * tv_ext.x,
+        1.0,
     )  # 0.9 to avoid crossing to adjacent lanes
     area = []
     for x in x_values:

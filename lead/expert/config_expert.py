@@ -252,7 +252,7 @@ class ExpertConfig(BaseConfig):
             1.556497522998393,
             -0.7013479734904027,
             1.031266635497984,
-        ]
+        ],
     )
     # Coefficients for polynomial equation estimating speed change with throttle input for ego model
     throttle_values = np.array(
@@ -265,7 +265,7 @@ class ExpertConfig(BaseConfig):
             -7.05461530e-02,
             -1.05996152e-03,
             6.71079346e-04,
-        ]
+        ],
     )
     # Coefficients for polynomial equation estimating speed change with brake input for the ego model
     brake_values = np.array(
@@ -277,7 +277,7 @@ class ExpertConfig(BaseConfig):
             -4.90357228e-07,
             2.44419284e-09,
             -4.91381935e-12,
-        ]
+        ],
     )
 
     # --- Autopilot Configuration ---
@@ -391,7 +391,7 @@ class ExpertConfig(BaseConfig):
     # Parameters to calculate how much the ego agent needs to cover a given distance. Values are taken from
     # the kinematic bicycle model
     compute_min_time_to_cover_distance_params = np.array(
-        [0.00904221, 0.00733342, -0.03744807, 0.0235038]
+        [0.00904221, 0.00733342, -0.03744807, 0.0235038],
     )
     # Distance to check for road_id/lane_id for RouteObstacle scenarios
     previous_road_lane_retrieve_distance = 100
@@ -855,7 +855,7 @@ class ExpertConfig(BaseConfig):
         MILD_COMPRESSION = normalize({70: 0.1, 75: 0.25, 80: 0.4, 90: 0.2})
         MEDIUM_COMPRESSION = normalize({70: 0.2, 75: 0.2, 80: 0.15, 90: 0.2})
         HIGH_COMPRESION = normalize(
-            {60: 0.05, 65: 0.1, 70: 0.1, 75: 0.2, 80: 0.1, 90: 0.2}
+            {60: 0.05, 65: 0.1, 70: 0.1, 75: 0.2, 80: 0.1, 90: 0.2},
         )
         VERY_HIGH_COMPRESION = normalize({55: 0.15, 65: 0.4, 75: 0.15, 90: 0.2})
         EXTREME_COMPRESSION = normalize({30: 0.2, 40: 0.35, 50: 0.15, 90: 0.2})
@@ -865,7 +865,7 @@ class ExpertConfig(BaseConfig):
             MILD_COMPRESSION = normalize({70: 0.15, 75: 0.25, 80: 0.4, 90: 0.15})
             MEDIUM_COMPRESSION = normalize({70: 0.25, 75: 0.2, 80: 0.15, 90: 0.15})
             HIGH_COMPRESION = normalize(
-                {60: 0.10, 65: 0.1, 70: 0.1, 75: 0.2, 80: 0.1, 90: 0.15}
+                {60: 0.10, 65: 0.1, 70: 0.1, 75: 0.2, 80: 0.1, 90: 0.15},
             )
             VERY_HIGH_COMPRESION = normalize({55: 0.20, 65: 0.4, 75: 0.15, 90: 0.15})
             EXTREME_COMPRESSION = normalize({30: 0.25, 40: 0.35, 50: 0.15, 90: 0.15})

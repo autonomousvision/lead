@@ -40,7 +40,8 @@ class FullPretrainBucketCollection(AbstractBucketCollection):
     def cache_file_path(self) -> str:
         """Return path for cache file"""
         return os.path.join(
-            self.config.bucket_collection_path, "full_pretrain_buckets.gz"
+            self.config.bucket_collection_path,
+            "full_pretrain_buckets.gz",
         )
 
     def buckets_mixture_per_epoch(self, _) -> dict[int, float]:

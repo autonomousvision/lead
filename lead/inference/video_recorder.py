@@ -122,7 +122,8 @@ class VideoRecorder:
                 z=camera_config["z"],
             )
             world_camera_location = common_utils.get_world_coordinate_2d(
-                self.vehicle.get_transform(), demo_camera_location
+                self.vehicle.get_transform(),
+                demo_camera_location,
             )
             demo_camera_transform = carla.Transform(
                 world_camera_location,
@@ -152,7 +153,7 @@ class VideoRecorder:
                     "camera": demo_camera,
                     "config": camera_config,
                     "index": idx,
-                }
+                },
             )
         LOG.info(f"[VideoRecorder] Initialized {len(self._demo_cameras)} demo cameras")
 
@@ -182,7 +183,8 @@ class VideoRecorder:
                     z=camera_config["z"],
                 )
                 world_camera_location = common_utils.get_world_coordinate_2d(
-                    self.vehicle.get_transform(), demo_camera_location
+                    self.vehicle.get_transform(),
+                    demo_camera_location,
                 )
                 demo_camera_transform = carla.Transform(
                     world_camera_location,
@@ -224,7 +226,9 @@ class VideoRecorder:
             # Add visualizations if enabled
             if draw_planning and pred_waypoints is not None:
                 processed_image = self.draw_waypoints(
-                    processed_image, pred_waypoints, camera_config
+                    processed_image,
+                    pred_waypoints,
+                    camera_config,
                 )
             if (
                 draw_target_points
@@ -232,7 +236,10 @@ class VideoRecorder:
                 and camera_name == "bev_camera"
             ):
                 processed_image = self.draw_target_points(
-                    processed_image, target_points, camera_config, is_bev=True
+                    processed_image,
+                    target_points,
+                    camera_config,
+                    is_bev=True,
                 )
 
             processed_images.append(processed_image)
@@ -387,7 +394,7 @@ class VideoRecorder:
             if key in target_points and target_points[key] is not None:
                 # Get target point in vehicle coordinates
                 target_point = np.array(
-                    [[target_points[key][0], target_points[key][1]]]
+                    [[target_points[key][0], target_points[key][1]]],
                 )
 
                 # Project center point to image
@@ -414,7 +421,7 @@ class VideoRecorder:
 
                             # Calculate 3D distance from camera to target point
                             target_3d = np.array(
-                                [target_points[key][0], target_points[key][1], 0.0]
+                                [target_points[key][0], target_points[key][1], 0.0],
                             )
                             camera_3d = np.array(camera_pos)
                             distance = np.linalg.norm(target_3d - camera_3d)
@@ -423,13 +430,14 @@ class VideoRecorder:
                             # pixel_size = (object_size * focal_length) / distance
                             # focal_length ≈ (image_width / 2) / tan(fov/2)
                             focal_length = (camera_width / 2.0) / np.tan(
-                                np.radians(camera_fov / 2.0)
+                                np.radians(camera_fov / 2.0),
                             )
                             pixel_radius = int(
-                                (sphere_radius_meters * focal_length) / distance
+                                (sphere_radius_meters * focal_length) / distance,
                             )
                             pixel_radius = max(
-                                1, min(pixel_radius, 50)
+                                1,
+                                min(pixel_radius, 50),
                             )  # Clamp between 1 and 50 pixels
 
                         if pixel_radius > 0:
@@ -626,7 +634,7 @@ class VideoRecorder:
                 section_to_calib = [3, 2, 1]  # [LEFT_FRONT, CENTER_FRONT, RIGHT_FRONT]
             else:
                 section_to_calib = list(
-                    range(1, num_cameras + 1)
+                    range(1, num_cameras + 1),
                 )  # Fallback: assume they match
 
             for section_idx in range(num_cameras):
@@ -653,11 +661,16 @@ class VideoRecorder:
                 # Draw visualizations on this camera section
                 if pred_waypoints is not None:
                     camera_section = self.draw_waypoints(
-                        camera_section, pred_waypoints, camera_config
+                        camera_section,
+                        pred_waypoints,
+                        camera_config,
                     )
                 if target_points is not None:
                     camera_section = self.draw_target_points(
-                        camera_section, target_points, camera_config, is_bev=False
+                        camera_section,
+                        target_points,
+                        camera_config,
+                        is_bev=False,
                     )
 
                 # Put the modified section back into the stitched image
@@ -714,7 +727,11 @@ class VideoRecorder:
 
     @beartype
     def compress_video(
-        self, temp_path: str, final_path: str, crf: int, preset: str
+        self,
+        temp_path: str,
+        final_path: str,
+        crf: int,
+        preset: str,
     ) -> None:
         """Compress a video using ffmpeg.
 

@@ -27,7 +27,11 @@ class KalmanFilter:
         """
         self.config = config
         self.points = MerweScaledSigmaPoints(
-            n=4, alpha=0.00001, beta=2, kappa=0, subtract=self._residual_state_x
+            n=4,
+            alpha=0.00001,
+            beta=2,
+            kappa=0,
+            subtract=self._residual_state_x,
         )
 
         self.ukf = UKF(
@@ -93,7 +97,7 @@ class KalmanFilter:
                 noisy_position[1] - self.start_y,
                 common_utils.normalize_angle(compass),
                 speed,
-            ]
+            ],
         )
 
         if not self.filter_initialized:
@@ -105,7 +109,9 @@ class KalmanFilter:
             self.history_brakes.append(0.0)
 
         self.ukf.predict(
-            steer=control.steer, throttle=control.throttle, brake=control.brake
+            steer=control.steer,
+            throttle=control.throttle,
+            brake=control.brake,
         )
         self.ukf.update(z)
 
@@ -204,7 +210,8 @@ class KalmanFilter:
 
     @beartype
     def _measurement_function_hx(
-        self, vehicle_state: jt.Float[npt.NDArray, " 4"]
+        self,
+        vehicle_state: jt.Float[npt.NDArray, " 4"],
     ) -> jt.Float[npt.NDArray, " 4"]:
         """
         Identity measurement function.
@@ -219,7 +226,9 @@ class KalmanFilter:
 
     @beartype
     def _state_mean(
-        self, state: jt.Float[npt.NDArray, "N 4"], wm: npt.ArrayLike
+        self,
+        state: jt.Float[npt.NDArray, "N 4"],
+        wm: npt.ArrayLike,
     ) -> jt.Float[npt.NDArray, " 4"]:
         """Averaging function.
 
@@ -242,7 +251,9 @@ class KalmanFilter:
 
     @beartype
     def _measurement_mean(
-        self, state: jt.Float[npt.NDArray, "N 4"], wm: npt.ArrayLike
+        self,
+        state: jt.Float[npt.NDArray, "N 4"],
+        wm: npt.ArrayLike,
     ) -> jt.Float[npt.NDArray, " 4"]:
         """Averaging function.
 
@@ -265,7 +276,9 @@ class KalmanFilter:
 
     @beartype
     def _residual_state_x(
-        self, a: npt.NDArray, b: npt.NDArray
+        self,
+        a: npt.NDArray,
+        b: npt.NDArray,
     ) -> npt.NDArray[np.floating]:
         """Residual function
 
@@ -282,7 +295,9 @@ class KalmanFilter:
 
     @beartype
     def _residual_measurement_h(
-        self, a: npt.NDArray, b: npt.NDArray
+        self,
+        a: npt.NDArray,
+        b: npt.NDArray,
     ) -> npt.NDArray[np.floating]:
         """Residual function
 

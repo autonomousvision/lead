@@ -21,7 +21,7 @@ class BaseConfig:
     @property
     def target_dataset(self):
         raise NotImplementedError(
-            "Subclasses must implement the target_dataset property."
+            "Subclasses must implement the target_dataset property.",
         )
 
     @property
@@ -222,7 +222,7 @@ class BaseConfig:
                     "height": 512,
                     "cropped_height": 384,
                     "fov": 110,
-                }
+                },
             }
         elif self.target_dataset == TargetDataset.CARLA_PY123D_6CAMERAS:
             # NOTE: Use six cameras inspired by nuScenes rig. In contract
@@ -488,7 +488,10 @@ class BaseConfig:
         self._loaded_config = loaded_config
 
     def load_from_environment(
-        self, loaded_config, env_key: str, raise_error_on_missing_key: bool
+        self,
+        loaded_config,
+        env_key: str,
+        raise_error_on_missing_key: bool,
     ):
         # --- Parameters coming from environment variables, highest priority
         env_params = os.getenv(env_key, "").strip()
@@ -529,7 +532,7 @@ class BaseConfig:
 
         if name not in allowed and not name.startswith("_"):
             raise AttributeError(
-                f"Can't set unknown attribute '{name}'. Please check if this variable might have been renamed."
+                f"Can't set unknown attribute '{name}'. Please check if this variable might have been renamed.",
             )
         super().__setattr__(name, value)
 

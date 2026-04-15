@@ -53,7 +53,9 @@ class ScenarioSorter:
 
     @beartype
     def _compute_scenario_distance(
-        self, scenario: ActiveScenario, ego_location: carla.Location
+        self,
+        scenario: ActiveScenario,
+        ego_location: carla.Location,
     ) -> float:
         """Compute minimum distance from scenario actors to ego vehicle.
 
@@ -109,7 +111,7 @@ class ScenarioSorter:
             distance = self._compute_scenario_distance(scenario, ego_location)
             scenario_distances.append((scenario, distance))
             LOG.debug(
-                f"Scenario '{scenario.name}' (id={scenario.scenario_id}): distance={distance:.2f}m"
+                f"Scenario '{scenario.name}' (id={scenario.scenario_id}): distance={distance:.2f}m",
             )
 
         # Sort by distance (ascending)
@@ -123,5 +125,5 @@ class ScenarioSorter:
         if scenario_distances:
             LOG.debug(
                 f"Sorted {len(active_scenarios)} scenarios by actor distance. "
-                f"Closest: {scenario_distances[0][0].name} ({scenario_distances[0][1]:.2f}m)"
+                f"Closest: {scenario_distances[0][0].name} ({scenario_distances[0][1]:.2f}m)",
             )

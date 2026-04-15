@@ -18,7 +18,10 @@ logger = logging.getLogger(__name__)
 class PlanningDecoder(nn.Module):
     @beartype
     def __init__(
-        self, input_bev_channels: int, config: TrainingConfig, device: torch.device
+        self,
+        input_bev_channels: int,
+        config: TrainingConfig,
+        device: torch.device,
     ):
         super().__init__()
         self.device = device
@@ -43,7 +46,7 @@ class PlanningDecoder(nn.Module):
                 1,
                 num_queries,
                 self.config.transfuser_token_dim,
-            )
+            ),
         )
 
         self.transformer_decoder = torch.nn.TransformerDecoder(
@@ -139,14 +142,16 @@ class PlanningDecoder(nn.Module):
 
         if self.config.predict_spatial_path:
             route_queries = queries[
-                :, query_idx : query_idx + self.config.num_route_points_prediction
+                :,
+                query_idx : query_idx + self.config.num_route_points_prediction,
             ]
             route = torch.cumsum(self.route_decoder(route_queries), 1)
             query_idx += self.config.num_route_points_prediction
 
         if self.config.predict_temporal_spatial_waypoints:
             waypoints_queries = queries[
-                :, query_idx : query_idx + self.config.num_way_points_prediction
+                :,
+                query_idx : query_idx + self.config.num_way_points_prediction,
             ]
             waypoints = torch.cumsum(self.wp_decoder(waypoints_queries), 1)
             if self.config.use_navsim_data:
@@ -160,7 +165,9 @@ class PlanningDecoder(nn.Module):
             with torch.amp.autocast(device_type="cuda", enabled=False):
                 target_speed_softmax = torch.softmax(target_speed_dist.float(), dim=-1)
                 target_speed_scalar = decode_two_hot(
-                    target_speed_softmax, self.config.target_speed_classes, self.device
+                    target_speed_softmax,
+                    self.config.target_speed_classes,
+                    self.device,
                 )
 
         return (
@@ -177,7 +184,9 @@ class PlanningDecoder(nn.Module):
         with torch.amp.autocast(device_type="cuda", enabled=False):
             if self.config.predict_temporal_spatial_waypoints:
                 waypoints_label = data["future_waypoints"].to(
-                    self.device, dtype=self.config.torch_float_type, non_blocking=True
+                    self.device,
+                    dtype=self.config.torch_float_type,
+                    non_blocking=True,
                 )[:, : self.config.num_way_points_prediction]
 
                 loss["loss_spatio_temporal_waypoints"] = F.l1_loss(
@@ -195,13 +204,16 @@ class PlanningDecoder(nn.Module):
                     loss["loss_spatio_temporal_waypoints"] = (
                         loss["loss_spatio_temporal_waypoints"]
                         + F.l1_loss(
-                            predictions.pred_headings.float(), heading_label.float()
+                            predictions.pred_headings.float(),
+                            heading_label.float(),
                         ).mean()
                     )
 
             if self.config.predict_target_speed:
                 brake_label = data["brake"].to(
-                    self.device, dtype=torch.bool, non_blocking=True
+                    self.device,
+                    dtype=torch.bool,
+                    non_blocking=True,
                 )
                 target_speed_distribution = encode_two_hot(
                     data["target_speed"].to(
@@ -219,10 +231,13 @@ class PlanningDecoder(nn.Module):
 
             if self.config.predict_spatial_path:
                 route_label = data["route"].to(
-                    self.device, dtype=self.config.torch_float_type, non_blocking=True
+                    self.device,
+                    dtype=self.config.torch_float_type,
+                    non_blocking=True,
                 )
                 loss["loss_spatial_route"] = F.l1_loss(
-                    predictions.pred_route.float(), route_label.float()
+                    predictions.pred_route.float(),
+                    route_label.float(),
                 )  # ADE
                 loss["loss_spatial_route"] += F.l1_loss(
                     predictions.pred_route[:, -1, :].float(),
@@ -235,22 +250,28 @@ class PlanningDecoder(nn.Module):
         ):
             if self.config.predict_spatial_path:
                 route_label = data["route"].to(
-                    self.device, dtype=self.config.torch_float_type, non_blocking=True
+                    self.device,
+                    dtype=self.config.torch_float_type,
+                    non_blocking=True,
                 )
                 log.update(
                     {
                         "metric/route_ade": common_utils.average_displacement_error(
-                            predictions.pred_route, route_label
+                            predictions.pred_route,
+                            route_label,
                         ),
                         "metric/route_fde": common_utils.final_displacement_error(
-                            predictions.pred_route, route_label
+                            predictions.pred_route,
+                            route_label,
                         ),
-                    }
+                    },
                 )
 
             if self.config.predict_target_speed:
                 brake_label = data["brake"].to(
-                    self.device, dtype=torch.bool, non_blocking=True
+                    self.device,
+                    dtype=torch.bool,
+                    non_blocking=True,
                 )
                 target_speed_distribution = encode_two_hot(
                     data["target_speed"].to(
@@ -271,33 +292,37 @@ class PlanningDecoder(nn.Module):
                         "metric/target_speed_error": torch.mean(
                             torch.abs(
                                 predictions.pred_target_speed_scalar
-                                - target_speed_labels
-                            )
+                                - target_speed_labels,
+                            ),
                         ).item(),
                         "metric/target_speed_correlation": torch.corrcoef(
                             torch.stack(
                                 [
                                     predictions.pred_target_speed_scalar,
                                     target_speed_labels,
-                                ]
-                            )
+                                ],
+                            ),
                         )[0, 1].item(),
-                    }
+                    },
                 )
 
             if self.config.predict_temporal_spatial_waypoints:
                 waypoints_label = data["future_waypoints"].to(
-                    self.device, dtype=self.config.torch_float_type, non_blocking=True
+                    self.device,
+                    dtype=self.config.torch_float_type,
+                    non_blocking=True,
                 )[:, : self.config.num_way_points_prediction]
                 log.update(
                     {
                         "metric/waypoints_ade": common_utils.average_displacement_error(
-                            predictions.pred_future_waypoints, waypoints_label
+                            predictions.pred_future_waypoints,
+                            waypoints_label,
                         ),
                         "metric/waypoints_fde": common_utils.final_displacement_error(
-                            predictions.pred_future_waypoints, waypoints_label
+                            predictions.pred_future_waypoints,
+                            waypoints_label,
                         ),
-                    }
+                    },
                 )
 
                 if self.config.use_navsim_data:
@@ -307,7 +332,8 @@ class PlanningDecoder(nn.Module):
                         non_blocking=True,
                     )
                     log["metric/heading_ade"] = common_utils.average_displacement_error(
-                        predictions.pred_headings, heading_label
+                        predictions.pred_headings,
+                        heading_label,
                     )
 
 
@@ -328,7 +354,9 @@ def decode_two_hot(
         The decoded scalar tensor.
     """
     classes = torch.tensor(
-        class_values, device=device, dtype=two_hot_label.dtype
+        class_values,
+        device=device,
+        dtype=two_hot_label.dtype,
     ).unsqueeze(0)
     decoded = (two_hot_label * classes).sum(axis=-1)
     return decoded
@@ -352,7 +380,9 @@ def encode_two_hot(
     """
     assert all(scalar_values >= 0.0)
     target_speeds = torch.tensor(
-        class_values, dtype=scalar_values.dtype, device=scalar_values.device
+        class_values,
+        dtype=scalar_values.dtype,
+        device=scalar_values.device,
     )
     labels = torch.zeros(
         len(scalar_values),
@@ -389,7 +419,10 @@ def encode_two_hot(
 class PlanningContextEncoder(nn.Module):
     @beartype
     def __init__(
-        self, config: TrainingConfig, input_bev_channels: int, device: torch.device
+        self,
+        config: TrainingConfig,
+        input_bev_channels: int,
+        device: torch.device,
     ):
         super().__init__()
         self.device = device
@@ -415,8 +448,9 @@ class PlanningContextEncoder(nn.Module):
             self.num_status_tokens += 1
             self.command_encoder = nn.Sequential(
                 nn.Linear(
-                    self.config.discrete_command_dim, self.config.transfuser_token_dim
-                )
+                    self.config.discrete_command_dim,
+                    self.config.transfuser_token_dim,
+                ),
             )
             logger.info("Using discrete command encoder.")
 
@@ -450,21 +484,26 @@ class PlanningContextEncoder(nn.Module):
         ):
             self.num_status_tokens += self.config.num_radar_queries
             self.radar_encoder = nn.Linear(
-                self.config.radar_token_dim, config.transfuser_token_dim
+                self.config.radar_token_dim,
+                config.transfuser_token_dim,
             )
             logger.info(
-                f"Using radar encoder with {self.config.num_radar_queries} tokens."
+                f"Using radar encoder with {self.config.num_radar_queries} tokens.",
             )
 
         self.cosine_pos_embeding = PositionEmbeddingSine(
-            config, self.config.transfuser_token_dim // 2, normalize=True
+            config,
+            self.config.transfuser_token_dim // 2,
+            normalize=True,
         )
         self.status_pos_embedding = nn.Parameter(
-            torch.zeros(1, self.num_status_tokens, self.config.transfuser_token_dim)
+            torch.zeros(1, self.num_status_tokens, self.config.transfuser_token_dim),
         )
 
         self.dimension_adapter = nn.Conv2d(
-            input_bev_channels, self.config.transfuser_token_dim, kernel_size=1
+            input_bev_channels,
+            self.config.transfuser_token_dim,
+            kernel_size=1,
         )
         self.reset_parameters()
 
@@ -505,7 +544,8 @@ class PlanningContextEncoder(nn.Module):
             )
         if self.config.use_discrete_command:
             command = data["command"].to(
-                self.device, dtype=self.config.torch_float_type
+                self.device,
+                dtype=self.config.torch_float_type,
             )
 
         status_tokens = []
@@ -513,9 +553,11 @@ class PlanningContextEncoder(nn.Module):
         # Encode speed
         if self.config.use_velocity:
             velocity_token = self.velocity_encoder(
-                velocity / self.config.max_speed
+                velocity / self.config.max_speed,
             ).reshape(
-                -1, 1, self.config.transfuser_token_dim
+                -1,
+                1,
+                self.config.transfuser_token_dim,
             )  # (bs, 1, transfuser_token_dim)
             status_tokens.append(velocity_token)
 
@@ -527,47 +569,63 @@ class PlanningContextEncoder(nn.Module):
                 .to(self.device, dtype=self.config.torch_float_type)
             )
             acceleration_token = self.acceleration_encoder(
-                acceleration / self.config.max_acceleration
+                acceleration / self.config.max_acceleration,
             ).reshape(
-                -1, 1, self.config.transfuser_token_dim
+                -1,
+                1,
+                self.config.transfuser_token_dim,
             )  # (bs, 1, transfuser_token_dim)
             status_tokens.append(acceleration_token)
 
         # Encode command
         if self.config.use_discrete_command:
             command_token = self.command_encoder(command).reshape(
-                -1, 1, self.config.transfuser_token_dim
+                -1,
+                1,
+                self.config.transfuser_token_dim,
             )  # (bs, 1, transfuser_token_dim)
             status_tokens.append(command_token)
 
         # Encode target point
         if self.config.use_tp:
             target_point = data["target_point"].to(
-                self.device, dtype=self.config.torch_float_type, non_blocking=True
+                self.device,
+                dtype=self.config.torch_float_type,
+                non_blocking=True,
             )
             target_point = target_point / self.target_points_normalization_constants
             tp_token = self.tp_encoder(target_point).reshape(
-                -1, 1, self.config.transfuser_token_dim
+                -1,
+                1,
+                self.config.transfuser_token_dim,
             )  # (bs, 1, transfuser_token_dim)
             status_tokens.append(tp_token)
 
         if self.config.use_previous_tp:
             previous_tp = data["target_point_previous"].to(
-                self.device, dtype=self.config.torch_float_type, non_blocking=True
+                self.device,
+                dtype=self.config.torch_float_type,
+                non_blocking=True,
             )
             previous_tp = previous_tp / self.target_points_normalization_constants
             previous_tp_token = self.tp_encoder(previous_tp).reshape(
-                -1, 1, self.config.transfuser_token_dim
+                -1,
+                1,
+                self.config.transfuser_token_dim,
             )  # (bs, 1, transfuser_token_dim)
             status_tokens.append(previous_tp_token)
 
         if self.config.use_next_tp:
             next_tp = data["target_point_next"].to(
-                self.device, dtype=self.config.torch_float_type, non_blocking=True
+                self.device,
+                dtype=self.config.torch_float_type,
+                non_blocking=True,
             )
             next_tp = next_tp / self.target_points_normalization_constants
             next_tp_token = self.tp_encoder(next_tp).reshape(
-                -1, 1, self.config.transfuser_token_dim
+                -1,
+                1,
+                self.config.transfuser_token_dim,
             )  # (bs, 1, transfuser_token_dim)
             status_tokens.append(next_tp_token)
 
@@ -578,18 +636,21 @@ class PlanningContextEncoder(nn.Module):
             and self.config.use_radar_detection
         ):
             radar_token = self.radar_encoder(radar_logits).reshape(
-                -1, self.config.num_radar_queries, self.config.transfuser_token_dim
+                -1,
+                self.config.num_radar_queries,
+                self.config.transfuser_token_dim,
             )  # (bs, num_radar_queries, transfuser_token_dim)
             radar_pos_embed = fn.gen_sineembed_for_position(
                 fn.unit_normalize_bev_points(
                     radar_predictions[..., [RadarLabels.X, RadarLabels.Y]].reshape(
-                        -1, 2
+                        -1,
+                        2,
                     ),
                     self.config,
                 ),
                 self.config.transfuser_token_dim,
             ).reshape(
-                radar_token.shape
+                radar_token.shape,
             )  # (bs, num_radar_queries, transfuser_token_dim)
             radar_token = (
                 radar_token + radar_pos_embed
@@ -600,32 +661,36 @@ class PlanningContextEncoder(nn.Module):
         has_statuses = False
         if len(status_tokens) > 0:
             status_tokens = torch.cat(
-                status_tokens, dim=1
+                status_tokens,
+                dim=1,
             )  # (bs, num_status_tokens, transfuser_token_dim)
             has_statuses = True
 
         # Process BEV features
         context_tokens = self.dimension_adapter(
-            bev_features
+            bev_features,
         )  # (bs, transfuser_token_dim, height, width)
 
         # Concatenate and add positional embeddings
         if has_statuses:
             context_tokens = context_tokens + self.cosine_pos_embeding(
-                context_tokens
+                context_tokens,
             )  # (bs, transfuser_token_dim, height, width)
             context_tokens = torch.flatten(
-                context_tokens, start_dim=2
+                context_tokens,
+                start_dim=2,
             )  # (bs, transfuser_token_dim, height * width)
             context_tokens = torch.permute(
-                context_tokens, (0, 2, 1)
+                context_tokens,
+                (0, 2, 1),
             )  # (bs, height * width, transfuser_token_dim)
 
             status_tokens = (
                 status_tokens + self.status_pos_embedding
             )  # (bs, num_status_tokens, transfuser_token_dim)
             context_tokens = torch.cat(
-                [context_tokens, status_tokens], dim=1
+                [context_tokens, status_tokens],
+                dim=1,
             )  # (bs, height * width + num_status_tokens, transfuser_token_dim)
 
         return context_tokens
@@ -670,10 +735,12 @@ class PositionEmbeddingSine(nn.Module):
         pos_x = x_embed[:, :, :, None] / dim_t
         pos_y = y_embed[:, :, :, None] / dim_t
         pos_x = torch.stack(
-            (pos_x[:, :, :, 0::2].sin(), pos_x[:, :, :, 1::2].cos()), dim=4
+            (pos_x[:, :, :, 0::2].sin(), pos_x[:, :, :, 1::2].cos()),
+            dim=4,
         ).flatten(3)
         pos_y = torch.stack(
-            (pos_y[:, :, :, 0::2].sin(), pos_y[:, :, :, 1::2].cos()), dim=4
+            (pos_y[:, :, :, 0::2].sin(), pos_y[:, :, :, 1::2].cos()),
+            dim=4,
         ).flatten(3)
         pos = torch.cat((pos_y, pos_x), dim=3).permute(0, 3, 1, 2)
         return pos.to(self.config.torch_float_type).contiguous()

@@ -54,10 +54,10 @@ def av_sensor_setup(
                 "pitch": config.lidar_rot_1[1],
                 "yaw": config.lidar_rot_1[2],
                 "id": "lidar1",
-            }
+            },
         )
         LOG.info(
-            f"Added sensor: {result[-1]['id']} at position ({config.lidar_pos_1[0]}, {config.lidar_pos_1[1]}, {config.lidar_pos_1[2]})"  # noqa: E501
+            f"Added sensor: {result[-1]['id']} at position ({config.lidar_pos_1[0]}, {config.lidar_pos_1[1]}, {config.lidar_pos_1[2]})",  # noqa: E501
         )
         if config.use_two_lidars:
             result.append(
@@ -70,10 +70,10 @@ def av_sensor_setup(
                     "pitch": config.lidar_rot_2[1],
                     "yaw": config.lidar_rot_2[2],
                     "id": "lidar2",
-                }
+                },
             )
             LOG.info(
-                f"Added sensor: {result[-1]['id']} at position ({config.lidar_pos_2[0]}, {config.lidar_pos_2[1]}, {config.lidar_pos_2[2]})"  # noqa: E501
+                f"Added sensor: {result[-1]['id']} at position ({config.lidar_pos_2[0]}, {config.lidar_pos_2[1]}, {config.lidar_pos_2[2]})",  # noqa: E501
             )
     if radar:
         for sensor_index, sensor_cfg in config.radar_calibration.items():
@@ -89,10 +89,10 @@ def av_sensor_setup(
                     "horizontal_fov": sensor_cfg["horz_fov"],
                     "vertical_fov": sensor_cfg["vert_fov"],
                     "id": f"radar{sensor_index}",
-                }
+                },
             )
             LOG.info(
-                f"Added sensor: {result[-1]['id']} at position ({sensor_cfg['pos'][0]}, {sensor_cfg['pos'][1]}, {sensor_cfg['pos'][2]})"  # noqa: E501
+                f"Added sensor: {result[-1]['id']} at position ({sensor_cfg['pos'][0]}, {sensor_cfg['pos'][1]}, {sensor_cfg['pos'][2]})",  # noqa: E501
             )
         if perturbate:
             for sensor_index, sensor_cfg in config.radar_calibration.items():
@@ -112,10 +112,10 @@ def av_sensor_setup(
                         },
                         perturbation_translation,
                         perturbation_rotation,
-                    )
+                    ),
                 )
                 LOG.info(
-                    f"Added sensor: {result[-1]['id']} at position ({result[-1]['x']}, {result[-1]['y']}, {result[-1]['z']})"
+                    f"Added sensor: {result[-1]['id']} at position ({result[-1]['x']}, {result[-1]['y']}, {result[-1]['z']})",
                 )
 
     result.append(
@@ -129,7 +129,7 @@ def av_sensor_setup(
             "yaw": 0.0,
             "sensor_tick": config.carla_frame_rate,
             "id": "imu",
-        }
+        },
     )
     LOG.info(f"Added sensor: {result[-1]['id']}")
     result.append(
@@ -143,7 +143,7 @@ def av_sensor_setup(
             "yaw": 0.0,
             "sensor_tick": 0.01,
             "id": "gps",
-        }
+        },
     )
     LOG.info(f"Added sensor: {result[-1]['id']}")
     result.append(
@@ -151,7 +151,7 @@ def av_sensor_setup(
             "type": "sensor.speedometer",
             "reading_frequency": config.carla_fps,
             "id": "speed",
-        }
+        },
     )
     LOG.info(f"Added sensor: {result[-1]['id']}")
     return result
@@ -204,10 +204,10 @@ def camera_sensor_setup(
                 "height": cam_height,
                 "fov": camera_fov,
                 "id": f"rgb{suffix}",
-            }
+            },
         )
         LOG.info(
-            f"Added sensor: {result[-1]['id']} at position ({cam_pos[0]}, {cam_pos[1]}, {cam_pos[2]}), size: {cam_width}x{cam_height}px"  # noqa: E501
+            f"Added sensor: {result[-1]['id']} at position ({cam_pos[0]}, {cam_pos[1]}, {cam_pos[2]}), size: {cam_width}x{cam_height}px",  # noqa: E501
         )
 
         if not sensor_agent:
@@ -230,10 +230,10 @@ def camera_sensor_setup(
                         "height": cam_height,
                         "fov": camera_fov,
                         "id": f"{base_id}{suffix}",
-                    }
+                    },
                 )
                 LOG.info(
-                    f"Added sensor: {result[-1]['id']} at position ({cam_pos[0]}, {cam_pos[1]}, {cam_pos[2]}), size: {cam_width}x{cam_height}px"  # noqa: E501
+                    f"Added sensor: {result[-1]['id']} at position ({cam_pos[0]}, {cam_pos[1]}, {cam_pos[2]}), size: {cam_width}x{cam_height}px",  # noqa: E501
                 )
 
             # perturbated views
@@ -261,10 +261,10 @@ def camera_sensor_setup(
                             },
                             perturbation_translation,
                             perturbation_rotation,
-                        )
+                        ),
                     )
                     LOG.info(
-                        f"Added perturbated sensor: {result[-1]['id']} at position ({result[-1]['x']}, {result[-1]['y']}, {result[-1]['z']}), size: {result[-1]['width']}x{result[-1]['height']}px"  # noqa: E501
+                        f"Added perturbated sensor: {result[-1]['id']} at position ({result[-1]['x']}, {result[-1]['y']}, {result[-1]['z']}), size: {result[-1]['width']}x{result[-1]['height']}px",  # noqa: E501
                     )
 
     return result
@@ -310,7 +310,7 @@ def perturbated_sensor_cfg(
         degrees=True,
     )
     t_aug = np.array(
-        [0, perturbation_translation, 0]
+        [0, perturbation_translation, 0],
     )  # translate along Y of perturbate frame
 
     # Apply 3D rigid transform
@@ -329,7 +329,7 @@ def perturbated_sensor_cfg(
             "roll": float(roll),
             "pitch": float(pitch),
             "yaw": float(yaw),
-        }
+        },
     )
     return sensor_cfg
 

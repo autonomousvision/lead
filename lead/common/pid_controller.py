@@ -20,7 +20,11 @@ class PIDController:
 
     @beartype
     def __init__(
-        self, k_p: float = 1.0, k_i: float = 0.0, k_d: float = 0.0, n: int = 20
+        self,
+        k_p: float = 1.0,
+        k_i: float = 0.0,
+        k_d: float = 0.0,
+        n: int = 20,
     ) -> None:
         """Initialize the PID controller with gain parameters.
 
@@ -125,7 +129,7 @@ class LateralPIDController:
         )  # range [2.4, 10.5]
         n_lookahead = n_lookahead - 2  # range [0.4, 8.5]
         n_lookahead = int(
-            min(n_lookahead, route.shape[0] - 1)
+            min(n_lookahead, route.shape[0] - 1),
         )  # range [0, 8] - but 0 and 1 are never used because n_lookahead is overwritten below
 
         n_lookahead = min(n_lookahead, len(route) - 1)
@@ -133,7 +137,9 @@ class LateralPIDController:
 
         if sensor_agent_steer_correction:
             n_lookahead += np.clip(
-                int(curvature * self.config.sensor_agent_steer_correction_param), 0, 2
+                int(curvature * self.config.sensor_agent_steer_correction_param),
+                0,
+                2,
             )
 
         desired_heading_vec = route[n_lookahead] - ego_vehicle_location
@@ -264,7 +270,8 @@ class ExpertLateralPIDController:
         # Calculate the desired heading vector from the lookahead point
         desired_heading_vec = route_points[lookahead_distance] - vehicle_position
         desired_heading_angle = np.arctan2(
-            desired_heading_vec[1], desired_heading_vec[0]
+            desired_heading_vec[1],
+            desired_heading_vec[0],
         )
 
         # Calculate the heading error
@@ -335,7 +342,10 @@ class ExpertLongitudinalController:
         )
 
     def get_throttle_and_brake(
-        self, hazard_brake: bool, target_speed: float, current_speed: float
+        self,
+        hazard_brake: bool,
+        target_speed: float,
+        current_speed: float,
     ) -> tuple[float, bool]:
         """Get throttle and brake values using linear regression model.
 
@@ -375,7 +385,7 @@ class ExpertLongitudinalController:
                 speed_error_cl**2,
                 current_speed * speed_error_cl,
                 current_speed**2 * speed_error_cl,
-            ]
+            ],
         )
 
         throttle, control_brake = np.clip(features @ params[:-1], 0.0, 1.0), False
@@ -383,7 +393,9 @@ class ExpertLongitudinalController:
         return throttle, control_brake
 
     def get_throttle_extrapolation(
-        self, target_speed: float, current_speed: float
+        self,
+        target_speed: float,
+        current_speed: float,
     ) -> float:
         """Get throttle value for forecasting purposes.
 
@@ -426,7 +438,7 @@ class ExpertLongitudinalController:
                 speed_error_cl**2,
                 current_speed * speed_error_cl,
                 current_speed**2 * speed_error_cl,
-            ]
+            ],
         ).flatten()
 
         throttle = np.clip(features @ params[:-1], 0.0, 1.0)
@@ -436,7 +448,10 @@ class ExpertLongitudinalController:
 
 @beartype
 def get_throttle(
-    brake: bool, target_speed: float, speed: float, config: ExpertConfig
+    brake: bool,
+    target_speed: float,
+    speed: float,
+    config: ExpertConfig,
 ) -> tuple[float, bool]:
     """Compute throttle and brake values using expert longitudinal control.
 
@@ -482,7 +497,7 @@ def get_throttle(
             speed_error_cl**2,
             speed * speed_error_cl,
             speed**2 * speed_error_cl,
-        ]
+        ],
     ).squeeze()
 
     params = np.array(params[:-1])

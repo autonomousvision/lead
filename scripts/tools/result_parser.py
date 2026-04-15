@@ -217,7 +217,7 @@ def main():
                     if inf_name in PENALTY_VALUE_DICT:
                         if driven_km > 0.0:
                             score_penalty *= math.pow(
-                                PENALTY_VALUE_DICT[inf_name], (local_infractions[inf_name] / driven_km)
+                                PENALTY_VALUE_DICT[inf_name], (local_infractions[inf_name] / driven_km),
                             )
 
                 # Special infraction min speed
@@ -367,7 +367,7 @@ def main():
                 [
                     [infraction[1] for infraction in scenario["infractions"]]
                     for scenario in route_scenarios_per_subcategory[subcategory]
-                ]
+                ],
             )
 
             scores_combined = (scores.mean(), scores.std())
@@ -421,7 +421,7 @@ def main():
                         "length mean",
                         "length std",
                     ]
-                    + infractions_types
+                    + infractions_types,
                 )
             else:
                 csv_writer_object.writerow(
@@ -438,12 +438,12 @@ def main():
                         "length mean",
                         "length std",
                     ]
-                    + infractions_types
+                    + infractions_types,
                 )
 
             try:
                 sorted_keys = sorted(
-                    evaluation_filtered[filter].keys(), key=lambda fil: int(re.search("_(\d+)_", fil).group(1))
+                    evaluation_filtered[filter].keys(), key=lambda fil: int(re.search("_(\d+)_", fil).group(1)),
                 )
             except AttributeError:
                 sorted_keys = sorted(evaluation_filtered[filter].keys())
@@ -470,7 +470,7 @@ def main():
                             item["length"][0],
                             item["length"][1],
                         ]
-                        + infractions_output
+                        + infractions_output,
                     )
                 else:
                     csv_writer_object.writerow(
@@ -487,7 +487,7 @@ def main():
                             item["length"][0],
                             item["length"][1],
                         ]
-                        + infractions_output
+                        + infractions_output,
                     )
             csv_writer_object.writerow([""])
 

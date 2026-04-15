@@ -82,7 +82,7 @@ class ExpertData(ExpertBase):
         # Store metas to update acceleration with forward difference after finishing route
         self.metas = []
         self.transform_queue = deque(
-            maxlen=self.config_expert.ego_num_temporal_data_points_saved + 1
+            maxlen=self.config_expert.ego_num_temporal_data_points_saved + 1,
         )
         self.negative_id_counter = expert_utils.NegativeIdCounter()
         self.traffic_manager = traffic_manager
@@ -129,7 +129,7 @@ class ExpertData(ExpertBase):
 
         self.weather_setting = "ClearNoon"
         self.semantics_converter = np.uint8(
-            list(constants.SEMANTIC_SEGMENTATION_CONVERTER.values())
+            list(constants.SEMANTIC_SEGMENTATION_CONVERTER.values()),
         )
 
         # Start background saving thread if saving is enabled
@@ -176,10 +176,12 @@ class ExpertData(ExpertBase):
                 self.config_expert.camera_3rd_person_calibration["image_size_y"],
             )
             camera_bp.set_attribute(
-                "fov", self.config_expert.camera_3rd_person_calibration["fov"]
+                "fov",
+                self.config_expert.camera_3rd_person_calibration["fov"],
             )
             self._3rd_person_camera = self.carla_world.spawn_actor(
-                camera_bp, self.transform_3rd_person_camera
+                camera_bp,
+                self.transform_3rd_person_camera,
             )
 
             def _save_image(image):
@@ -198,7 +200,8 @@ class ExpertData(ExpertBase):
                     _save(
                         image,
                         os.path.join(
-                            save_path_3rd_person, f"{str(frame).zfill(4)}.jpg"
+                            save_path_3rd_person,
+                            f"{str(frame).zfill(4)}.jpg",
                         ),
                     )
 
@@ -213,7 +216,7 @@ class ExpertData(ExpertBase):
                 np.random.choice(
                     list(jpeg_storage_quality_distribution.keys()),
                     p=list(jpeg_storage_quality_distribution.values()),
-                )
+                ),
             )
         else:
             self.jpeg_storage_quality = 90
@@ -230,13 +233,14 @@ class ExpertData(ExpertBase):
         }
         if obs_config["width_in_pixels"] != self.config_expert.lidar_width_pixel:
             LOG.warning(
-                "The BEV resolution is not the same as the LiDAR resolution. This might lead to unexpected results"
+                "The BEV resolution is not the same as the LiDAR resolution. This might lead to unexpected results",
             )
 
         self.stop_sign_criteria = RunStopSign(self.carla_world)
         self.ss_bev_manager = ObsManager(obs_config, self.config_expert)
         self.ss_bev_manager.attach_ego_vehicle(
-            self.ego_vehicle, criteria_stop=self.stop_sign_criteria
+            self.ego_vehicle,
+            criteria_stop=self.stop_sign_criteria,
         )
 
         if self.config_expert.perturbate_sensors:
@@ -257,15 +261,20 @@ class ExpertData(ExpertBase):
                 self.ego_vehicle.id,
             )
             self.ss_bev_manager_perturbated.attach_ego_vehicle(
-                self.perturbated_vehicle_dummy, criteria_stop=self.stop_sign_criteria
+                self.perturbated_vehicle_dummy,
+                criteria_stop=self.stop_sign_criteria,
             )
 
         self._local_planner = LocalPlanner(
-            self.ego_vehicle, opt_dict={}, map_inst=self.carla_world_map
+            self.ego_vehicle,
+            opt_dict={},
+            map_inst=self.carla_world_map,
         )
         self.bounding_boxes = []
         ransac.remove_ground(
-            np.random.rand(1000, 3), self.config_expert, parallel=True
+            np.random.rand(1000, 3),
+            self.config_expert,
+            parallel=True,
         )  # Pre-compile numba code
 
         self.initialized = True
@@ -282,7 +291,7 @@ class ExpertData(ExpertBase):
                 LOG.info(f"Chose nice weather {self.weather_setting}")
             else:
                 self.weather_setting = random.choice(
-                    list(weathers.WEATHER_SETTINGS.keys())
+                    list(weathers.WEATHER_SETTINGS.keys()),
                 )
                 LOG.info(f"Chose random weather {self.weather_setting}")
             LOG.info(f"Chose weather {self.weather_setting}")
@@ -292,28 +301,35 @@ class ExpertData(ExpertBase):
 
             if "Noon" in self.weather_setting:
                 self.weather_parameters["sun_altitude_angle"] += np.random.uniform(
-                    -45.0, 45.0
+                    -45.0,
+                    45.0,
                 )
             elif "Custom" not in self.weather_setting:
                 self.weather_parameters["sun_altitude_angle"] += np.random.uniform(
-                    -15.0, 15.0
+                    -15.0,
+                    15.0,
                 )
 
             for randomizing_parameter in ["wind_intensity", "fog_density", "wetness"]:
                 if self.weather_parameters[randomizing_parameter] < 30:
                     self.weather_parameters[randomizing_parameter] += np.random.uniform(
-                        -5.0, 5.0
+                        -5.0,
+                        5.0,
                     )
                 elif self.weather_parameters[randomizing_parameter] < 80:
                     self.weather_parameters[randomizing_parameter] += np.random.uniform(
-                        -10.0, 10.0
+                        -10.0,
+                        10.0,
                     )
                 else:
                     self.weather_parameters[randomizing_parameter] += np.random.uniform(
-                        -5.0, 5.0
+                        -5.0,
+                        5.0,
                     )
                 self.weather_parameters[randomizing_parameter] = np.clip(
-                    self.weather_parameters[randomizing_parameter], 0.0, 100.0
+                    self.weather_parameters[randomizing_parameter],
+                    0.0,
+                    100.0,
                 )
 
             weather = carla.WeatherParameters(**self.weather_parameters)
@@ -327,21 +343,22 @@ class ExpertData(ExpertBase):
                     vehicle.set_light_state(
                         carla.VehicleLightState(
                             carla.VehicleLightState.Position
-                            | carla.VehicleLightState.LowBeam
-                        )
+                            | carla.VehicleLightState.LowBeam,
+                        ),
                     )
             else:
                 for vehicle in vehicles:
                     vehicle.set_light_state(carla.VehicleLightState.NONE)
         else:
             self.weather_setting = expert_utils.get_weather_name(
-                weather, self.config_expert
+                weather,
+                self.config_expert,
             )
             self.weather_parameters = expert_utils.weather_parameter_to_dict(weather)
 
         LOG.info(f"Current weather setting: {self.weather_setting}")
         self.visual_visibility = int(
-            weathers.WEATHER_VISIBILITY_MAPPING[self.weather_setting]
+            weathers.WEATHER_VISIBILITY_MAPPING[self.weather_setting],
         )
 
     @beartype
@@ -352,7 +369,8 @@ class ExpertData(ExpertBase):
         planning module even though they might be visible in the camera.
         """
         actor_in_ego = common_utils.get_relative_transform(
-            self.ego_matrix, np.array(actor.get_transform().get_matrix())
+            self.ego_matrix,
+            np.array(actor.get_transform().get_matrix()),
         )
         x_ego, y_ego, _ = actor_in_ego
         return bool(
@@ -362,7 +380,7 @@ class ExpertData(ExpertBase):
             and self.config_expert.min_y_meter - 2
             < y_ego
             < self.config_expert.max_y_meter + 2
-            and np.linalg.norm(actor_in_ego) < self.config_expert.bb_save_radius
+            and np.linalg.norm(actor_in_ego) < self.config_expert.bb_save_radius,
         )
 
     def update_3rd_person_camera(self):
@@ -478,11 +496,11 @@ class ExpertData(ExpertBase):
         for actor in actors:
             try:
                 trigger_box_global_pos = actor.get_transform().transform(
-                    actor.trigger_volume.location
+                    actor.trigger_volume.location,
                 )
             except:
                 LOG.info(
-                    "Warning! Error caught in get_nearby_objects. (probably AttributeError: actor.trigger_volume)"
+                    "Warning! Error caught in get_nearby_objects. (probably AttributeError: actor.trigger_volume)",
                 )
                 LOG.info("Skipping this object.")
                 continue
@@ -524,12 +542,15 @@ class ExpertData(ExpertBase):
                 rgb_perturbated_cameras = []
                 for camera_idx in range(1, self.config_expert.num_cameras + 1):
                     rgb_perturbated = input_data[f"rgb_{camera_idx}_perturbated"][1][
-                        :, :, :3
+                        :,
+                        :,
+                        :3,
                     ]
                     input_data[f"rgb_{camera_idx}_perturbated"] = rgb_perturbated
                     rgb_perturbated_cameras.append(rgb_perturbated)
                 input_data["rgb_perturbated"] = np.concatenate(
-                    rgb_perturbated_cameras, axis=1
+                    rgb_perturbated_cameras,
+                    axis=1,
                 )
 
             if self.config_expert.use_radars and self.config_expert.perturbate_sensors:
@@ -549,10 +570,11 @@ class ExpertData(ExpertBase):
             converted_instances = []
             for camera_idx in range(1, self.config_expert.num_cameras + 1):
                 instance = cv2.cvtColor(
-                    input_data[f"instance_{camera_idx}"][1][:, :, :3], cv2.COLOR_BGR2RGB
+                    input_data[f"instance_{camera_idx}"][1][:, :, :3],
+                    cv2.COLOR_BGR2RGB,
                 )
                 converted_instance = expert_utils.convert_instance_segmentation(
-                    instance
+                    instance,
                 )
 
                 input_data[f"instance_{camera_idx}"] = instance
@@ -582,11 +604,12 @@ class ExpertData(ExpertBase):
                     )
                     instances_perturbated.append(instance_perturbated)
                     converted_instances_perturbated.append(
-                        converted_instance_perturbated
+                        converted_instance_perturbated,
                     )
 
                 input_data["instance_perturbated"] = np.concatenate(
-                    instances_perturbated, axis=1
+                    instances_perturbated,
+                    axis=1,
                 )
 
             # Standard semantics with some details we don't learn but will be useful to enhance the depth map
@@ -607,17 +630,18 @@ class ExpertData(ExpertBase):
                         semantics_perturbated_standard
                     )
                     semantics_perturbated_standard_cameras.append(
-                        semantics_perturbated_standard
+                        semantics_perturbated_standard,
                     )
                 input_data["semantics_perturbated"] = np.concatenate(
-                    semantics_perturbated_standard_cameras, axis=1
+                    semantics_perturbated_standard_cameras,
+                    axis=1,
                 )
 
             # Depth - flexible camera processing
             depth_cameras = []
             for camera_idx in range(1, self.config_expert.num_cameras + 1):
                 depth = expert_utils.convert_depth(
-                    input_data[f"depth_{camera_idx}"][1][:, :, :3]
+                    input_data[f"depth_{camera_idx}"][1][:, :, :3],
                 )
                 depth = expert_utils.enhance_depth(
                     depth,
@@ -632,7 +656,7 @@ class ExpertData(ExpertBase):
                 depth_perturbated_cameras = []
                 for camera_idx in range(1, self.config_expert.num_cameras + 1):
                     perturbated_depth = expert_utils.convert_depth(
-                        input_data[f"depth_{camera_idx}_perturbated"][1][:, :, :3]
+                        input_data[f"depth_{camera_idx}_perturbated"][1][:, :, :3],
                     )
                     perturbated_depth = expert_utils.enhance_depth(
                         perturbated_depth,
@@ -642,7 +666,8 @@ class ExpertData(ExpertBase):
                     input_data[f"depth_{camera_idx}_perturbated"] = perturbated_depth
                     depth_perturbated_cameras.append(perturbated_depth)
                 input_data["depth_perturbated"] = np.concatenate(
-                    depth_perturbated_cameras, axis=1
+                    depth_perturbated_cameras,
+                    axis=1,
                 )
 
             # Semantics segmentation using first channel of instance segmentation
@@ -665,7 +690,8 @@ class ExpertData(ExpertBase):
                     )
                     semantics_perturbated_cameras.append(semantics_perturbated)
                 input_data["semantics_perturbated"] = np.concatenate(
-                    semantics_perturbated_cameras, axis=1
+                    semantics_perturbated_cameras,
+                    axis=1,
                 )
 
             # Camera point cloud
@@ -726,12 +752,12 @@ class ExpertData(ExpertBase):
         # BEV Semantic
         self.stop_sign_criteria.tick(self.ego_vehicle)
         input_data["hdmap"] = self.ss_bev_manager.get_observation(
-            self.close_traffic_lights
+            self.close_traffic_lights,
         )["hdmap_classes"]
         if self.config_expert.perturbate_sensors:
             input_data["hdmap_perturbated"] = (
                 self.ss_bev_manager_perturbated.get_observation(
-                    self.close_traffic_lights
+                    self.close_traffic_lights,
                 )["hdmap_classes"]
             )
 
@@ -771,7 +797,7 @@ class ExpertData(ExpertBase):
                     if box.get("type_id") in constants.EMERGENCY_MESHES
                 ],
                 input_data["semantics_camera_pc_all"],
-            )
+            ),
         )
         stop_sign_meshes_id_map = (
             expert_utils.match_unreal_engine_ids_to_carla_actors_ids(
@@ -855,7 +881,8 @@ class ExpertData(ExpertBase):
                     for i in range(1, self.config_expert.num_cameras + 1)
                 ]
                 input_data["semantics_perturbated"] = np.concatenate(
-                    semantics_perturbated_cameras, axis=1
+                    semantics_perturbated_cameras,
+                    axis=1,
                 )
 
         self.tick_data = input_data
@@ -898,7 +925,7 @@ class ExpertData(ExpertBase):
             queue_size = self._save_queue.qsize()
             if queue_size > 50:  # Warn if queue is getting large
                 LOG.warning(
-                    f"Save queue depth: {queue_size}/100 - disk may be falling behind"
+                    f"Save queue depth: {queue_size}/100 - disk may be falling behind",
                 )
 
     def _save_worker(self):
@@ -1056,7 +1083,8 @@ class ExpertData(ExpertBase):
                 radar_save_dict[f"radar{i}"] = tick_data[f"radar{i}"].astype(np.float16)
 
             np.savez_compressed(
-                self.save_path / "radar" / (f"{frame:04}.npz"), **radar_save_dict
+                self.save_path / "radar" / (f"{frame:04}.npz"),
+                **radar_save_dict,
             )
             if self.config_expert.perturbate_sensors:
                 # Prepare perturbated radar data for saving dynamically
@@ -1079,16 +1107,19 @@ class ExpertData(ExpertBase):
                 self.config_expert.point_precision_x,
                 self.config_expert.point_precision_y,
                 self.config_expert.point_precision_z,
-            ]
+            ],
         )
         # Add extra dimension for time
         header.add_extra_dim(laspy.ExtraBytesParams(name="time", type=np.uint8))
 
         with laspy.open(
-            self.save_path / "lidar" / (f"{frame:04}.laz"), mode="w", header=header
+            self.save_path / "lidar" / (f"{frame:04}.laz"),
+            mode="w",
+            header=header,
         ) as writer:
             point_record = laspy.ScaleAwarePointRecord.zeros(
-                points.shape[0], header=header
+                points.shape[0],
+                header=header,
             )
             point_record.x = points[:, 0]
             point_record.y = points[:, 1]
@@ -1117,7 +1148,7 @@ class ExpertData(ExpertBase):
                 pass
 
             self._save_thread.join(
-                timeout=10
+                timeout=10,
             )  # Wait up to 10 seconds for clean shutdown
             if self._save_thread.is_alive():
                 LOG.warning("Save thread did not shutdown cleanly within timeout")
@@ -1134,7 +1165,9 @@ class ExpertData(ExpertBase):
 
         if results is not None and self.save_path is not None:
             with open(
-                os.path.join(self.save_path, "results.json"), "w", encoding="utf-8"
+                os.path.join(self.save_path, "results.json"),
+                "w",
+                encoding="utf-8",
             ) as f:
                 json.dump(results.__dict__, f, indent=2)
 
@@ -1188,7 +1221,8 @@ class ExpertData(ExpertBase):
                 # --- Future speeds: from one step after current to furthest future ---
                 future_speeds = []
                 for offset in range(
-                    0, self.config_expert.ego_num_temporal_data_points_saved + 1
+                    0,
+                    self.config_expert.ego_num_temporal_data_points_saved + 1,
                 ):
                     idx = i + offset
                     if idx < N:
@@ -1199,7 +1233,8 @@ class ExpertData(ExpertBase):
                 # --- Future yaws: from one step after current to furthest future ---
                 future_yaws = []
                 for offset in range(
-                    0, self.config_expert.ego_num_temporal_data_points_saved + 1
+                    0,
+                    self.config_expert.ego_num_temporal_data_points_saved + 1,
                 ):
                     idx = i + offset
                     if idx < N:
@@ -1213,7 +1248,8 @@ class ExpertData(ExpertBase):
                 T_world_to_current_ego = np.linalg.inv(np.array(data["ego_matrix"]))
                 future_positions = []
                 for offset in range(
-                    0, self.config_expert.ego_num_temporal_data_points_saved + 1
+                    0,
+                    self.config_expert.ego_num_temporal_data_points_saved + 1,
                 ):
                     idx = i + offset
                     if idx < N:
@@ -1256,7 +1292,8 @@ class ExpertData(ExpertBase):
                         if idx < N:
                             _, _, future_boxes = self.bounding_boxes[idx]
                             future_box = next(
-                                (b for b in future_boxes if b["id"] == box_id), None
+                                (b for b in future_boxes if b["id"] == box_id),
+                                None,
                             )
                             if future_box:
                                 T_future = np.array(future_box["matrix"])
@@ -1266,21 +1303,24 @@ class ExpertData(ExpertBase):
 
                                 rot_world = T_future[:3, :3]
                                 heading_vector_world = rot_world @ np.array(
-                                    [1.0, 0.0, 0.0]
+                                    [1.0, 0.0, 0.0],
                                 )
                                 heading_vector_world = np.append(
-                                    heading_vector_world, 0.0
+                                    heading_vector_world,
+                                    0.0,
                                 )
                                 heading_vector_ego = (
                                     T_world_to_current_ego @ heading_vector_world
                                 )
                                 yaw = np.arctan2(
-                                    heading_vector_ego[1], heading_vector_ego[0]
+                                    heading_vector_ego[1],
+                                    heading_vector_ego[0],
                                 )
                                 future_yaws.append(yaw)
 
                     box["future_positions"] = np.array(
-                        future_positions, dtype=np.float16
+                        future_positions,
+                        dtype=np.float16,
                     )
                     box["future_yaws"] = np.array(future_yaws, dtype=np.float16)
 
@@ -1300,7 +1340,8 @@ class ExpertData(ExpertBase):
         ego_rotation = ego_transform.rotation
         ego_extent = self.ego_vehicle.bounding_box.extent
         ego_speed = self._get_forward_speed(
-            transform=ego_transform, velocity=ego_velocity
+            transform=ego_transform,
+            velocity=ego_velocity,
         )
         ego_dx = np.array([ego_extent.x, ego_extent.y, ego_extent.z])
         ego_yaw = np.deg2rad(ego_rotation.yaw)
@@ -1353,7 +1394,7 @@ class ExpertData(ExpertBase):
         result = {
             "class": "ego_car",
             "transfuser_semantics_id": int(
-                TransfuserSemanticSegmentationClass.UNLABELED
+                TransfuserSemanticSegmentationClass.UNLABELED,
             ),
             "extent": [ego_dx[0], ego_dx[1], ego_dx[2]],
             "position": [0, 0, 0],
@@ -1370,10 +1411,11 @@ class ExpertData(ExpertBase):
 
         transfuser_camera_semantics_pc = input_data["semantics_camera_pc"].copy()
         transfuser_camera_semantics_pc_semantics_id = np.array(
-            list(constants.SEMANTIC_SEGMENTATION_CONVERTER.values())
+            list(constants.SEMANTIC_SEGMENTATION_CONVERTER.values()),
         )[
             transfuser_camera_semantics_pc[
-                :, CameraPointCloudIndex.UNREAL_SEMANTICS_ID
+                :,
+                CameraPointCloudIndex.UNREAL_SEMANTICS_ID,
             ].astype(np.int32)
         ]
         global_camera_pc = {
@@ -1455,10 +1497,12 @@ class ExpertData(ExpertBase):
 
                     relative_yaw = common_utils.normalize_angle(yaw - ego_yaw)
                     relative_pos = common_utils.get_relative_transform(
-                        ego_matrix, vehicle_matrix
+                        ego_matrix,
+                        vehicle_matrix,
                     )
                     vehicle_speed = self._get_forward_speed(
-                        transform=vehicle_transform, velocity=vehicle_velocity
+                        transform=vehicle_transform,
+                        velocity=vehicle_velocity,
                     )
                     vehicle_brake = vehicle_control.brake
                     vehicle_steer = vehicle_control.steer
@@ -1482,11 +1526,11 @@ class ExpertData(ExpertBase):
 
                         if (
                             vehicle.get_location().distance(
-                                self.cutin_vehicle_starting_position
+                                self.cutin_vehicle_starting_position,
                             )
                             > 0.2
                             and vehicle.get_location().distance(
-                                self.cutin_vehicle_starting_position
+                                self.cutin_vehicle_starting_position,
                             )
                             < 8
                         ):  # to make sure the vehicle drives
@@ -1507,10 +1551,12 @@ class ExpertData(ExpertBase):
 
                     relative_yaw = common_utils.normalize_angle(yaw - ego_yaw)
                     relative_pos = common_utils.get_relative_transform(
-                        ego_matrix, vehicle_matrix
+                        ego_matrix,
+                        vehicle_matrix,
                     )
                     vehicle_speed = self._get_forward_speed(
-                        transform=vehicle_transform, velocity=vehicle_velocity
+                        transform=vehicle_transform,
+                        velocity=vehicle_velocity,
                     )
                     vehicle_brake = vehicle_control.brake
                     vehicle_steer = vehicle_control.steer
@@ -1519,14 +1565,20 @@ class ExpertData(ExpertBase):
                     # Computes how many LiDAR hits are on a bounding box. Used to filter invisible boxes during data loading.
                     if input_data.get("lidar") is not None:
                         num_in_bbox_points = expert_utils.get_num_points_in_actor(
-                            self.ego_vehicle, vehicle, input_data["lidar"], pad=True
+                            self.ego_vehicle,
+                            vehicle,
+                            input_data["lidar"],
+                            pad=True,
                         )
                     else:
                         num_in_bbox_points = -1
 
                     if input_data.get("radar") is not None:
                         num_in_bb_radar_points = expert_utils.get_num_points_in_actor(
-                            self.ego_vehicle, vehicle, input_data["radar"], pad=True
+                            self.ego_vehicle,
+                            vehicle,
+                            input_data["radar"],
+                            pad=True,
                         )
                     else:
                         num_in_bb_radar_points = -1
@@ -1536,7 +1588,8 @@ class ExpertData(ExpertBase):
                     result = {
                         "class": "car",
                         "ego_velocity": expert_utils.get_vehicle_velocity_in_ego_frame(
-                            self.ego_vehicle, vehicle
+                            self.ego_vehicle,
+                            vehicle,
                         ),
                         "next_action": next_action,
                         "vehicle_cuts_in": vehicle_cuts_in,
@@ -1545,7 +1598,7 @@ class ExpertData(ExpertBase):
                         "lane_type_str": str(vehicle_wp.lane_type),
                         "base_type": vehicle.attributes["base_type"],
                         "transfuser_semantics_id": int(
-                            TransfuserSemanticSegmentationClass.VEHICLE
+                            TransfuserSemanticSegmentationClass.VEHICLE,
                         ),
                         "extent": vehicle_extent_list,
                         "position": [relative_pos[0], relative_pos[1], relative_pos[2]],
@@ -1590,24 +1643,32 @@ class ExpertData(ExpertBase):
 
                 relative_yaw = common_utils.normalize_angle(yaw - ego_yaw)
                 relative_pos = common_utils.get_relative_transform(
-                    ego_matrix, walker_matrix
+                    ego_matrix,
+                    walker_matrix,
                 )
 
                 walker_speed = self._get_forward_speed(
-                    transform=walker_transform, velocity=walker_velocity
+                    transform=walker_transform,
+                    velocity=walker_velocity,
                 )
 
                 # Computes how many LiDAR hits are on a bounding box. Used to filter invisible boxes during data loading.
                 if input_data.get("lidar") is not None:
                     num_in_bbox_points = expert_utils.get_num_points_in_actor(
-                        self.ego_vehicle, walker, input_data["lidar"], pad=True
+                        self.ego_vehicle,
+                        walker,
+                        input_data["lidar"],
+                        pad=True,
                     )
                 else:
                     num_in_bbox_points = -1
 
                 if input_data.get("radar") is not None:
                     num_in_bb_radar_points = expert_utils.get_num_points_in_actor(
-                        self.ego_vehicle, walker, input_data["radar"], pad=True
+                        self.ego_vehicle,
+                        walker,
+                        input_data["radar"],
+                        pad=True,
                     )
                 else:
                     num_in_bb_radar_points = -1
@@ -1617,11 +1678,12 @@ class ExpertData(ExpertBase):
                 result = {
                     "class": "walker",
                     "ego_velocity": expert_utils.get_vehicle_velocity_in_ego_frame(
-                        self.ego_vehicle, walker
+                        self.ego_vehicle,
+                        walker,
                     ),
                     "role_name": walker.attributes["role_name"],
                     "transfuser_semantics_id": int(
-                        TransfuserSemanticSegmentationClass.PEDESTRIAN
+                        TransfuserSemanticSegmentationClass.PEDESTRIAN,
                     ),
                     "extent": walker_extent,
                     "position": [relative_pos[0], relative_pos[1], relative_pos[2]],
@@ -1680,17 +1742,22 @@ class ExpertData(ExpertBase):
 
                     relative_yaw = common_utils.normalize_angle(yaw - ego_yaw)
                     relative_pos = common_utils.get_relative_transform(
-                        ego_matrix, static_matrix
+                        ego_matrix,
+                        static_matrix,
                     )
 
                     static_speed = self._get_forward_speed(
-                        transform=static_transform, velocity=static_velocity
+                        transform=static_transform,
+                        velocity=static_velocity,
                     )
 
                     # Computes how many LiDAR hits are on a bounding box. Used to filter invisible boxes during data loading.
                     if input_data.get("lidar") is not None:
                         num_in_bbox_points = expert_utils.get_num_points_in_actor(
-                            self.ego_vehicle, static, input_data["lidar"], pad=True
+                            self.ego_vehicle,
+                            static,
+                            input_data["lidar"],
+                            pad=True,
                         )
                     else:
                         num_in_bbox_points = -1
@@ -1700,7 +1767,7 @@ class ExpertData(ExpertBase):
                     result = {
                         "class": "static",
                         "transfuser_semantics_id": int(
-                            TransfuserSemanticSegmentationClass.UNLABELED
+                            TransfuserSemanticSegmentationClass.UNLABELED,
                         ),
                         "extent": static_extent,
                         "position": [relative_pos[0], relative_pos[1], relative_pos[2]],
@@ -1715,7 +1782,7 @@ class ExpertData(ExpertBase):
                     }
                     if result["mesh_path"] is not None and "Car" in result["mesh_path"]:
                         result["transfuser_semantics_id"] = int(
-                            TransfuserSemanticSegmentationClass.VEHICLE
+                            TransfuserSemanticSegmentationClass.VEHICLE,
                         )
                         result["visible_pixels"] = expert_utils.get_num_points_in_bbox(
                             self.ego_vehicle,
@@ -1727,7 +1794,7 @@ class ExpertData(ExpertBase):
                         )
                     else:
                         result["transfuser_semantics_id"] = int(
-                            TransfuserSemanticSegmentationClass.OBSTACLE
+                            TransfuserSemanticSegmentationClass.OBSTACLE,
                         )
                         result["visible_pixels"] = expert_utils.get_num_points_in_bbox(
                             self.ego_vehicle,
@@ -1750,13 +1817,13 @@ class ExpertData(ExpertBase):
             traffic_light_affects_ego,
         ) in self.close_traffic_lights:
             original_waypoint = self.carla_world_map.get_waypoint(
-                original_traffic_light_bounding_box.location
+                original_traffic_light_bounding_box.location,
             )
             waypoint_transform_matrix = np.array(
-                original_waypoint.transform.get_matrix()
+                original_waypoint.transform.get_matrix(),
             )
             traffic_light_transform_matrix = np.array(
-                traffic_light.get_transform().get_matrix()
+                traffic_light.get_transform().get_matrix(),
             )
 
             traffic_light_in_waypoint = common_utils.get_relative_transform(
@@ -1784,7 +1851,8 @@ class ExpertData(ExpertBase):
             )
             if traffic_light_affects_ego:
                 red_light_stop_waypoints = expert_utils.get_stop_waypoints(
-                    self.ego_wp, traffic_light
+                    self.ego_wp,
+                    traffic_light,
                 )
 
                 # Create bounding boxes for each additional lane
@@ -1792,7 +1860,8 @@ class ExpertData(ExpertBase):
                     # Create bounding box for this waypoint
                     duplicated_traffic_light_bounding_box = (
                         expert_utils.create_bounding_box_for_waypoint(
-                            original_traffic_light_bounding_box, red_light_stop_waypoint
+                            original_traffic_light_bounding_box,
+                            red_light_stop_waypoint,
                         )
                     )
 
@@ -1809,13 +1878,14 @@ class ExpertData(ExpertBase):
                     )
                     traffic_light_rotation = traffic_light_transform.rotation
                     traffic_light_matrix = np.array(
-                        traffic_light_transform.get_matrix()
+                        traffic_light_transform.get_matrix(),
                     )
                     yaw = np.deg2rad(traffic_light_rotation.yaw)
 
                     relative_yaw = common_utils.normalize_angle(yaw - ego_yaw)
                     relative_pos = common_utils.get_relative_transform(
-                        ego_matrix, traffic_light_matrix
+                        ego_matrix,
+                        traffic_light_matrix,
                     )
 
                     distance = np.linalg.norm(relative_pos)
@@ -1828,8 +1898,8 @@ class ExpertData(ExpertBase):
                                 - duplicated_traffic_light_bounding_box.location.x,
                                 traffic_light.get_transform().location.y
                                 - duplicated_traffic_light_bounding_box.location.y,
-                            ]
-                        )
+                            ],
+                        ),
                     )
 
                     # Duplicated bounding box result
@@ -1837,7 +1907,7 @@ class ExpertData(ExpertBase):
                         result = {
                             "class": "traffic_light",
                             "transfuser_semantics_id": int(
-                                TransfuserSemanticSegmentationClass.TRAFFIC_LIGHT
+                                TransfuserSemanticSegmentationClass.TRAFFIC_LIGHT,
                             ),
                             "extent": traffic_light_extent,
                             "position": [
@@ -1862,7 +1932,7 @@ class ExpertData(ExpertBase):
                         result = {
                             "class": "traffic_light",
                             "transfuser_semantics_id": int(
-                                TransfuserSemanticSegmentationClass.TRAFFIC_LIGHT
+                                TransfuserSemanticSegmentationClass.TRAFFIC_LIGHT,
                             ),
                             "extent": traffic_light_extent,
                             "position": [
@@ -1874,7 +1944,7 @@ class ExpertData(ExpertBase):
                             "distance": distance,
                             "state": str(traffic_light_state),
                             "id": self.negative_id_counter(
-                                traffic_light.id
+                                traffic_light.id,
                             ),  # Use negative ID counter for duplicates
                             "affects_ego": traffic_light_affects_ego,
                             "matrix": traffic_light_transform.get_matrix(),
@@ -1895,7 +1965,8 @@ class ExpertData(ExpertBase):
             ]
 
             stop_sign_transform = carla.Transform(
-                stop_sign[0].location, stop_sign[0].rotation
+                stop_sign[0].location,
+                stop_sign[0].rotation,
             )
             stop_sign_rotation = stop_sign_transform.rotation
             stop_sign_matrix = np.array(stop_sign_transform.get_matrix())
@@ -1903,7 +1974,8 @@ class ExpertData(ExpertBase):
 
             relative_yaw = common_utils.normalize_angle(yaw - ego_yaw)
             relative_pos = common_utils.get_relative_transform(
-                ego_matrix, stop_sign_matrix
+                ego_matrix,
+                stop_sign_matrix,
             )
 
             distance = np.linalg.norm(relative_pos)
@@ -1911,7 +1983,7 @@ class ExpertData(ExpertBase):
             result = {
                 "class": "stop_sign",
                 "transfuser_semantics_id": int(
-                    TransfuserSemanticSegmentationClass.UNLABELED
+                    TransfuserSemanticSegmentationClass.UNLABELED,
                 ),
                 "extent": stop_sign_extent,
                 "position": [relative_pos[0], relative_pos[1], relative_pos[2]],
@@ -1932,26 +2004,27 @@ class ExpertData(ExpertBase):
             existed_bboxes_ids = set([box["id"] for box in boxes])
             for bb_class in [carla.CityObjectLabel.Car]:
                 for i, vehicle_bounding_box in enumerate(
-                    self.carla_world.get_level_bbs(bb_class)
+                    self.carla_world.get_level_bbs(bb_class),
                 ):
                     extent = vehicle_bounding_box.extent
                     location = vehicle_bounding_box.location
                     rotation = vehicle_bounding_box.rotation
                     matrix = carla.Transform(location, rotation).get_matrix()
                     relative_pos = common_utils.get_relative_transform(
-                        ego_matrix, np.array(matrix)
+                        ego_matrix,
+                        np.array(matrix),
                     )
                     distance = np.linalg.norm(relative_pos)
 
                     if distance > self.config_expert.bb_save_radius:
                         continue
                     relative_yaw = common_utils.normalize_angle(
-                        np.deg2rad(rotation.yaw) - ego_yaw
+                        np.deg2rad(rotation.yaw) - ego_yaw,
                     )
                     result = {
                         "class": "static_prop_car",
                         "transfuser_semantics_id": int(
-                            TransfuserSemanticSegmentationClass.VEHICLE
+                            TransfuserSemanticSegmentationClass.VEHICLE,
                         ),
                         "extent": [extent.x, extent.y, extent.z],
                         "position": [relative_pos[0], relative_pos[1], relative_pos[2]],
@@ -1964,7 +2037,7 @@ class ExpertData(ExpertBase):
                     # Since we iterate every bounding box in the world, we need to make sure that we dont duplicate anything
                     too_close = False
                     for other in list(self._actors.filter("*vehicle*")) + list(
-                        self._actors.filter("*static*")
+                        self._actors.filter("*static*"),
                     ):
                         if other.id not in existed_bboxes_ids:
                             continue
@@ -1981,7 +2054,8 @@ class ExpertData(ExpertBase):
                         other_bb = carla.BoundingBox(global_location, bb.extent)
                         other_bb.rotation = bb.rotation
                         if expert_utils.check_obb_intersection(
-                            vehicle_bounding_box, other_bb
+                            vehicle_bounding_box,
+                            other_bb,
                         ):
                             too_close = True
                             break
@@ -1989,7 +2063,10 @@ class ExpertData(ExpertBase):
                     if not too_close:
                         if input_data.get("lidar") is not None:
                             result["num_points"] = expert_utils.get_num_points_in_bbox(
-                                self.ego_vehicle, result, input_data["lidar"], pad=True
+                                self.ego_vehicle,
+                                result,
+                                input_data["lidar"],
+                                pad=True,
                             )
                         else:
                             result["num_points"] = -1
@@ -2015,7 +2092,8 @@ class ExpertData(ExpertBase):
                 filtered_bounding_boxes.append(box)
         # Sort by distances to ego
         filtered_bounding_boxes = sorted(
-            filtered_bounding_boxes, key=lambda x: x["distance"]
+            filtered_bounding_boxes,
+            key=lambda x: x["distance"],
         )
 
         return filtered_bounding_boxes
@@ -2025,10 +2103,11 @@ class ExpertData(ExpertBase):
         ego_vehicle_transform = self.ego_vehicle.get_transform()
         # Calculate the global bounding box of the ego vehicle
         center_ego_bb_global = ego_vehicle_transform.transform(
-            self.ego_vehicle.bounding_box.location
+            self.ego_vehicle.bounding_box.location,
         )
         ego_bb_global = carla.BoundingBox(
-            center_ego_bb_global, self.ego_vehicle.bounding_box.extent
+            center_ego_bb_global,
+            self.ego_vehicle.bounding_box.extent,
         )
         ego_bb_global.rotation = ego_vehicle_transform.rotation
 
@@ -2048,12 +2127,14 @@ class ExpertData(ExpertBase):
 
             leading_vehicle_ids = (
                 self.privileged_route_planner.compute_leading_vehicles(
-                    vehicle_list, self.ego_vehicle.id
+                    vehicle_list,
+                    self.ego_vehicle.id,
                 )
             )
             trailing_vehicle_ids = (
                 self.privileged_route_planner.compute_trailing_vehicles(
-                    vehicle_list, self.ego_vehicle.id
+                    vehicle_list,
+                    self.ego_vehicle.id,
                 )
             )
 
@@ -2113,7 +2194,9 @@ class ExpertData(ExpertBase):
                         extent = vehicle.bounding_box.extent
                         bb = carla.BoundingBox(vehicle.get_location(), extent)
                         bb.rotation = carla.Rotation(
-                            pitch=0, yaw=vehicle.get_transform().rotation.yaw, roll=0
+                            pitch=0,
+                            yaw=vehicle.get_transform().rotation.yaw,
+                            roll=0,
                         )
                         self.carla_world.debug.draw_box(
                             box=bb,
@@ -2127,7 +2210,9 @@ class ExpertData(ExpertBase):
                         extent = vehicle.bounding_box.extent
                         bb = carla.BoundingBox(vehicle.get_location(), extent)
                         bb.rotation = carla.Rotation(
-                            pitch=0, yaw=vehicle.get_transform().rotation.yaw, roll=0
+                            pitch=0,
+                            yaw=vehicle.get_transform().rotation.yaw,
+                            roll=0,
                         )
                         self.carla_world.debug.draw_box(
                             box=bb,
@@ -2139,7 +2224,8 @@ class ExpertData(ExpertBase):
 
     @beartype
     def visualize_pedestrian_bounding_boxes(
-        self, nearby_pedestrians_bbs: list[list[carla.BoundingBox]]
+        self,
+        nearby_pedestrians_bbs: list[list[carla.BoundingBox]],
     ):
         # Visualize the future bounding boxes of pedestrians (if enabled)
         if self.config_expert.visualize_bounding_boxes:
@@ -2198,7 +2284,9 @@ class ExpertData(ExpertBase):
 
     @beartype
     def visualize_stop_signs(
-        self, bounding_box_stop_sign: carla.BoundingBox, affects_ego: bool
+        self,
+        bounding_box_stop_sign: carla.BoundingBox,
+        affects_ego: bool,
     ):
         if self.config_expert.visualize_bounding_boxes:
             color = carla.Color(0, 1, 0) if affects_ego else carla.Color(1, 0, 0)
@@ -2217,7 +2305,7 @@ class ExpertData(ExpertBase):
             TargetDataset.CARLA_LEADERBOARD2_6CAMERAS,
         ]:
             return expert_utils.compute_camera_occlusion_score(
-                self.tick_data["semantics_camera_pc_1"]
+                self.tick_data["semantics_camera_pc_1"],
             )
         return 1.0
 
@@ -2228,7 +2316,7 @@ class ExpertData(ExpertBase):
             TargetDataset.CARLA_LEADERBOARD2_6CAMERAS,
         ]:
             return expert_utils.compute_camera_occlusion_score(
-                self.tick_data["semantics_camera_pc_2"]
+                self.tick_data["semantics_camera_pc_2"],
             )
         return 1.0
 
@@ -2239,6 +2327,6 @@ class ExpertData(ExpertBase):
             TargetDataset.CARLA_LEADERBOARD2_6CAMERAS,
         ]:
             return expert_utils.compute_camera_occlusion_score(
-                self.tick_data["semantics_camera_pc_3"]
+                self.tick_data["semantics_camera_pc_3"],
             )
         return 1.0

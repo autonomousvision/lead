@@ -194,13 +194,16 @@ def cancel_jobs_with_err_in_log(logroot: str, jobname: str, user_name: str) -> N
             terminate = True
         if terminate:
             print(
-                f"Terminating route {rf_num} with pid {pid_list[i]} due to error in logfile."
+                f"Terminating route {rf_num} with pid {pid_list[i]} due to error in logfile.",
             )
             subprocess.check_output(f"scancel {pid_list[i]}", shell=True)
 
 
 def wait_for_jobs_to_finish(
-    logroot: str, jobname: str, user_name: str, max_n_parallel_jobs: int
+    logroot: str,
+    jobname: str,
+    user_name: str,
+    max_n_parallel_jobs: int,
 ) -> None:
     currently_running_jobs, _, _ = get_running_jobs(jobname, user_name)
     print(f"{currently_running_jobs}/{max_n_parallel_jobs} jobs are running...")
@@ -221,10 +224,11 @@ def get_num_jobs(job_name: str, username: str) -> tuple[int, int]:
             shell=True,
         )
         .decode("utf-8")
-        .replace("\n", "")
+        .replace("\n", ""),
     )
     with open(
-        "slurm/configs/max_num_parallel_jobs_collect_data.txt", encoding="utf-8"
+        "slurm/configs/max_num_parallel_jobs_collect_data.txt",
+        encoding="utf-8",
     ) as f:
         max_num_parallel_jobs = int(f.read())
 
@@ -265,7 +269,10 @@ def is_job_done(result_file: str) -> bool:
 def arg_parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Collect dataset")
     parser.add_argument(
-        "--root_folder", type=str, default="data/", help="Root folder for data"
+        "--root_folder",
+        type=str,
+        default="data/",
+        help="Root folder for data",
     )
     parser.add_argument(
         "--route_folder",
@@ -344,7 +351,7 @@ if __name__ == "__main__":
                 scenario_type_counts[scenario_type] = count + 1
         routes = filtered_routes
         print(
-            f"Applied max_route_per_scenario_type={max_route_per_scenario_type}. Total routes: {len(routes)}"
+            f"Applied max_route_per_scenario_type={max_route_per_scenario_type}. Total routes: {len(routes)}",
         )
 
     port_offset = 0
@@ -420,17 +427,19 @@ if __name__ == "__main__":
             else:
                 # Wait until submitting new jobs that the #jobs are at below max
                 num_running_jobs, max_num_parallel_jobs = get_num_jobs(
-                    job_name=job_name, username=username
+                    job_name=job_name,
+                    username=username,
                 )
                 print(f"{num_running_jobs}/{max_num_parallel_jobs} jobs are running...")
                 while num_running_jobs >= max_num_parallel_jobs:
                     num_running_jobs, max_num_parallel_jobs = get_num_jobs(
-                        job_name=job_name, username=username
+                        job_name=job_name,
+                        username=username,
                     )
                     time.sleep(0.05)
 
                 print(
-                    f"Submitting job {job_number}/{num_routes}: {job_name}_{routefile_number}. "
+                    f"Submitting job {job_number}/{num_routes}: {job_name}_{routefile_number}. ",
                 )
                 time.sleep(1)
                 jobid = (
@@ -461,7 +470,8 @@ if __name__ == "__main__":
             job_finished, job_file, result_file, resubmitted = meta_jobs[k]
             need_to_resubmit = False
             with open(
-                "slurm/configs/max_num_attempts_collect_data.txt", encoding="utf-8"
+                "slurm/configs/max_num_attempts_collect_data.txt",
+                encoding="utf-8",
             ) as f:
                 max_attempts = int(f.read())
             if not job_finished and resubmitted < max_attempts:
@@ -469,10 +479,11 @@ if __name__ == "__main__":
                 if (
                     int(
                         subprocess.check_output(
-                            f"squeue | grep {k} | wc -l", shell=True
+                            f"squeue | grep {k} | wc -l",
+                            shell=True,
                         )
                         .decode("utf-8")
-                        .strip()
+                        .strip(),
                     )
                     == 0
                 ):
@@ -511,7 +522,7 @@ if __name__ == "__main__":
                 # rename old error files to still access it
                 routefile_number = Path(job_file).stem
                 print(
-                    f"Resubmit job {routefile_number} (previous id: {k}). Waiting for jobs to finish..."
+                    f"Resubmit job {routefile_number} (previous id: {k}). Waiting for jobs to finish...",
                 )
 
                 with open(
@@ -520,20 +531,23 @@ if __name__ == "__main__":
                 ) as f:
                     max_num_parallel_jobs = int(f.read())
                 wait_for_jobs_to_finish(
-                    log_root, job_name, username, max_num_parallel_jobs
+                    log_root,
+                    job_name,
+                    username,
+                    max_num_parallel_jobs,
                 )
 
                 time_now_log = time.time()
                 os.system(
-                    f'mkdir -p "{log_root}/run_files/logs_{routefile_number}_{time_now_log}"'
+                    f'mkdir -p "{log_root}/run_files/logs_{routefile_number}_{time_now_log}"',
                 )
                 os.system(
                     f"cp {log_root}/run_files/logs/qsub_err{routefile_number}.log {log_root}/ \
-                          run_files/logs_{routefile_number}_{time_now_log}"
+                          run_files/logs_{routefile_number}_{time_now_log}",
                 )
                 os.system(
                     f"cp {log_root}/run_files/logs/qsub_out{routefile_number}.log {log_root}/ \
-                          run_files/logs_{routefile_number}_{time_now_log}"
+                          run_files/logs_{routefile_number}_{time_now_log}",
                 )
 
                 jobid = (

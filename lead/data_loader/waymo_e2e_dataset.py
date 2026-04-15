@@ -50,7 +50,8 @@ class WODE2EData(Dataset):
 
         self._rgb = glob.glob(os.path.join(self.root, "**/*.jpg"), recursive=True)
         self._measurements = glob.glob(
-            os.path.join(self.root, "**/*.json.gz"), recursive=True
+            os.path.join(self.root, "**/*.json.gz"),
+            recursive=True,
         )
         self._rgb.sort()
         self._measurements.sort()
@@ -64,7 +65,7 @@ class WODE2EData(Dataset):
 
         if self.rank == 0:
             print(
-                f"[Waymo E2E] Found {len(self.rgb)} images, {len(self.measurements)} metas in {self.root}. Size {self.size}"
+                f"[Waymo E2E] Found {len(self.rgb)} images, {len(self.measurements)} metas in {self.root}. Size {self.size}",
             )
 
     def shuffle(self, epoch):
@@ -89,7 +90,9 @@ class WODE2EData(Dataset):
                 # Add random samples for the remainder
                 if remainder > 0:
                     extra_indices = rng.choice(
-                        original_size, size=remainder, replace=False
+                        original_size,
+                        size=remainder,
+                        replace=False,
                     )
                     indices.extend(extra_indices)
 
@@ -142,7 +145,7 @@ class WODE2EData(Dataset):
             preference_trajectories[i] = traj
         data["preferences"] = preference_trajectories
         data["preference_scores"] = np.array(
-            [preferences[i]["preference_score"] for i in range(3)]
+            [preferences[i]["preference_score"] for i in range(3)],
         )
         return data
 
@@ -152,7 +155,7 @@ class WODE2EData(Dataset):
             {
                 "sequence_id": self.rgb[index].split("/")[-3],
                 "frame_id": self.rgb[index].split("/")[-1].split(".")[0],
-            }
+            },
         )
         return data
 
@@ -185,14 +188,16 @@ class WODE2EData(Dataset):
         data = {
             "source_dataset": SourceDataset.WAYMO_E2E_2025,
             "speed": np.linalg.norm(
-                np.array([measurement["past"]["vx"][-1], measurement["past"]["vy"][-1]])
+                np.array(
+                    [measurement["past"]["vx"][-1], measurement["past"]["vy"][-1]],
+                ),
             ),
             "past_speeds": np.linalg.norm(
                 np.array([measurement["past"]["vx"], measurement["past"]["vy"]]).T,
                 axis=-1,
             ),
             "past_positions": np.array(
-                [measurement["past"]["x"], measurement["past"]["y"]]
+                [measurement["past"]["x"], measurement["past"]["y"]],
             ),
             "command": np.array(
                 {
@@ -200,7 +205,7 @@ class WODE2EData(Dataset):
                     1: [0, 1, 0, 0],
                     2: [0, 0, 1, 0],
                     3: [0, 0, 0, 1],
-                }[int(measurement["command"])]
+                }[int(measurement["command"])],
             ),
         }
         if rgb is not None:
@@ -211,23 +216,26 @@ class WODE2EData(Dataset):
             -self.config.num_past_samples_used - 1 : -1
         ]
         data["past_positions"] = data["past_positions"][
-            :, -self.config.num_past_samples_used - 1 : -1
+            :,
+            -self.config.num_past_samples_used - 1 : -1,
         ]
         data["past_positions"][1, :] = -data["past_positions"][
-            1, :
+            1,
+            :,
         ]  # Different coordinate system
         data["past_positions"] = data["past_positions"].T  # Shape (T, 2)
         data["past_speeds"] = data["past_speeds"].reshape(-1, 1)  # Shape (T, 1)
         # Subsample future waypoints
         if "prediction" in measurement:
             data["future_waypoints"] = np.array(
-                [measurement["prediction"]["x"], measurement["prediction"]["y"]]
+                [measurement["prediction"]["x"], measurement["prediction"]["y"]],
             ).T
             data["future_waypoints"] = data["future_waypoints"][
                 ::2
             ]  # Downsample from 4Hz to 2Hz (take indices 0, 2, 4, ...)
             data["future_waypoints"][:, 1] = -data["future_waypoints"][
-                :, 1
+                :,
+                1,
             ]  # Different coordinate system
 
         data["loading_time"] = data["loading_meta_time"] = data[
@@ -291,13 +299,13 @@ def evaluate_waymo_e2e(model: TFv6, config: TrainingConfig) -> float:
         pred = np.array(
             [
                 upsample_trajectory(
-                    prediction.pred_future_waypoints[0].detach().cpu().numpy()
-                )[None]
-            ]
+                    prediction.pred_future_waypoints[0].detach().cpu().numpy(),
+                )[None],
+            ],
         )
         preferences = [[data["preferences"][i] for i in range(3)]]
         preferences_scores = np.array(
-            [[data["preference_scores"][i]] for i in range(3)]
+            [[data["preference_scores"][i]] for i in range(3)],
         ).reshape(1, 3)
         speed = np.array([data["speed"]]).reshape(-1)
 

@@ -50,7 +50,7 @@ def route_failed(route_path: str) -> bool:
 
     if infraction or agent_not_setup or failed or simulation_crashed or agent_crashed:
         LOG.info(
-            f"\tSkipping {route_path}: results {results_route['status']}, scores {results_route['scores']['score_composed']}."
+            f"\tSkipping {route_path}: results {results_route['status']}, scores {results_route['scores']['score_composed']}.",
         )
         return True
     return False
@@ -83,7 +83,7 @@ def route_completed_but_fail(route_path: str) -> bool:
 
     if agent_not_setup or simulation_crashed or agent_crashed:
         LOG.info(
-            f"\tSkipping {route_path}: results {results_route['status']}, scores {results_route['scores']['score_composed']}."
+            f"\tSkipping {route_path}: results {results_route['status']}, scores {results_route['scores']['score_composed']}.",
         )
         return False
     if not os.path.exists(route_path + "/metas"):
@@ -105,7 +105,7 @@ def route_completed_but_fail(route_path: str) -> bool:
         + len(results_route["infractions"]["outside_route_lanes"])
     ):
         LOG.info(
-            f"\tSkipping route {route_path} due to only min speed and outside lane infractions."
+            f"\tSkipping route {route_path} due to only min speed and outside lane infractions.",
         )
         return False
 

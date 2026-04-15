@@ -88,7 +88,8 @@ class ConfigSlurm(BaseConfig):
                 "data/routes/Town13/Town13_bench_v2.0_3cameras_6hz.xml",
             ),
             "longest6": os.path.join(
-                self.lead_project_root, "3rd_party/leaderboard/data/longest6.xml"
+                self.lead_project_root,
+                "3rd_party/leaderboard/data/longest6.xml",
             ),
             "bench2drive": os.path.join(
                 self.lead_project_root,
@@ -107,5 +108,5 @@ class ConfigSlurm(BaseConfig):
     def get_env_exports(self) -> str:
         """Generate shell export commands for all current environment variables."""
         return "\n".join(
-            [f"export {key}='{value}'" for key, value in os.environ.items()]
+            [f"export {key}='{value}'" for key, value in os.environ.items()],
         )
