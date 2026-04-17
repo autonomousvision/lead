@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Hotkey script to start Viser viewer for visualizing 123D scenes.
 By default, you can open viewer via: http://localhost:8080

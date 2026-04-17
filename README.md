@@ -635,11 +635,13 @@ The results are in `outputs/local_evaluation/<route_id>/`.
 
 ### 3.3. NAVSIM Training and Evaluation
 
-**Setup.** Install `navtrain` and `navtest` splits following [navsimv1.1/docs/install.md](3rd_party/navsim_workspace/navsimv1.1/docs/install.md), then install the `navhard` split following [navsimv2.2/docs/install.md](3rd_party/navsim_workspace/navsimv2.2/docs/install.md).
+The NAVSIM workflow crosses the boundary between the vendored `navsim` codebase and `lead`: data preparation and evaluation stay on the NAVSIM side, while training runs entirely on the LEAD side.
 
-**Training.** Run perception pretraining ([script](slurm/experiments/002_navsim_example/000_pretrain1_0.sh)) followed by planning post-training ([script](slurm/experiments/002_navsim_example/010_postrain32_0.sh)). We use one seed for pretraining and three seeds for post-training to estimate performance variance.
+**Setup (NAVSIM side).** Install `navtrain` and `navtest` splits following [navsimv1.1/docs/install.md](3rd_party/navsim_workspace/navsimv1.1/docs/install.md), then install the `navhard` split following [navsimv2.2/docs/install.md](3rd_party/navsim_workspace/navsimv2.2/docs/install.md). NAVSIM handles raw sensor logs, scene caching, and metric caching for the three splits; LEAD never touches the raw NAVSIM datasets directly.
 
-**Evaluation.** Run evaluation on [navtest](slurm/experiments/002_navsim_example/020_navtest_0.sh) and [navhard](slurm/experiments/002_navsim_example/030_navhard_0.sh).
+**Training (LEAD side).** Once the NAVSIM caches exist, LEAD loads the cached `transfuser_feature.gz` / `transfuser_target.gz` pairs through [lead/data_loader/navsim_dataset.py](lead/data_loader/navsim_dataset.py) and runs perception pretraining ([script](slurm/experiments/002_navsim_example/000_pretrain1_0.sh)) followed by planning post-training ([script](slurm/experiments/002_navsim_example/010_postrain32_0.sh)). We use one seed for pretraining and three seeds for post-training to estimate performance variance. All optimization, checkpointing, and logging is LEAD-native — NAVSIM is not in the loop during training.
+
+**Evaluation (NAVSIM side).** Evaluation is driven by NAVSIM's harnesses on [navtest](slurm/experiments/002_navsim_example/020_navtest_0.sh) and [navhard](slurm/experiments/002_navsim_example/030_navhard_0.sh). The bridge back to LEAD is `CarlaTransfuserAgent` (see [navsimv1.1](3rd_party/navsim_workspace/navsimv1.1/navsim/agents/carla_transfuser_agent.py) and [navsimv2.2](3rd_party/navsim_workspace/navsimv2.2/navsim/agents/carla_transfuser_agent.py)): it implements NAVSIM's `AbstractAgent` interface but internally wraps LEAD's `OpenLoopInference`, reloading the trained LEAD checkpoint and translating NAVSIM's feature dict (camera, status, command, speed, acceleration) into LEAD's inference inputs. The agent is inference-only — `compute_loss` and `get_optimizers` raise `NotImplementedError`, reflecting that training never happens on the NAVSIM side.
 
 ### 3.4. CARLA 123D Data Collection
 
@@ -716,9 +718,11 @@ The project is organized into the following top-level directories. See the [full
 | Training instability in general                   | Turn off mixed-precision training and train in 32bit precision.                                                                                                                                                                        |
 
 If you face training instability, as reported in issue [#67](https://github.com/kesai-labs/lead/issues/67), try following solutions:
-1. Turn off mixed-precision training in [config](lead/training/config_training.py).
-2. Purge the Conda environment and reinstall from scratch.
-3. Try the latest working commit at `a41d11616`.
+1. First, try to turn off mixed-precision training in [config](lead/training/config_training.py). We found `float16` to be highly instable for TransFuser training. `bfloat16` offers on our L40S and A100 higher stability but the safest option is still `float32`.
+2. If that does not work, purge the Conda environment and reinstall from scratch.
+3. In doubt, try the latest working commit at `a41d11616`. This should the the last ressort and should not be needed.
+
+Feel free to open a ticket for any problem.
 
 ## Beyond CARLA: Cross-Benchmark Deployment
 
