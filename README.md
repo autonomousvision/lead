@@ -74,6 +74,7 @@
 
 | Date         | Content                                                                                                                                 |
 | :----------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
+| **26.04.17** | <b>WARNING: </b> LTFv6 NAVSIM checkpoint predicts in CARLA's left-handed frame. When using inference code in HuggingFace, convert waypoints/headings back to ISO 8855 before evaluation. |
 | **26.04.14** | <b>WARNING: </b> The parameter `transfuser_token_dim`'s default value should be `256`, as used in the paper, and not `64`.          |
 | **26.04.13** | <b>WARNING: </b> In some rare cases, we notice training instability. See [instructions](#5-common-issues), if you face similar problem. |
 | **26.04.11** | Added Fail2Drive benchmark support, see [instructions](#31-fail2drive-evaluation).                                                      |
