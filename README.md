@@ -5,11 +5,11 @@
 </p>
 
 <h2 align="center">
-  <b>LEAD: Minimizing Learner–Expert Asymmetry in End-to-End Driving</b>
+  <b>LEAD: Minimizing Learner-Expert Asymmetry in End-to-End Driving</b>
 </h2>
 
 <p align="center">
-  <a href="https://ln2697.github.io/lead">Website</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://ln2697.github.io/lead/docs">Docs</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://huggingface.co/datasets/ln2697/lead_carla">Dataset</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://huggingface.co/ln2697/tfv6">Model</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://huggingface.co/ln2697/tfv6_navsim">NAVSIM Model</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://ln2697.github.io/assets/pdf/Nguyen26.EA.SUPP.pdf">Supplementary</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://arxiv.org/abs/2512.20563">Paper</a>
+  <a href="https://ln2697.github.io/lead">Website</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://ln2697.github.io/lead/docs">Docs</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://huggingface.co/datasets/ln2697/lead">Dataset</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://huggingface.co/ln2697/tfv6">Model</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://huggingface.co/ln2697/ltfv6-navsim">NAVSIM Model</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://ln2697.github.io/assets/pdf/Nguyen26.EA.SUPP.pdf">Supplementary</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://arxiv.org/abs/2512.20563">Paper</a>
 </p>
 
 <p align="center">
@@ -48,19 +48,19 @@
   - [1.1. Environment initialization](#11-environment-initialization)
   - [1.2. Install dependencies](#12-install-dependencies)
   - [1.3. Download checkpoints](#13-download-checkpoints)
-  - [1.4. Setup VSCode/PyCharm](#14-setup-vscodepycharm)
-  - [1.5. Evaluate model](#15-evaluate-model)
-  - [1.6. Infraction Analysis Webapp](#16-infraction-analysis-webapp)
+  - [1.4. Evaluate model](#14-evaluate-model)
+  - [1.5. Start Webapp](#15-start-webapp)
 - [2. CARLA Research Cycle](#2-carla-research-cycle)
   - [2.1. (Optional) Extending Data Routes](#21-optional-extending-data-routes)
-  - [2.2. Collecting Data](#22-collecting-data)
+  - [2.2. Obtaining Expert Demonstrations](#22-obtaining-expert-demonstrations)
   - [2.3. Training](#23-training)
   - [2.4. Benchmarking](#24-benchmarking)
 - [3. Extensions](#3-extensions)
   - [3.1. Fail2Drive Evaluation](#31-fail2drive-evaluation)
   - [3.2. CaRL Agent Evaluation](#32-carl-agent-evaluation)
-  - [3.3. NAVSIM Training and Evaluation](#33-navsim-training-and-evaluation)
-  - [3.4. CARLA 123D Data Collection](#34-carla-123d-data-collection)
+  - [3.3. PlanT 2.0 Training and Evaluation](#33-plant-20-training-and-evaluation)
+  - [3.4. NAVSIM Training and Evaluation](#34-navsim-training-and-evaluation)
+  - [3.5. CARLA 123D Data Collection](#35-carla-123d-data-collection)
 - [4. Project Structure](#4-project-structure)
 - [5. Common Issues](#5-common-issues)
 - [Beyond CARLA: Cross-Benchmark Deployment](#beyond-carla-cross-benchmark-deployment)
@@ -72,19 +72,22 @@
 
 <div align="center">
 
-| Date         | Content                                                                                                                                 |
-| :----------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
-| **26.04.17** | <b>WARNING: </b> LTFv6 NAVSIM checkpoint predicts in CARLA's left-handed frame. When using inference code in HuggingFace, convert waypoints/headings back to ISO 8855 before evaluation. |
-| **26.04.14** | <b>WARNING: </b> The parameter `transfuser_token_dim`'s default value should be `256`, as used in the paper, and not `64`.          |
-| **26.04.13** | <b>WARNING: </b> In some rare cases, we notice training instability. See [instructions](#5-common-issues), if you face similar problem. |
-| **26.04.11** | Added Fail2Drive benchmark support, see [instructions](#31-fail2drive-evaluation).                                                      |
-| **26.03.21** | Added evaluation support for the reinforcement-learning planner CaRL, see [instructions](#32-carl-agent-evaluation).                    |
-| **26.03.18** | Deactivated Kalman Filter and all post-processing heuristics. See performance report [here](#13-download-checkpoints).                  |
-| **26.02.25** | LEAD is accepted to **CVPR 2026** 🎉                                                                                                     |
-| **26.02.25** | NAVSIM extension released. Code and [instructions](#33-navsim-training-and-evaluation) available. Supplementary data coming soon.       |
-| **26.02.02** | Preliminary support for 123D. See [instructions](#34-carla-123d-data-collection).                                                       |
-| **26.01.13** | CARLA dataset and training documentation released.                                                                                      |
-| **25.12.24** | Initial release — paper, checkpoints, expert driver, and inference code.                                                                |
+| Date         | Content                                                                                                                                                                                                               |
+| :----------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **26.04.29** | [PlanT 2.0](https://github.com/autonomousvision/plant2) privileged planner integration added, see [instructions](#33-plant-20-training-and-evaluation).                                                               |
+| **26.04.25** | [LEAD360](https://huggingface.co/ln2697/lead360) dataset published, features six cameras and metas to train PlanT 2.0.                                                                                                |
+| **26.04.19** | [LEAD123D](https://huggingface.co/ln2697/lead123d) dataset published: five hours driving logs in 123D format.                                                                                                             |
+| **26.04.17** | [NAVSIM LTFv6](https://huggingface.co/ln2697/ltfv6-navsim/) checkpoint predicts in CARLA's left-handed frame. When using inference code in HuggingFace, convert waypoints/headings back to ISO 8855 before evaluation. |
+| **26.04.14** | Bug: [transfuser_token_dim](lead/training/config_training.py)'s default value is `256`.                                                                                                                               |
+| **26.04.13** | Bug: Occasionally, we notice training instability. See [instructions](#5-common-issues), if you face similar problem.                                                                                                 |
+| **26.04.11** | [Fail2Drive](https://github.com/autonomousvision/fail2drive) benchmark support added, see [instructions](#31-fail2drive-evaluation).                                                                                  |
+| **26.03.21** | [CaRL](https://github.com/autonomousvision/CaRL) reinforcement-learning planner evaluation support added, see [instructions](#32-carl-agent-evaluation).                                                              |
+| **26.03.18** | Update: Removed Kalman Filter and post-processing heuristics. See performance report [here](#13-download-checkpoints).                                                                                                |
+| **26.02.25** | 🎉🎉 LEAD is accepted to **CVPR 2026** 🎉🎉                                                                                                                                                                                   |
+| **26.02.25** | [NAVSIM](https://github.com/autonomousvision/navsim) extension released. Code and [instructions](#34-navsim-training-and-evaluation) available. Supplementary data coming soon.                                       |
+| **26.02.02** | [123D](https://github.com/autonomousvision/py123d) data collection format preliminary support added, see [instructions](#35-carla-123d-data-collection).                                                              |
+| **26.01.13** | [LEAD](https://huggingface.co/ln2697/lead) dataset and training documentation released.                                                                                                                               |
+| **25.12.24** | Initial release - paper, checkpoints, expert driver, and inference code.                                                                                                                                              |
 
 </div>
 
@@ -94,13 +97,13 @@ Get LEAD running locally: from cloning the repo and installing dependencies, to 
 
 <div align="center">
 
-| OS           | GPU               | CUDA | Driver | Inference | Training |
-| ------------ | ----------------- | ---- | :----: | :-------: | :------: |
-| Ubuntu 22.04 | L40S       | 13.0 |  580   |     ✅     |    ✅     |
-| Ubuntu 22.04 | A100       | 13.0 |  580   |     ❌     |    ✅     |
-| Ubuntu 24.04 | RTX 5090   | 13.1 |  590   |     ✅     |    ❌     |
-| Ubuntu 22.04 | RTX A4000  | 13.0 |  580   |     ✅     |    ❌     |
-| Ubuntu 22.04 | GTX 1080ti | 13.0 |  580   |     ✅     |    ❌     |
+| OS           | GPU        | CUDA | Driver | Inference | Training |
+| ------------ | ---------- | ---- | :----: | :-------: | :------: |
+| Ubuntu 22.04 | L40S       | 13.0 |  580   |     ✓     |    ✓     |
+| Ubuntu 22.04 | A100       | 13.0 |  580   |     ✗     |    ✓     |
+| Ubuntu 24.04 | RTX 5090   | 13.1 |  590   |     ✓     |    ✗     |
+| Ubuntu 22.04 | RTX A4000  | 13.0 |  580   |     ✓     |    ✗     |
+| Ubuntu 22.04 | GTX 1080ti | 13.0 |  580   |     ✓     |    ✗     |
 
 </div>
 
@@ -112,10 +115,8 @@ Clone the repository and register the project root:
 git clone https://github.com/kesai-labs/lead.git
 cd lead
 
-# Set project root variable
+# Set project's environment variables
 echo -e "export LEAD_PROJECT_ROOT=$(pwd)" >> ~/.bashrc
-
-# Activate project's hook
 echo "source $(pwd)/scripts/main.sh" >> ~/.bashrc
 
 # Reload shell config
@@ -125,6 +126,16 @@ source ~/.bashrc
 Verify that `~/.bashrc` reflects these paths correctly.
 
 ### 1.2. Install dependencies
+
+Set up CARLA. Beside simulation, we will need its Python API at `3rd_party/CARLA_0915/PythonAPI/carla` in `PYTHONPATH`:
+
+```bash
+# Download and setup CARLA at 3rd_party/CARLA_0915
+bash scripts/setup_carla.sh
+
+# Or symlink your pre-installed CARLA
+ln -s /your/carla/path 3rd_party/CARLA_0915
+```
 
 We use Miniconda as container and uv for Python dependencies. Runtime and dev dependencies are declared entirely in [pyproject.toml](pyproject.toml).
 
@@ -140,18 +151,12 @@ conda create -n lead python=3.10 -y
 conda activate lead
 
 # Install system-level tools
-conda install -c conda-forge \
-  ffmpeg parallel tree gcc zip unzip git-lfs uv
+conda install -c conda-forge ffmpeg parallel tree gcc zip unzip git-lfs uv
 
 # Tell uv to use conda environment
-mkdir -p $CONDA_PREFIX/etc/conda/activate.d \
-  $CONDA_PREFIX/etc/conda/deactivate.d
-echo 'export VIRTUAL_ENV=$CONDA_PREFIX' > \
-  $CONDA_PREFIX/etc/conda/activate.d/uv.sh
-echo 'unset VIRTUAL_ENV' > \
-  $CONDA_PREFIX/etc/conda/deactivate.d/uv.sh
-
-# Reactivate conda environment
+mkdir -p $CONDA_PREFIX/etc/conda/activate.d $CONDA_PREFIX/etc/conda/deactivate.d
+echo 'export VIRTUAL_ENV=$CONDA_PREFIX' > $CONDA_PREFIX/etc/conda/activate.d/uv.sh
+echo 'unset VIRTUAL_ENV' > $CONDA_PREFIX/etc/conda/deactivate.d/uv.sh
 conda activate lead
 
 # Install dependencies
@@ -161,18 +166,13 @@ uv sync --active --extra dev
 pre-commit install
 ```
 
-Set up CARLA:
-
-```bash
-# Download and setup CARLA at 3rd_party/CARLA_0915
-bash scripts/setup_carla.sh
-
-# Or symlink your pre-installed CARLA
-ln -s /your/carla/path 3rd_party/CARLA_0915
-```
-
 > [!TIP]
-> uv cheatsheet:
+> 1. Blackwell and newer GPUs (RTX 5090, etc.) require PyTorch 2.7+ with CUDA 12.8. This setup is not tested for training and might lead to instability.
+> ```bash
+> pip install torch==2.7.0 torchvision --index-url https://download.pytorch.org/whl/cu128
+> ```
+>
+> 2. uv cheatsheet:
 > ```bash
 > # Add dependency
 > uv add --active <pkg>
@@ -186,28 +186,28 @@ ln -s /your/carla/path 3rd_party/CARLA_0915
 
 ### 1.3. Download checkpoints
 
-Pre-trained checkpoints are hosted on HuggingFace. Following are the results from the paper. To reproduce these results, enable the Kalman filter, stop-sign, and creeping heuristics by setting `sensor_agent_creeping=True use_kalman_filter=True slower_for_stop_sign=True` in [config_closed_loop](lead/inference/config_closed_loop.py).
+Pre-trained checkpoints are hosted on HuggingFace. The following table depicts the results from our paper. Evaluations of some checkpoints on Town13 are omitted because of resource constraints. Some numbers do not have full precision.
 
 <div align="center">
 
 | Variant                | Bench2Drive | Longest6 v2 |  Town13  |                                 Checkpoint                                  |
 | :--------------------- | :---------: | :---------: | :------: | :-------------------------------------------------------------------------: |
-| Full TransFuser V6     |   **95**    |   **62**    | **5.24** |    [Link](https://huggingface.co/ln2697/tfv6/tree/main/tfv6_regnety032)     |
-| ResNet34 (60M params)  |     94      |     57      |   5.01   |     [Link](https://huggingface.co/ln2697/tfv6/tree/main/tfv6_resnet34)      |
-| &ensp; + Rear camera   |     95      |     53      |   TBD    |   [Link](https://huggingface.co/ln2697/tfv6/tree/main/4cameras_resnet34)    |
-| &ensp; − Radar         |     94      |     52      |   TBD    |    [Link](https://huggingface.co/ln2697/tfv6/tree/main/noradar_resnet34)    |
-| &ensp; Vision only     |     91      |     43      |   TBD    |  [Link](https://huggingface.co/ln2697/tfv6/tree/main/visiononly_resnet34)   |
-| &ensp; Town13 held out |     93      |     52      |   3.52   | [Link](https://huggingface.co/ln2697/tfv6/tree/main/town13heldout_resnet34) |
+| Full TransFuser V6     | **95.28**   | **62.92**   | **5.24** |    [Link](https://huggingface.co/ln2697/tfv6/tree/main/tfv6_regnety032)     |
+| ResNet34 (60M params)  |    94.72    |    57.74    |   5.01   |     [Link](https://huggingface.co/ln2697/tfv6/tree/main/tfv6_resnet34)      |
+| &ensp; + Rear camera   |    95.04    |    54.16    |   --    |   [Link](https://huggingface.co/ln2697/tfv6/tree/main/4cameras_resnet34)    |
+| &ensp; − Radar         |    94.70    |    52.00    |   --    |    [Link](https://huggingface.co/ln2697/tfv6/tree/main/noradar_resnet34)    |
+| &ensp; Vision only     |    91.60    |    43.00    |   --    |  [Link](https://huggingface.co/ln2697/tfv6/tree/main/visiononly_resnet34)   |
+| &ensp; Town13 held out |    93.00    |    52.00    |   3.52   | [Link](https://huggingface.co/ln2697/tfv6/tree/main/town13heldout_resnet34) |
 
 </div>
 
-<b>Without these heuristics</b>, the performance changes as follows, with the biggest boost observed on Town13.
+To reproduce these results, enable the Kalman filter, stop-sign, and creeping heuristics by setting `sensor_agent_creeping=True use_kalman_filter=True slower_for_stop_sign=True` in [config_closed_loop](lead/inference/config_closed_loop.py). Without these heuristics, the performance changes minimally, with a boost observed on Town13.
 
 <div align="center">
 
-| Variant                | Bench2Drive  | Longest6 v2  |   Town13    |
-| :--------------------- | :----------: | :----------: | :---------: |
-| Full E2E TransFuser V6 | 95 &rarr; 94 | 62 &rarr; 62 | 5 &rarr; 10 |
+| Variant                | Bench2Drive | Longest6 v2 | Town13 |
+| :--------------------- | :---------: | :---------: | :----: |
+| Full E2E TransFuser V6 |   95 ⟶ 94   |   62 ⟶ 62   | 5 ⟶ 10 |
 
 </div>
 
@@ -223,28 +223,7 @@ cd outputs/checkpoints
 git lfs pull
 ```
 
-### 1.4. Setup VSCode/PyCharm
-
-<div align="center">
-
-<table>
-  <tr>
-    <th width="50%">VSCode</th>
-    <th width="50%">PyCharm</th>
-  </tr>
-  <tr>
-    <td>Install the recommended extensions when prompted. Debugging works out of the box.</td>
-    <td>Add the CARLA Python API <code>3rd_party/CARLA_0915/PythonAPI/carla</code> to your interpreter paths via <code>Settings → Python → Interpreter → Show All → Show Interpreter Paths</code>.</td>
-  </tr>
-  <tr>
-    <td><img src="docs/assets/vscode.png" alt="VSCode recommended extensions prompt"></td>
-    <td><img src="docs/assets/pycharm.png" alt="PyCharm interpreter paths setting"></td>
-  </tr>
-</table>
-
-</div>
-
-### 1.5. Evaluate model
+### 1.4. Evaluate model
 
 Verify your setup with a single route:
 
@@ -258,10 +237,10 @@ export LEAD_CLOSED_LOOP_CONFIG="produce_demo_image=true \
   produce_debug_image=true \
   produce_debug_video=true \
   produce_input_image=true \
-  produce_input_video"
+  produce_input_video=true"
 
 # Run policy on one route
-python lead/leaderboard_wrapper.py \
+python -m lead \
   --checkpoint outputs/checkpoints/tfv6_resnet34 \
   --routes data/benchmark_routes/bench2drive/23687.xml \
   --bench2drive
@@ -269,25 +248,20 @@ python lead/leaderboard_wrapper.py \
 
 Driving logs are saved to `outputs/local_evaluation/<route_id>/`:
 
-<div align="center">
-
-| Output                     | Description                    |
-| :------------------------- | :----------------------------- |
-| `*_debug.mp4`              | Debug visualization video      |
-| `*_demo.mp4`               | Demo video                     |
-| `*_grid.mp4`               | Grid visualization video       |
-| `*_input.mp4`              | Raw input video                |
-| `alpasim_metric_log.json`  | AlpaSim metric log             |
-| `checkpoint_endpoint.json` | Checkpoint endpoint metadata   |
-| `infractions.json`         | Detected infractions           |
-| `metric_info.json`         | Evaluation metrics             |
-| `debug_images/`            | Per-frame debug visualizations |
-| `demo_images/`             | Per-frame demo images          |
-| `grid_images/`             | Per-frame grid visualizations  |
-| `input_images/`            | Per-frame raw inputs           |
-| `input_log/`               | Input log data                 |
-
-</div>
+```
+outputs/local_evaluation/<route_id>/
+├── <route_id>_debug.mp4  # Debug visualization video
+├── <route_id>_demo.mp4   # Demo video
+├── <route_id>_grid.mp4   # Grid visualization video
+├── <route_id>_input.mp4  # Raw input video
+├── infractions.json      # Detected infractions, needed for the webapp
+├── metric_info.json      # Evaluation metrics, needed for final scoring
+├── debug_images/         # Per-frame debug visualizations
+├── demo_images/          # Per-frame demo images
+├── grid_images/          # Per-frame grid visualizations
+├── input_images/         # Per-frame raw inputs
+└── input_log/            # Input log data, useful for debugging
+```
 
 > [!TIP]
 > If run into OOM issue, there are few options:
@@ -304,31 +278,51 @@ Driving logs are saved to `outputs/local_evaluation/<route_id>/`:
 > the rendering quality, however will introduce distribution shift and
 > should not be used for official evaluation.
 
-### 1.6. Infraction Analysis Webapp
+### 1.5. Start Webapp
 
-Launch the interactive infraction dashboard to analyze driving failures — especially useful for Longest6 or Town13 where iterating over evaluation logs is time-consuming:
+Launch the interactive dashboard to analyze driving failures - especially useful for Longest6 v2 or Town13 where iterating over evaluation logs is time-consuming:
 
 ```bash
-python lead/infraction_webapp/app.py
+python lead/webapp/app.py
 ```
 
-Navigate to http://localhost:5000 and point it at `outputs/local_evaluation`.
+Navigate to http://localhost:5000 and point it at your evaluation output directory (e.g. `outputs/evaluation`). The app discovers the three-level hierarchy automatically:
+
+```
+outputs/evaluation/
+└── <experiment>/                # experiment
+    └── <benchmark + seed>/      # benchmark + seed
+        └── <timestamp> /        # timestamp
+            ├── <route_id> /
+            │   ├── infractions.json
+            │   ├── <route_id>_debug.mp4
+            │   ├── <route_id>_demo.mp4
+            │   └── <route_id>_grid.mp4
+            └── checkpoint_endpoint.json
+```
+
+Each route folder contains an `infractions.json` with per-step violation records and optional video files (`_debug`, `_demo`, `_grid`). The webapp reads these and provides:
+
+- **Video playback** with speed control (0.5x-5x) and frame-accurate seeking by time, frame number, or CARLA step.
+- **Click-to-jump**: click any infraction in the sidebar to seek to that moment, with a configurable offset (-1s, -3s, -5s) so you see the lead-up.
+- **Clip extraction**: cut a short clip around any infraction via FFmpeg, useful for sharing or reporting.
+- **Filters**: show only routes with infractions, or search by infraction type (collision, red light, off-road, etc.).
 
 > [!TIP]
-> The app supports browser bookmarking to jump directly to a specific timestamp.
+> The app supports browser bookmarking - URLs encode the directory, route, video timestamp, playback speed, and offset, so you can share a link that jumps directly to a specific failure.
 
 ## 2. CARLA Research Cycle
 
-The primary focus of this repository is solving the [original CARLA Leaderboard 2.0](https://leaderboard.carla.org/get_started_v2_0/). This section walks through the full research loop — collecting expert demonstrations, training a TFv6 policy, and benchmarking it closed-loop.
+The primary focus of this repository is solving the [original CARLA Leaderboard 2.0](https://leaderboard.carla.org/get_started_v2_0/). This section walks through the full research loop - collecting expert demonstrations, training a TFv6 policy, and benchmarking it closed-loop.
 
 ### 2.1. (Optional) Extending Data Routes
 
-Before collecting, you may want to enlarge or diversify the route set under `data/data_routes/`. This step is optional — the shipped routes are enough to reproduce the paper results. However, if you want to improve the performance of the model, in particular for Longest6 v2 or Fail2Drive, introduce more routes is the easiest way to achieve this.
+Before collecting, you may want to enlarge or diversify the route set under `data/data_routes/`. This step is optional - the shipped routes are enough to reproduce the paper results. However, if you want to improve the performance of the model, in particular for Longest6 v2 or Fail2Drive, introducing more routes is the easiest way to achieve this.
 
 Two ways to do it:
 
-- **Automatic** — sample routes programmatically from a CARLA town (e.g. random start/goal pairs with scenario annotations). Useful when you want large-scale coverage without hand-authoring.
-- **Manual** — use the bundled [carla_route_generator](3rd_party/carla_route_generator), a GUI tool for clicking waypoints on a map and exporting routes. Launch it via the hotkey script:
+- **Automatic** - sample routes programmatically from a CARLA town (e.g. random start/goal pairs with scenario annotations). Useful when you want large-scale coverage without hand-authoring.
+- **Manual** - use the bundled [carla_route_generator](3rd_party/carla_route_generator), a GUI tool for clicking waypoints on a map and exporting routes. Launch it via the hotkey script:
 
 ```bash
 cd 3rd_party/carla_route_generator
@@ -339,15 +333,30 @@ Generated XML files can be dropped directly into `data/data_routes/` and picked 
 
 > [!TIP]
 > Out of the box, [carla_route_generator](3rd_party/carla_route_generator) is purely mouse-driven (left-click to add/remove waypoints, right-click for scenarios, wheel to pan/zoom). Annotating hundreds of routes this way is slow. There are few tricks to accelerate the process:
-> 1. We strongly recommend extending [scripts/window.py](3rd_party/carla_route_generator/scripts/window.py) with Qt `QShortcut` / `keyPressEvent` bindings for the actions you repeat most — e.g. add new route. Even one or two of keys cuts manual annotation time substantially.
+> 1. We strongly recommend extending [scripts/window.py](3rd_party/carla_route_generator/scripts/window.py) with Qt `QShortcut` / `keyPressEvent` bindings for the actions you repeat most - e.g. add new route. Even one or two of keys cuts manual annotation time substantially.
 > 2. Only annotate route manually, add scenarios automatically via Python.
 
-### 2.2. Collecting Data
+### 2.2. Obtaining Expert Demonstrations
 
-With CARLA running, collect data for a single route via **Python** (recommended for debugging):
+**Option A - Download the pre-collected dataset.** Sufficient to reproduce the paper results:
 
 ```bash
-python lead/leaderboard_wrapper.py \
+# Download all routes
+git clone https://huggingface.co/datasets/ln2697/lead data/carla_leaderboard2/zip
+cd data/carla_leaderboard2/zip
+git lfs pull
+
+# Or download a single route for testing
+bash scripts/download_one_route.sh
+
+# Unzip the routes
+bash scripts/unzip_routes.sh
+```
+
+**Option B - Run the rule-based expert driver.** Use this if you extended the route set, modified the expert, or changed the data format. With CARLA running, collect data for a single route via **Python** (recommended for debugging):
+
+```bash
+python -m lead \
   --expert \
   --routes data/data_routes/lead/noScenarios/short_route.xml
 ```
@@ -360,26 +369,22 @@ bash scripts/eval_expert.sh
 
 Collected data is saved to `outputs/expert_evaluation/` with the following structure:
 
-<div align="center">
-
-| Directory                | Content                                     |
-| :----------------------- | :------------------------------------------ |
-| `bboxes/`                | 3D bounding boxes per frame                 |
-| `depth/`                 | Compressed and quantized depth maps         |
-| `depth_perturbated/`     | Depth from perturbated ego state            |
-| `hdmap/`                 | Ego-centric rasterized HD map               |
-| `hdmap_perturbated/`     | HD map aligned to perturbated ego pose      |
-| `lidar/`                 | LiDAR point clouds                          |
-| `metas/`                 | Per-frame metadata and ego state            |
-| `radar/`                 | Radar detections                            |
-| `radar_perturbated/`     | Radar from perturbated ego state            |
-| `rgb/`                   | RGB images                                  |
-| `rgb_perturbated/`       | RGB from perturbated ego state              |
-| `semantics/`             | Semantic segmentation maps                  |
-| `semantics_perturbated/` | Semantics from perturbated ego state        |
-| `results.json`           | Route-level summary and evaluation metadata |
-
-</div>
+```html
+├── bboxes/                  # Per-frame 3D bounding boxes for all actors
+├── depth/                   # Compressed and quantized depth maps
+├── depth_perturbated        # Depth from a perturbated ego state
+├── hdmap/                   # Ego-centric rasterized HD map
+├── hdmap_perturbated        # HD map aligned to perturbated ego pose
+├── lidar/                   # LiDAR point clouds
+├── metas/                   # Per-frame metadata and ego state
+├── radar/                   # Radar detections
+├── radar_perturbated        # Radar detections from perturbated ego state
+├── rgb/                     # Front-facing RGB images
+├── rgb_perturbated          # RGB images from perturbated ego state
+├── semantics/               # Semantic segmentation maps
+├── semantics_perturbated    # Semantics from perturbated ego state
+└── results.json             # Route-level summary and evaluation metadata
+```
 
 On a SLURM Cluster of 92 GTX 1080ti, the data collection is often finished after 2 days.
 
@@ -387,24 +392,13 @@ On a SLURM Cluster of 92 GTX 1080ti, the data collection is often finished after
 > 1. To configure camera/lidar/radar calibration, see [config_base.py](lead/common/config_base.py) and [config_expert.py](lead/expert/config_expert.py).
 > 2. For large-scale collection on SLURM, see the [data collection docs](https://ln2697.github.io/lead/docs/data_collection.html).
 > 3. The [Jupyter notebooks](notebooks) provide visualization examples.
+> 4. The expert performs full 3D raycasting, so data collection speed scales inversely with the number and resolution of video cameras.
 
 ### 2.3. Training
 
-Download the dataset from HuggingFace:
+Before training, build the data cache. This preprocesses the raw routes into an optimized format for the data loader, significantly speeding up training:
 
 ```bash
-# Download all routes
-git clone https://huggingface.co/datasets/ln2697/lead_carla data/carla_leaderboard2/zip
-cd data/carla_leaderboard2/zip
-git lfs pull
-
-# Or download a single route for testing
-bash scripts/download_one_route.sh
-
-# Unzip the routes
-bash scripts/unzip_routes.sh
-
-# Build data cache
 python scripts/build_cache.py
 ```
 
@@ -442,7 +436,7 @@ bash scripts/posttrain_ddp.sh
 With CARLA running, evaluate on any benchmark via **Python**:
 
 ```bash
-python lead/leaderboard_wrapper.py \
+python -m lead \
   --checkpoint outputs/checkpoints/tfv6_resnet34 \
   --routes <ROUTE_FILE> \
   [--bench2drive]
@@ -453,8 +447,8 @@ python lead/leaderboard_wrapper.py \
 | Benchmark   | Route file                                               | Extra flag      |
 | :---------- | :------------------------------------------------------- | :-------------- |
 | Bench2Drive | `data/benchmark_routes/bench2drive/23687.xml`            | `--bench2drive` |
-| Longest6 v2 | `data/benchmark_routes/longest6/00.xml`                  | —               |
-| Town13      | `data/benchmark_routes/Town13/0.xml`                     | —               |
+| Longest6 v2 | `data/benchmark_routes/longest6/00.xml`                  | -               |
+| Town13      | `data/benchmark_routes/Town13/0.xml`                     | -               |
 | Fail2Drive  | `data/benchmark_routes/fail2drive/Base_Animals_0075.xml` | `--fail2drive`  |
 
 </div>
@@ -481,7 +475,12 @@ Beyond the core Leaderboard 2.0 workflow, LEAD also supports additional benchmar
 
 ### 3.1. Fail2Drive Evaluation
 
-[Fail2Drive](https://github.com/autonomousvision/fail2drive) is a CARLA Leaderboard 2 benchmark for testing closed-loop generalization on unseen long-tail scenarios.
+[Fail2Drive](https://github.com/autonomousvision/fail2drive) (Gerstenecker et al., 2026) is a CARLA Leaderboard 2 benchmark for testing closed-loop generalization on unseen long-tail scenarios.
+
+- **200 short routes** (avg. 219 m) across Town 13
+- **17 novel scenario classes** in four generalization categories (see table below)
+- Each generalization route is paired with an **in-distribution counterpart** (same road geometry and traffic), isolating the effect of the distribution shift
+- Reports **Driving Score (DS)**, **Success Rate (SR)**, and their **harmonic mean (HM)**
 
 **Setup.** Download the Fail2Drive simulator (custom CARLA build with novel assets):
 
@@ -501,14 +500,16 @@ bash 3rd_party/CARLA_F2D/CarlaUE4.sh
 LEAD_CLOSED_LOOP_CONFIG="sensor_agent_creeping=True \
   use_kalman_filter=True \
   slower_for_stop_sign=True" \
-python lead/leaderboard_wrapper.py \
+python -m lead \
   --checkpoint outputs/checkpoints/tfv6_regnety \
-  --routes data/benchmark_routes/fail2drive/Base_Animals_0075.xml \
+  --routes data/benchmark_routes/fail2drive/Generalization_Animals_1075.xml \
   --fail2drive
 ```
 
+Route files follow the naming convention `{Base,Generalization}_{ScenarioClass}_{id}.xml` and live in `data/benchmark_routes/fail2drive/`. `Base_*` routes are in-distribution; `Generalization_*` routes introduce the targeted shift.
+
 > [!TIP]
-> For SLURM evaluation, use `evaluate_fail2drive` from `slurm/init.sh`. See existing experiment scripts for usage patterns.
+> For SLURM evaluation, see this [example](slurm/experiments/001_example/050_fail2drive_0.sh)
 
 **Results.**
 
@@ -610,14 +611,23 @@ python lead/leaderboard_wrapper.py \
 
 ### 3.2. CaRL Agent Evaluation
 
-With CARLA running, evaluate the CaRL agent via **Python**:
+[CaRL](https://github.com/autonomousvision/CaRL) (Jaeger et al., 2025) is an RL-based privileged planner trained with PPO using a simple route-completion reward. It operates on a bird's-eye-view semantic segmentation input and outputs vehicle actions via a small CNN.
+
+LEAD ships an inference-only port of CaRL, allowing it to be evaluated on any Leaderboard 2.0 benchmark alongside TFv6.
+
+> [!NOTE]
+> CaRL was trained exclusively on CARLA towns 01-10, so **Longest6 v2** is its natural benchmark. Performance on **Bench2Drive** (towns 01-15) and **Town13** is mostly zero-shot.
+
+**Setup.** The CaRL checkpoint is included in the [model repository](https://huggingface.co/ln2697/tfv6). If you followed the [download instructions](#13-download-checkpoints), it is already at `outputs/checkpoints/CaRL/`.
+
+**Evaluate.** With CARLA running, evaluate the CaRL agent via **Python**:
 
 ```bash
 CUBLAS_WORKSPACE_CONFIG=:4096:8 \
-python lead/leaderboard_wrapper.py \
+python -m lead \
   --checkpoint outputs/checkpoints/CaRL \
   --routes data/benchmark_routes/bench2drive/24240.xml \
-  --carl-agent \
+  --carl \
   --bench2drive \
   --timeout 900
 ```
@@ -634,19 +644,99 @@ The results are in `outputs/local_evaluation/<route_id>/`.
 > 1. With small code changes, you can also integrate CaRL into LEAD's expert-driving pipeline as a hybrid expert policy.
 > 2. For large scale evaluation on SLURM, see [this directory](slurm/experiments/003_evaluate_carl).
 
-### 3.3. NAVSIM Training and Evaluation
+### 3.3. PlanT 2.0 Training and Evaluation
 
-The NAVSIM workflow crosses the boundary between the vendored `navsim` codebase and `lead`: data preparation and evaluation stay on the NAVSIM side, while training runs entirely on the LEAD side.
+[PlanT 2.0](https://github.com/autonomousvision/plant2) (Gerstenecker et al., 2025) is a **privileged** object-centric planning transformer. Instead of processing raw sensor data, it operates directly on ground-truth bounding boxes from CARLA, isolating the planning problem from perception. This makes it a powerful tool for **accelerating the research cycle**:
 
-**Setup (NAVSIM side).** Install `navtrain` and `navtest` splits following [navsimv1.1/docs/install.md](3rd_party/navsim_workspace/navsimv1.1/docs/install.md), then install the `navhard` split following [navsimv2.2/docs/install.md](3rd_party/navsim_workspace/navsimv2.2/docs/install.md). NAVSIM handles raw sensor logs, scene caching, and metric caching for the three splits; LEAD never touches the raw NAVSIM datasets directly.
+- **Fast iteration** - trains in a fraction of the time of sensor-based models (no image/LiDAR processing), enabling rapid prototyping of planning ideas, loss functions, and data strategies.
+- **Controlled experiments** - object-level inputs can be easily perturbed (e.g. shifting vehicles, adding pedestrians, removing obstacles) to systematically study planning behavior and failure modes.
+- **Upper-bound analysis** - by removing perception noise, PlanT reveals the ceiling of planning performance for a given dataset and training setup, helping diagnose whether failures stem from perception or planning.
 
-**Training (LEAD side).** Once the NAVSIM caches exist, LEAD loads the cached `transfuser_feature.gz` / `transfuser_target.gz` pairs through [lead/data_loader/navsim_dataset.py](lead/data_loader/navsim_dataset.py) and runs perception pretraining ([script](slurm/experiments/002_navsim_example/000_pretrain1_0.sh)) followed by planning post-training ([script](slurm/experiments/002_navsim_example/010_postrain32_0.sh)). We use one seed for pretraining and three seeds for post-training to estimate performance variance. All optimization, checkpointing, and logging is LEAD-native — NAVSIM is not in the loop during training.
+PlanT replaces TFv6's image+LiDAR backbone with a BERT-based encoder that processes object tokens (vehicles, pedestrians, traffic lights, etc.), while reusing LEAD's planning decoder, training loop, and evaluation infrastructure. Our implementation closely follows the original PlanT, but since we use a different expert, some hyperparameter tuning may be required to fully recover its performance.
 
-**Evaluation (NAVSIM side).** Evaluation is driven by NAVSIM's harnesses on [navtest](slurm/experiments/002_navsim_example/020_navtest_0.sh) and [navhard](slurm/experiments/002_navsim_example/030_navhard_0.sh). The bridge back to LEAD is `CarlaTransfuserAgent` (see [navsimv1.1](3rd_party/navsim_workspace/navsimv1.1/navsim/agents/carla_transfuser_agent.py) and [navsimv2.2](3rd_party/navsim_workspace/navsimv2.2/navsim/agents/carla_transfuser_agent.py)): it implements NAVSIM's `AbstractAgent` interface but internally wraps LEAD's `OpenLoopInference`, reloading the trained LEAD checkpoint and translating NAVSIM's feature dict (camera, status, command, speed, acceleration) into LEAD's inference inputs. The agent is inference-only — `compute_loss` and `get_optimizers` raise `NotImplementedError`, reflecting that training never happens on the NAVSIM side.
+> [!IMPORTANT]
+> PlanT is a **privileged planner** - it uses ground-truth bounding boxes from CARLA's MAP track, not sensor observations. It is designed for research analysis (ablations, debugging, upper-bound estimation), not as a deployable sensor-based driving system.
 
-### 3.4. CARLA 123D Data Collection
+**Prepare data.** Since PlanT requires some additional data, it can be trained only on LEAD360 or newer dataset versions. Download the data:
 
-With CARLA running, collect data in [123D](https://github.com/autonomousvision/py123d) format via **Python**:
+```bash
+# Download all routes
+git clone https://huggingface.co/datasets/ln2697/lead360 data/carla_leaderboard2_360/zip
+cd data/carla_leaderboard2_360/zip
+git lfs pull
+```
+
+After that, unzip the zip files as similar to [scripts/unzip_routes.sh](scripts/unzip_routes.sh).
+
+**Training.** PlanT uses the same CARLA data as TFv6. Set `model_type=plant` to switch the model before training:
+
+```bash
+# Single GPU
+python3 lead/training/train.py \
+  model_type=plant \
+  logdir=outputs/local_training/plant
+
+# Distributed Data Parallel
+bash scripts/train_plant.sh
+```
+
+**Evaluate.** With CARLA running, evaluate the PlanT agent on MAP track:
+
+```bash
+python -m lead \
+  --checkpoint outputs/local_training/plant \
+  --routes data/benchmark_routes/bench2drive/23687.xml \
+  --plant \
+  --bench2drive
+```
+
+> [!TIP]
+> For large scale experiments on SLURM, see [this directory](slurm/experiments/004_plant_example).
+
+### 3.4. NAVSIM Training and Evaluation
+
+[NAVSIM](https://github.com/autonomousvision/navsim) (Dauner et al., 2024) is a non-reactive simulation benchmark that evaluates vision-based driving policies on real-world sensor data with simulation-based metrics (collisions, drivable-area compliance, progress).
+
+LEAD provides a training pipeline for this benchmark.
+
+<div align="center">
+
+| Stage      | Owner  | What happens                                               |
+| :--------- | :----- | :--------------------------------------------------------- |
+| Data setup | NAVSIM | Raw sensor logs, scene caching, metric caching             |
+| Training   | LEAD   | Loads cached features, runs optimization and checkpointing |
+| Evaluation | NAVSIM | Scores predictions via its own harnesses                   |
+
+</div>
+
+**Data setup.** Install the three data splits:
+
+- `navtrain` + `navtest`: follow [navsimv1.1/docs/install.md](3rd_party/navsim_workspace/navsimv1.1/docs/install.md)
+- `navhard`: follow [navsimv2.2/docs/install.md](3rd_party/navsim_workspace/navsimv2.2/docs/install.md)
+
+NAVSIM handles all raw data processing; only the resulting caches are needed for training.
+
+**Training.** Once the NAVSIM caches exist, LEAD loads the cached `transfuser_feature.gz` / `transfuser_target.gz` pairs through [lead/data_loader/navsim_dataset.py](lead/data_loader/navsim_dataset.py) and trains in two stages:
+
+1. Perception pretraining ([script](slurm/experiments/002_navsim_example/000_pretrain1_0.sh)), one seed
+2. Planning post-training ([script](slurm/experiments/002_navsim_example/010_postrain32_0.sh)), three seeds to estimate variance
+
+All optimization, checkpointing, and logging runs entirely within LEAD.
+
+**Evaluation.** Evaluation runs through NAVSIM's own harnesses on [navtest](slurm/experiments/002_navsim_example/020_navtest_0.sh) and [navhard](slurm/experiments/002_navsim_example/030_navhard_0.sh).
+
+The bridge between the two codebases is `CarlaTransfuserAgent` ([navsimv1.1](3rd_party/navsim_workspace/navsimv1.1/navsim/agents/carla_transfuser_agent.py), [navsimv2.2](3rd_party/navsim_workspace/navsimv2.2/navsim/agents/carla_transfuser_agent.py)). It implements NAVSIM's `AbstractAgent` interface but internally wraps LEAD's `OpenLoopInference`, reloading the trained checkpoint and translating NAVSIM's feature dict into LEAD's inputs. The agent is inference-only.
+
+### 3.5. CARLA 123D Data Collection
+
+[123D](https://github.com/autonomousvision/py123d) is an open-source library that unifies diverse driving datasets into a single, lightweight framework.
+
+- **Storage**: Apache Arrow IPC files - one file per modality, each an independent timestamped event stream (*Driving Log*)
+- **Modalities**: cameras, LiDAR, 3D annotations, HD maps
+- **Coordinate conventions**: ISO 8855 (vehicle/body frames), OpenCV (camera frames)
+- **Sensor model**: synchronous and asynchronous sensors handled uniformly
+
+LEAD integrates 123D as its data collection format for CARLA. With CARLA running, collect data in 123D format via **Python**:
 
 ```bash
 export LEAD_EXPERT_CONFIG="target_dataset=6 \
@@ -656,7 +746,7 @@ export LEAD_EXPERT_CONFIG="target_dataset=6 \
   save_only_non_ground_lidar=false \
   save_lidar_only_inside_bev=false"
 
-python -u $LEAD_PROJECT_ROOT/lead/leaderboard_wrapper.py \
+python -m lead \
     --expert \
     --py123d \
     --routes data/data_routes/50x38_Town12/ParkingCrossingPedestrian/3250_1.xml
@@ -668,17 +758,23 @@ Or via **bash**:
 bash scripts/eval_expert_123d.sh
 ```
 
-Output in 123D format is saved to `data/carla_leaderboard2_py123d/`:
+Output in 123D format is saved to `data/carla_leaderboard2_py123d/`. Each route produces a directory under `logs/carla_train/` with one Arrow file per modality:
 
 <div align="center">
 
-| Directory            | Content                                |
-| :------------------- | :------------------------------------- |
-| `logs/train/*.arrow` | Per-route driving logs in Arrow format |
-| `logs/train/*.json`  | Per-route metadata                     |
-| `maps/carla/*.arrow` | Map data in Arrow format               |
+| File                               | Content                                                                           |
+| :--------------------------------- | :-------------------------------------------------------------------------------- |
+| `ego_state_se3.arrow`              | Ego vehicle pose and motion state                                                 |
+| `camera.pcam_{f,b,l,r}{0,1}.arrow` | Camera images (front, back, left, right)                                          |
+| `lidar.lidar_top.arrow`            | Top LiDAR point clouds                                                            |
+| `box_detections_se3.arrow`         | 3D bounding box annotations                                                       |
+| `traffic_light_detections.arrow`   | Traffic light states                                                              |
+| `sync.arrow`                       | Synchronization timestamps across modalities                                      |
+| `maps/carla/*.arrow`               | HD map - lanes, intersections, crosswalks, road edges, road lines in WKB geometry |
 
 </div>
+
+The collected data can be loaded back via 123D's *Scene API* and *Map API* for training, evaluation, or analysis workflows. The Scene API provides declarative access to subsequences, history/future windows, and re-sampling across frequencies, while the Map API supports spatial queries over nearby map objects.
 
 To visualize collected scenes in 3D with [Viser](https://viser.studio/):
 
@@ -697,7 +793,7 @@ The project is organized into the following top-level directories. See the [full
 
 | Directory    | Purpose                                                               |
 | :----------- | :-------------------------------------------------------------------- |
-| `lead/`      | Main package — model architecture, training, inference, expert driver |
+| `lead/`      | Main package - model architecture, training, inference, expert driver |
 | `3rd_party/` | Third-party dependencies (CARLA, benchmarks, evaluation tools)        |
 | `data/`      | Route definitions. Sensor data will be stored here, too.              |
 | `scripts/`   | Utility scripts for data processing, training, and evaluation         |
@@ -706,6 +802,8 @@ The project is organized into the following top-level directories. See the [full
 | `slurm/`     | SLURM job scripts for large-scale experiments                         |
 
 </div>
+
+We also provide a Claude Code skill to explore the repository interactively. Run `/qa` inside Claude Code to get a guided walkthrough of the codebase structure, key modules, and how they connect.
 
 ## 5. Common Issues
 
@@ -717,11 +815,6 @@ The project is organized into the following top-level directories. See the [full
 | Training instability after PyTorch version update | No fix for now. We tried to upgrade Torch several times but failed to achieve stable training on newer Torch versions.                                                                                                                 |
 | OOM in evaluation                                 | Use larger GPU. In our [submit_job](slurm/evaluation/evaluate_utils.py) utility function, we first attempt to use a smaller GPU partition (1080ti/2080ti). After some failures, we switch automatically to a partition with more VRAM. |
 | Training instability in general                   | Turn off mixed-precision training and train in 32bit precision.                                                                                                                                                                        |
-
-If you face training instability, as reported in issue [#67](https://github.com/kesai-labs/lead/issues/67), try following solutions:
-1. First, try to turn off mixed-precision training in [config](lead/training/config_training.py). We found `float16` to be highly instable for TransFuser training. `bfloat16` offers on our L40S and A100 higher stability but the safest option is still `float32`.
-2. If that does not work, purge the Conda environment and reinstall from scratch.
-3. In doubt, try the latest working commit at `a41d11616`. This should the the last ressort and should not be needed.
 
 Feel free to open a ticket for any problem.
 

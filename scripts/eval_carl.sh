@@ -44,7 +44,7 @@ python "${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py" \
   --routes="${ROUTES}" \
   --track=MAP \
   --checkpoint="${EVALUATION_OUTPUT_DIR}/checkpoint_endpoint.json" \
-  --agent="lead/carl_agent/carl_agent.py" \
+  --agent="lead/carl/carl_agent.py" \
   --agent-config="${CHECKPOINT_DIR}" \
   --debug=0 \
   --record= \

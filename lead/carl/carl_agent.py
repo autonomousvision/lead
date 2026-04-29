@@ -23,13 +23,13 @@ from gymnasium import spaces
 from leaderboard.autoagents import autonomous_agent
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
-from lead.carl_agent import rl_utils as rl_u
-from lead.carl_agent.bev.bev_observation import ObsManager as ObsManager2
-from lead.carl_agent.bev.chauffeurnet import ObsManager
-from lead.carl_agent.bev.run_stop_sign import RunStopSign
-from lead.carl_agent.config import GlobalConfig
-from lead.carl_agent.model import PPOPolicy
-from lead.carl_agent.nav_planner import RoutePlanner
+from lead.carl import rl_utils as rl_u
+from lead.carl.bev.bev_observation import ObsManager as ObsManager2
+from lead.carl.bev.chauffeurnet import ObsManager
+from lead.carl.bev.run_stop_sign import RunStopSign
+from lead.carl.config import GlobalConfig
+from lead.carl.model import PPOPolicy
+from lead.carl.nav_planner import RoutePlanner
 from lead.common.logging_config import setup_logging
 from lead.inference.config_closed_loop import ClosedLoopConfig
 from lead.inference.infraction_recorder import InfractionRecorder

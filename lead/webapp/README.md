@@ -12,7 +12,7 @@ pip install flask
 ### 2. Run the Dashboard
 
 ```bash
-python lead/infraction_webapp/app.py
+python lead/webapp/app.py
 ```
 
 ### 3. Open in Browser

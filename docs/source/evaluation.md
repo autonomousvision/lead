@@ -1,4 +1,4 @@
-# Evaluation (10 minutes)
+# Evaluation
 
 This guide covers local evaluation for getting started. For large-scale evaluation (running many routes in parallel), see the [SLURM Evaluation Guide](slurm_evaluation.md).
 
@@ -12,7 +12,7 @@ LEAD must be installed as a package in your Python environment. Ensure you're in
 
 ## Overview
 
-The [Quick Start](https://github.com/kesai-labs/lead?tab=readme-ov-file#quick-start) tutorial demonstrates evaluating a trained policy on a single Bench2Drive route. We provide a unified Python-based evaluation interface (`lead.leaderboard_wrapper`) that simplifies debugging and configuration for the three most popular benchmarks:
+The [Quick Start](https://github.com/kesai-labs/lead?tab=readme-ov-file#quick-start) tutorial demonstrates evaluating a trained policy on a single Bench2Drive route. We provide a unified Python-based evaluation interface (`lead`) that simplifies debugging and configuration for the three most popular benchmarks:
 
 - **Bench2Drive**: See [official repository](https://github.com/Thinklab-SJTU/Bench2Drive) for benchmark details
 - **Longest6 v2**: See [carla_garage](https://github.com/autonomousvision/carla_garage?tab=readme-ov-file#longest6-v2) for benchmark details
@@ -39,14 +39,14 @@ The simplest way to run evaluations is directly with Python:
 
 **Model evaluation (Longest6/Town13):**
 ```bash
-python lead/leaderboard_wrapper.py \
+python -m lead \
     --checkpoint outputs/checkpoints/tfv6_resnet34 \
     --routes data/benchmark_routes/Town13/0.xml
 ```
 
 **Bench2Drive:**
 ```bash
-python lead/leaderboard_wrapper.py \
+python -m lead \
     --checkpoint outputs/checkpoints/tfv6_resnet34 \
     --routes data/benchmark_routes/bench2drive/23687.xml \
     --bench2drive
@@ -54,7 +54,7 @@ python lead/leaderboard_wrapper.py \
 
 **Expert mode (data generation):**
 ```bash
-python lead/leaderboard_wrapper.py \
+python -m lead \
     --expert \
     --routes data/data_routes/lead/noScenarios/short_route.xml
 ```

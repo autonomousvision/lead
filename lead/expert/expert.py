@@ -2946,7 +2946,11 @@ class Expert(ExpertData):
 
         # Get the remaining route points in the local coordinate frame
         dense_route = []
+        dense_route_original = []
         remaining_route = self.remaining_route[
+            : self.config_expert.num_route_points_saved
+        ]
+        remaining_route_original = self.remaining_route_original[
             : self.config_expert.num_route_points_saved
         ]
 
@@ -2960,10 +2964,21 @@ class Expert(ExpertData):
                 ]
             ).any(),
         )
-        for checkpoint in remaining_route:
+        for checkpoint, checkpoint_original in zip(
+            remaining_route,
+            remaining_route_original,
+            strict=True,
+        ):
             dense_route.append(
                 common_utils.inverse_conversion_2d(
                     checkpoint[:2],
+                    self.ego_location_array[:2],
+                    self.ego_orientation_rad,
+                ).tolist(),
+            )
+            dense_route_original.append(
+                common_utils.inverse_conversion_2d(
+                    checkpoint_original[:2],
                     self.ego_location_array[:2],
                     self.ego_orientation_rad,
                 ).tolist(),
@@ -3093,6 +3108,7 @@ class Expert(ExpertData):
             "previous_commands": previous_commands,
             "next_commands": next_commands,
             "route": np.array(dense_route, dtype=np.float32),
+            "route_original": np.array(dense_route_original, dtype=np.float32),
             "changed_route": changed_route,
             "speed_reduced_by_obj_type": speed_reduced_by_obj_type,
             "speed_reduced_by_obj_id": speed_reduced_by_obj_id,

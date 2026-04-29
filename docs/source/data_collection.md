@@ -1,4 +1,4 @@
-# Collect Data (10 minutes)
+# Collect Data
 
 This guide covers local data collection on CARLA using LEAD.
 
@@ -17,7 +17,7 @@ bash scripts/start_carla.sh
 2. Run the expert agent:
 
 ```bash
-python lead/leaderboard_wrapper.py --expert --routes data/data_routes/lead/noScenarios/short_route.xml
+python -m lead --expert --routes data/data_routes/lead/noScenarios/short_route.xml
 ```
 
 **Collecting Data in Py123D Format:**
@@ -30,7 +30,7 @@ export PY123D_DATA_ROOT="data/carla_leaderboard2_py123d/"
 export LEAD_EXPERT_CONFIG="target_dataset=6 py123d_data_format=true use_radars=false lidar_stack_size=2 save_only_non_ground_lidar=false save_lidar_only_inside_bev=false"
 
 # Run expert with py123d agent
-python lead/leaderboard_wrapper.py \
+python -m lead \
   --expert \
   --py123d \
   --routes data/data_routes/lead/noScenarios/short_route.xml

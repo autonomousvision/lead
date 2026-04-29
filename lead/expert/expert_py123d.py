@@ -574,6 +574,15 @@ class ExpertPy123D(Expert):
                     and bb["mesh_path"] is not None
                     and "/Car/" in bb["mesh_path"]
                 ):
+                    if (
+                        0
+                        <= bb["num_points"]
+                        < self.config_expert.parking_vehicle_min_num_lidar_points
+                        and 0
+                        <= bb["visible_pixels"]
+                        < self.config_expert.parking_vehicle_min_num_visible_pixels
+                    ):
+                        continue
                     box_detections.append(
                         BoxDetectionSE3(
                             attributes=BoxDetectionAttributes(
@@ -591,6 +600,15 @@ class ExpertPy123D(Expert):
                     LOG.debug(f"Parking car detected: {bb['mesh_path']}")
                 elif actor is None:  # static_prob_car that is not spawned as an actor
                     assert bb["class"] == "static_prop_car"
+                    if (
+                        0
+                        <= bb["num_points"]
+                        < self.config_expert.parking_vehicle_min_num_lidar_points
+                        and 0
+                        <= bb["visible_pixels"]
+                        < self.config_expert.parking_vehicle_min_num_visible_pixels
+                    ):
+                        continue
                     box_detections.append(
                         BoxDetectionSE3(
                             attributes=BoxDetectionAttributes(
@@ -617,6 +635,26 @@ class ExpertPy123D(Expert):
                         bb["class"] in ["car", "vehicle", "static_prop_car"]
                         or bb["type_id"] in type_id_to_py123d_mapping
                     ):
+                        if bb["class"] in ["car", "vehicle", "static_prop_car"]:
+                            if (
+                                0
+                                <= bb["num_points"]
+                                < self.config_expert.parking_vehicle_min_num_lidar_points
+                                and 0
+                                <= bb["visible_pixels"]
+                                < self.config_expert.parking_vehicle_min_num_visible_pixels
+                            ):
+                                continue
+                        else:
+                            if (
+                                0
+                                <= bb["num_points"]
+                                < self.config_expert.static_prop_min_num_lidar_points
+                                and 0
+                                <= bb["visible_pixels"]
+                                < self.config_expert.static_prop_min_num_visible_pixels
+                            ):
+                                continue
                         label = defaultdict(
                             lambda: DefaultBoxDetectionLabel.VEHICLE,
                             type_id_to_py123d_mapping,

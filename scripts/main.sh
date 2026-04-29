@@ -1,14 +1,3 @@
-# CARLA environment variables
-export CARLA_VERSION="0915"
-export CARLA_ROOT="${LEAD_PROJECT_ROOT}/3rd_party/CARLA_${CARLA_VERSION}"
-
-# Python paths
-export PYTHONPATH=${CARLA_ROOT}/PythonAPI/carla:${PYTHONPATH}
-
-# System paths
-export PATH=$LEAD_PROJECT_ROOT:$PATH
-export PATH=$LEAD_PROJECT_ROOT/scripts:$PATH
-
 # NavSim
 export NUPLAN_MAP_VERSION="nuplan-maps-v1.0"
 export NUPLAN_MAPS_ROOT="${LEAD_PROJECT_ROOT}/3rd_party/navsim_workspace/dataset/maps"

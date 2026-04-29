@@ -13,7 +13,7 @@ from collections import deque
 import carla
 import numpy as np
 
-import lead.carl_agent.bev.transforms as trans_utils
+import lead.carl.bev.transforms as trans_utils
 
 
 def _get_traffic_light_waypoints(traffic_light, carla_map):

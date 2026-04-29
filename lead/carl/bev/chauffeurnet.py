@@ -16,8 +16,8 @@ import cv2 as cv
 import h5py
 import numpy as np
 
-from lead.carl_agent.bev.obs_manager import ObsManagerBase
-from lead.carl_agent.bev.traffic_light import TrafficLightHandler
+from lead.carl.bev.obs_manager import ObsManagerBase
+from lead.carl.bev.traffic_light import TrafficLightHandler
 
 COLOR_BLACK = (0, 0, 0)
 COLOR_RED = (255, 0, 0)

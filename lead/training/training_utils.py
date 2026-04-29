@@ -48,13 +48,30 @@ def increase_limit_file_descriptors(n: int = 4096):
 @beartype
 def initialize_config() -> TrainingConfig:
     config = TrainingConfig()
+    if config.model_type == "plant":
+        from lead.plant.plant_config import PlantConfig
+
+        config = PlantConfig()
     if config.load_file is not None:
         with open(
             os.path.join("/".join(config.load_file.split("/")[:-1]), "config.json"),
         ) as f:
             loaded_config = json.load(f)
-        config = TrainingConfig(loaded_config, raise_error_on_missing_key=False)
+        config_cls = type(config)
+        config = config_cls(loaded_config, raise_error_on_missing_key=False)
     return config
+
+
+@beartype
+def create_model(config: TrainingConfig) -> torch.nn.Module:
+    """Factory: instantiate model based on ``config.model_type``."""
+    if config.model_type == "plant":
+        from lead.plant.plant_model import PlantModel
+
+        return PlantModel(config.device, config)
+    from lead.tfv6.tfv6 import TFv6
+
+    return TFv6(config.device, config)
 
 
 @beartype
@@ -105,9 +122,7 @@ def initialize_torch(config: TrainingConfig) -> int:
 def initialize_model(
     config: TrainingConfig,
 ) -> tuple[typing.Any | torch.nn.parallel.distributed.DistributedDataParallel, int]:
-    from lead.tfv6.tfv6 import TFv6
-
-    model = TFv6(config.device, config)
+    model = create_model(config)
 
     model.cuda(device=config.device)
     if config.sync_batchnorm:
@@ -258,8 +273,14 @@ def initialize_dataloader(
 
     datasets, samplers = [], []
     if config.use_carla_data:
+        if config.model_type == "plant":
+            from lead.plant.plant_dataset import PlantCARLAData
+
+            carla_dataset_cls = PlantCARLAData
+        else:
+            carla_dataset_cls = CARLAData
         datasets.append(
-            CARLAData(
+            carla_dataset_cls(
                 root=config.carla_data,
                 config=config,
                 training_session_cache=ssd_cache,
@@ -336,6 +357,13 @@ def initialize_dataloader(
         config=config,
     )
 
+    if config.model_type == "plant":
+        from lead.plant.plant_dataset import plant_collate_fn
+
+        collate_fn = plant_collate_fn
+    else:
+        collate_fn = mixed_training_utils.mixed_data_collate_fn
+
     dataloader_train = DataLoader(
         train_dataset,
         batch_sampler=mixed_sampler,
@@ -345,7 +373,7 @@ def initialize_dataloader(
         pin_memory=True,
         prefetch_factor=config.prefetch_factor,
         persistent_workers=True,
-        collate_fn=mixed_training_utils.mixed_data_collate_fn,
+        collate_fn=collate_fn,
     )
     return dataloader_train, mixed_sampler
 

@@ -264,11 +264,9 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         return None
     
     @staticmethod
-    def get_current_scenario_memory() -> dict | None:
+    def get_current_scenario_memory() -> dict:
         """Get the meta dict for the current active scenario (first in list)."""
-        if len(CarlaDataProvider.active_scenarios) > 0:
-            return CarlaDataProvider.active_scenarios[0].meta
-        return None
+        return CarlaDataProvider.active_scenarios[0].meta if CarlaDataProvider.active_scenarios else {"adversarial_actors": []}
 
     @staticmethod
     def remove_scenario(scenario: ActiveScenario):

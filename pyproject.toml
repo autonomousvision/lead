@@ -58,9 +58,10 @@ dependencies = [
   "torchmetrics==0.11",
   "torchvision==0.20",
   "tqdm==4.66.1",
+  "transformers==4.46.3",
   "transforms3d==0.4.1",
   "ujson==5.9",
-  "wandb==0.16.6",
+  "wandb==0.26",
 ]
 optional-dependencies.dev = [
   "basedpyright==1.31.3",

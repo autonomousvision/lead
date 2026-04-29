@@ -6,4 +6,4 @@ export CHECKPOINT_DIR=outputs/training/001_example/012_postrain32_2/251025_18233
 export LEAD_TRAINING_CONFIG="$LEAD_TRAINING_CONFIG"
 export LEAD_CLOSED_LOOP_CONFIG="$LEAD_CLOSED_LOOP_CONFIG"
 
-evaluate_longest6
+evaluate_bench2drive

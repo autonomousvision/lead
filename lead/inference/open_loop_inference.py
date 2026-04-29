@@ -16,8 +16,9 @@ from lead.inference import inference_utils
 from lead.inference.config_open_loop import OpenLoopConfig
 from lead.tfv6.center_net_decoder import PredictedBoundingBox
 from lead.tfv6.planning_decoder import decode_two_hot
-from lead.tfv6.tfv6 import Prediction, TFv6
+from lead.tfv6.tfv6 import Prediction
 from lead.training.config_training import TrainingConfig
+from lead.training.training_utils import create_model
 
 np.set_printoptions(suppress=True)
 
@@ -49,11 +50,11 @@ class OpenLoopInference:
         self.device = device
 
         # Loading models
-        self.nets: list[TFv6] = []
+        self.nets: list[torch.nn.Module] = []
         for file in sorted(os.listdir(model_path)):
             if file.startswith(prefix) and file.endswith(".pth"):
                 LOG.info(f"Loading model weight from {os.path.join(model_path, file)}")
-                net = TFv6(self.device, self.config_training)
+                net = create_model(self.config_training)
                 if self.config_training.sync_batchnorm:
                     net = torch.nn.SyncBatchNorm.convert_sync_batchnorm(net)
                 state_dict = torch.load(

@@ -497,6 +497,11 @@ class CARLAData(Dataset):
         if self.build_buckets:
             return data
 
+        # PlanT consumes only object tokens + meta -- skip the heavy sensor path
+        # (and its persistent-cache round-trip, which is expensive on networked FS).
+        if self.config.model_type == "plant":
+            return data
+
         # ----------------------------------------------------------------------------------------
         # Second part of the dataloader: heavy sensor data.
         # Only load this for visualization or training.
@@ -516,15 +521,14 @@ class CARLAData(Dataset):
                 else None
             )
         # RGB
-        if self.config.use_color_aug:
-            processed_image = self.image_augmenter_func(image=sensor_data.image)
+        if sensor_data.image is None:
+            data["rgb"] = None
         else:
-            processed_image = sensor_data.image
-        data["rgb"] = (
-            np.transpose(processed_image, (2, 0, 1))
-            if processed_image is not None
-            else None
-        )
+            if self.config.use_color_aug:
+                processed_image = self.image_augmenter_func(image=sensor_data.image)
+            else:
+                processed_image = sensor_data.image
+            data["rgb"] = np.transpose(processed_image, (2, 0, 1))
         # Radars
         if self.config.use_radars:
             radar_list = carla_dataset_utils.preprocess_radar_input(
@@ -647,7 +651,10 @@ class CARLAData(Dataset):
         data["loading_sensor_time"] = time.time() - start_loading_sensor_time
 
         # Cut cameras down to only used cameras
-        if self.config.num_used_cameras != self.config.num_available_cameras:
+        if (
+            self.config.num_used_cameras != self.config.num_available_cameras
+            and data.get("rgb") is not None
+        ):
             n = self.config.num_available_cameras
             w = data["rgb"].shape[2] // n
 
@@ -670,13 +677,15 @@ class CARLAData(Dataset):
         # We crop of the image if specified in the config by self.config.crop_height pixels
         if self.config.crop_height > 0:
             if self.config.carla_crop_height_type == CarlaImageCroppingType.BOTTOM:
-                data["rgb"] = data["rgb"][:, : -self.config.crop_height, :]
+                if data.get("rgb") is not None:
+                    data["rgb"] = data["rgb"][:, : -self.config.crop_height, :]
                 if data.get("depth") is not None:
                     data["depth"] = data["depth"][: -self.config.crop_height]
                 if data.get("semantic") is not None:
                     data["semantic"] = data["semantic"][: -self.config.crop_height]
             elif self.config.carla_crop_height_type == CarlaImageCroppingType.TOP:
-                data["rgb"] = data["rgb"][:, self.config.crop_height :, :]
+                if data.get("rgb") is not None:
+                    data["rgb"] = data["rgb"][:, self.config.crop_height :, :]
                 if data.get("depth") is not None:
                     data["depth"] = data["depth"][self.config.crop_height :]
                 if data.get("semantic") is not None:
@@ -895,7 +904,9 @@ class CARLAData(Dataset):
 
         bev_3rd_person_images = image = raw_image_bytes = rasterized_lidar = (
             semantic
-        ) = hdmap = depth = boxes = bev_occupancy = radars = None
+        ) = hdmap = depth = boxes = boxes_waypoints = boxes_num_waypoints = (
+            bev_occupancy
+        ) = radars = None
 
         if self.config.load_bev_3rd_person_images:
             try:
@@ -910,13 +921,14 @@ class CARLAData(Dataset):
             except Exception:
                 bev_3rd_person_images = np.zeros((800, 600, 3), dtype=np.uint8)
         # Read raw bytes of the JPEG image to avoid re-encoding it later aka. double JPEG artifacts.
-        with open(str(image_path, encoding="utf-8"), "rb") as f:
-            raw_image_bytes = f.read()
-        image = cv2.imdecode(
-            np.frombuffer(raw_image_bytes, np.uint8),
-            cv2.IMREAD_UNCHANGED,
-        )
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        if self.config.use_rgb:
+            with open(str(image_path, encoding="utf-8"), "rb") as f:
+                raw_image_bytes = f.read()
+            image = cv2.imdecode(
+                np.frombuffer(raw_image_bytes, np.uint8),
+                cv2.IMREAD_UNCHANGED,
+            )
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         if self.config.use_radars:
             radars = np.load(str(radar_path, encoding="utf-8"), allow_pickle=True)
@@ -927,18 +939,21 @@ class CARLAData(Dataset):
             radars = (radars1, radars2, radars3, radars4)
 
         # Load LiDAR BEV
-        las_object = laspy.read(str(lidar_path, encoding="utf-8"))
-        lidar_pc_i = las_object.xyz
-        lidar_timestamp = las_object["time"]
-        lidar_pc_i = lidar_pc_i[lidar_timestamp < self.config.training_used_lidar_steps]
-        rasterized_lidar = rasterize_lidar(
-            config=self.config,
-            lidar=common_utils.align_lidar(
-                lidar_pc_i,
-                np.array([0, perturbation_translation, 0]),
-                np.deg2rad(perturbation_rotation),
-            ),
-        )
+        if self.config.use_lidar:
+            las_object = laspy.read(str(lidar_path, encoding="utf-8"))
+            lidar_pc_i = las_object.xyz
+            lidar_timestamp = las_object["time"]
+            lidar_pc_i = lidar_pc_i[
+                lidar_timestamp < self.config.training_used_lidar_steps
+            ]
+            rasterized_lidar = rasterize_lidar(
+                config=self.config,
+                lidar=common_utils.align_lidar(
+                    lidar_pc_i,
+                    np.array([0, perturbation_translation, 0]),
+                    np.deg2rad(perturbation_rotation),
+                ),
+            )
 
         # Load semantic
         if self.config.use_semantic:

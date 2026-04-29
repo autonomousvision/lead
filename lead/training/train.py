@@ -1,5 +1,7 @@
 import logging
 import os
+import sys
+import traceback
 import warnings
 from itertools import islice
 
@@ -352,8 +354,16 @@ class Trainer:
                 )
 
 
+def _fast_fail_excepthook(exc_type, exc_value, exc_tb):
+    # Print the traceback, then hard-exit to skip slow DataLoader worker
+    # teardown (persistent_workers + pin_memory thread can hang for minutes).
+    traceback.print_exception(exc_type, exc_value, exc_tb)
+    os._exit(1)
+
+
 @record  # Records error and tracebacks in case of failure
 def main():
+    sys.excepthook = _fast_fail_excepthook
     training_utils.increase_limit_file_descriptors()
     Trainer().train_loop()
 

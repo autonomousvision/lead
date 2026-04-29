@@ -8,7 +8,8 @@ from beartype import beartype
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.tensorboard import SummaryWriter
 
-from lead.tfv6.tfv6 import Prediction, TFv6
+from lead.plant.plant_visualizer import visualize_plant_sample
+from lead.tfv6.tfv6 import Prediction
 from lead.training.config_training import TrainingConfig
 from lead.visualization.visualizer import visualize_sample
 
@@ -20,7 +21,7 @@ class Logger:
     def __init__(
         self,
         config: TrainingConfig,
-        model: TFv6 | torch.nn.parallel.distributed.DistributedDataParallel,
+        model: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         scaler: torch.amp.GradScaler,
         continue_step: int,
@@ -110,18 +111,20 @@ class Logger:
             predictions: Model predictions for the current batch.
             log: Dictionary containing debug information.
         """
-        if (
+        is_plant = self.config.model_type == "plant"
+        should_viz = (
             self.config.rank == 0
-            and self.config.debug_mode
             and self.config.visualize_training
-            and self.config.carla_leaderboard_mode
             and (
                 (epoch_iteration + 1) % self.config.log_images_frequency == 0
                 or epoch_iteration <= 1
             )
-        ):
+        )
+        viz_fn = visualize_plant_sample if is_plant else visualize_sample
+
+        if should_viz and self.config.debug_mode and self.config.carla_leaderboard_mode:
             LOG.info(f"Visualizing training sample at step {step}.")
-            visualize_sample(
+            viz_fn(
                 config=self.config,
                 predictions=predictions,
                 data=data,
@@ -134,14 +137,11 @@ class Logger:
         if self.config.rank == 0:
             if (
                 self.config.log_wandb
-                and (
-                    (epoch_iteration + 1) % self.config.log_images_frequency == 0
-                    or epoch_iteration <= 1
-                )
+                and should_viz
                 and self.config.carla_leaderboard_mode
             ):
                 LOG.info(f"Logging training sample to WandB at step {step}.")
-                visualize_sample(
+                viz_fn(
                     config=self.config,
                     predictions=predictions,
                     data=data,

@@ -16,7 +16,7 @@ import timm
 import torch
 from torch import nn
 
-from lead.carl_agent.distributions import (
+from lead.carl.distributions import (
     BetaDistribution,
     BetaUniformMixtureDistribution,
     DiagGaussianDistribution,

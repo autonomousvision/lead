@@ -22,7 +22,7 @@ Read these in order:
 - [slurm/data_collection/collect_data.py](slurm/data_collection/collect_data.py) — SLURM orchestrator launching parallel CARLA data collection jobs.
 - [slurm/data_collection/delete_failed_routes.py](slurm/data_collection/delete_failed_routes.py) — cleans up failed route directories.
 - [3rd_party/leaderboard_autopilot/leaderboard/leaderboard_evaluator_local.py](3rd_party/leaderboard_autopilot/leaderboard/leaderboard_evaluator_local.py) — runs CARLA scenarios per route.
-- [lead/leaderboard_wrapper.py](lead/leaderboard_wrapper.py) — adapts LEAD to the CARLA leaderboard agent protocol.
+- [lead/__main__.py](lead/__main__.py) — adapts LEAD to the CARLA leaderboard agent protocol.
 - [lead/expert/expert.py](lead/expert/expert.py) — main expert agent driving logic.
 - [lead/expert/expert_base.py](lead/expert/expert_base.py) — shared base class for expert variants.
 - [lead/expert/expert_data.py](lead/expert/expert_data.py) — saves frames and labels during collection.

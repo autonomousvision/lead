@@ -1,4 +1,4 @@
-# Training (10 minutes)
+# Training
 
 This guide covers local model training for CARLA Leaderboard.
 
@@ -17,7 +17,7 @@ This step assumes you either
 
 1. Fellow the [data collection tutorial](data_collection.md) to collect data locally
 
-2. Or downloaded the data from  [Hugging Face](https://huggingface.co/datasets/ln2697/lead_carla).
+2. Or downloaded the data from  [Hugging Face](https://huggingface.co/datasets/ln2697/lead).
 
 Eitherway, your data structure should match:
 

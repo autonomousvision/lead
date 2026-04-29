@@ -126,6 +126,10 @@ class ExpertConfig(BaseConfig):
     parking_vehicle_min_num_lidar_points = 5
     # Minimum number of visible pixels for a parking vehicle to be considered valid.
     parking_vehicle_min_num_visible_pixels = 10
+    # Minimum number of LiDAR points for a static prop (barrier, cone, sign) to be considered valid.
+    static_prop_min_num_lidar_points = 1
+    # Minimum number of visible pixels for a static prop (barrier, cone, sign) to be considered valid.
+    static_prop_min_num_visible_pixels = 1
 
     # --- Debug Colors for Visualization ---
     # Color for future route visualization during debugging

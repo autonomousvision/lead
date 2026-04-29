@@ -4,7 +4,7 @@
 
 ```
 lead/
-├── carl_agent/              # CaRL RL expert agent (BEV-based RL policy). Independent of the rest of the repo.
+├── carl/                    # CaRL RL expert agent (BEV-based RL policy). Independent of the rest of the repo.
 │   ├── carl_agent.py        # Agent entry point, drives the RL policy in CARLA
 │   ├── config.py            # Hyperparameters for the CaRL model
 │   ├── model.py             # RL policy network
@@ -12,6 +12,18 @@ lead/
 │   ├── distributions.py     # Action sampling distributions (Gaussian, Beta, Uniform+Beta)
 │   ├── rl_utils.py          # Traffic light preprocessing and coordinate transforms
 │   └── bev/                 # BEV map rendering and observation utilities
+│
+├── plant/                   # PlanT agent (autoregressive transformer planner)
+│   ├── plant_agent.py       # Agent entry point for CARLA leaderboard protocol
+│   ├── plant_model.py       # PlanT model (transformer-based planning)
+│   ├── plant_backbone.py    # Backbone feature extractor
+│   ├── plant_planning_decoder.py  # Autoregressive waypoint decoder
+│   ├── plant_config.py      # PlanT configuration dataclass
+│   ├── plant_dataset.py     # PlanT-specific dataset
+│   ├── plant_tokenizer.py   # Scene tokenizer (objects → token sequences)
+│   ├── plant_variables.py   # PlanT constants
+│   ├── plant_visualizer.py  # PlanT-specific visualization
+│   └── static_extents.py    # Static object extent definitions
 │
 ├── common/                  # Shared utilities across agents, evaluation, training and LEAD expert
 │   ├── base_agent.py        # Abstract agent base class
@@ -91,11 +103,11 @@ lead/
 │   ├── visualizer.py        # High-level visualizer composing images and overlays
 │   └── viz_utils.py         # Low-level drawing primitives (bboxes, trajectories, text)
 │
-├── infraction_webapp/       # Flask app for browsing infraction videos
+├── webapp/                  # Flask app for browsing infraction videos
 │   ├── app.py               # Flask server entry point
 │   └── templates/ static/   # HTML templates and static assets
 │
-└── leaderboard_wrapper.py   # Thin wrapper adapting LEAD to CARLA leaderboard agent protocol
+└── __main__.py   # Thin wrapper adapting LEAD to CARLA leaderboard agent protocol
 ```
 
 ## `3rd_party/` — external dependencies (submodules)

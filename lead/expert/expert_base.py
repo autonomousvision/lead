@@ -166,6 +166,12 @@ class ExpertBase(BaseAgent, autonomous_agent_local.AutonomousAgent):
         ][:: self.config_expert.points_per_meter]
 
     @step_cached_property
+    def remaining_route_original(self):
+        return self.original_route_waypoints_np[
+            self.config_expert.tf_first_checkpoint_distance :
+        ][:: self.config_expert.points_per_meter]
+
+    @step_cached_property
     @beartype
     def near_lane_change(self) -> bool:
         route_points = self.route_waypoints_np

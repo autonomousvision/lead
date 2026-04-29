@@ -11,7 +11,7 @@ Code adapted from https://github.com/zhejz/carla-roach
 import carla
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
-from lead.carl_agent.rl_utils import check_obb_intersection
+from lead.carl.rl_utils import check_obb_intersection
 
 
 class RunStopSign:

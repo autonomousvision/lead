@@ -103,13 +103,53 @@
                 "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
             }
         },
+        {
+            "name": "Train Plant",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "lead/training/train.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "model_type=plant",
+                "logdir=outputs/local_training/plant",
+            ],
+            "env": {
+                "PYTHONDONTWRITEBYTECODE": "1"
+            }
+        },
+        {
+            "name": "Train Plant DDP",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "torch.distributed.run",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "subProcess": true,
+            "args": [
+                "--standalone",
+                "--nnodes=1",
+                "--nproc_per_node=4",
+                "--max_restarts=0",
+                "lead/training/train.py"
+            ],
+            "env": {
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "LEAD_TRAINING_CONFIG": "model_type=plant logdir=outputs/local_training/plant",
+                "OMP_NUM_THREADS": "8",
+                "OPENBLAS_NUM_THREADS": "1",
+                "NCCL_P2P_DISABLE": "1",
+                "NCCL_P2P_LEVEL": "NVL",
+                "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+            }
+        },
         // Debug configurations for Evaluation
         {
             "name": "Eval Bench2Drive",
             "type": "debugpy",
             "request": "launch",
             "preLaunchTask": "Reset Carla World",
-            "module": "lead.leaderboard_wrapper",
+            "module": "lead",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
@@ -129,7 +169,7 @@
             "type": "debugpy",
             "request": "launch",
             "preLaunchTask": "Reset Carla World",
-            "module": "lead.leaderboard_wrapper",
+            "module": "lead",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
@@ -150,7 +190,7 @@
             "type": "debugpy",
             "request": "launch",
             "preLaunchTask": "Reset Carla World",
-            "module": "lead.leaderboard_wrapper",
+            "module": "lead",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
@@ -171,7 +211,7 @@
             "type": "debugpy",
             "request": "launch",
             "preLaunchTask": "Reset Carla World",
-            "module": "lead.leaderboard_wrapper",
+            "module": "lead",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
@@ -179,7 +219,7 @@
                 "outputs/checkpoints/CaRL",
                 "--routes",
                 "data/benchmark_routes/bench2drive/24240.xml",
-                "--carl-agent",
+                "--carl",
                 "--bench2drive",
                 "--timeout",
                 "900"
@@ -195,7 +235,7 @@
             "type": "debugpy",
             "request": "launch",
             "preLaunchTask": "Reset Carla World",
-            "module": "lead.leaderboard_wrapper",
+            "module": "lead",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
@@ -215,7 +255,7 @@
             "type": "debugpy",
             "request": "launch",
             "preLaunchTask": "Reset Carla World",
-            "module": "lead.leaderboard_wrapper",
+            "module": "lead",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
@@ -233,7 +273,7 @@
             "type": "debugpy",
             "request": "launch",
             "preLaunchTask": "Reset Carla World",
-            "module": "lead.leaderboard_wrapper",
+            "module": "lead",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [

@@ -6,7 +6,7 @@ set -x
 python3 slurm/evaluation/evaluate_scripts_generator.py \
 --base_checkpoint_endpoint $EVALUATION_OUTPUT_DIR \
 --route_folder data/benchmark_routes/$EVALUATION_DATASET \
---team_agent lead/carl_agent/carl_agent.py \
+--team_agent lead/carl/carl_agent.py \
 --track MAP $SCRIPT_GENERATOR_PARAMETERS
 
 # Run the evaluation scripts parallelly.

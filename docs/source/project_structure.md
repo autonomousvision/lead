@@ -35,7 +35,7 @@ Closed-loop evaluation pipeline:
 - Metric computation
 - Visualization and logging
 
-### `lead/infraction_webapp/`
+### `lead/webapp/`
 Interactive web dashboard for analyzing driving failures:
 - Video playback of driving runs
 - Infraction highlighting and annotation
@@ -65,7 +65,7 @@ lead/                        # Main Python package
 ├── data_loader/             # PyTorch data loading
 ├── expert/                  # Expert driver implementation
 ├── inference/               # Closed-loop evaluation
-├── infraction_webapp/       # Interactive infraction viewer
+├── webapp/                  # Interactive infraction viewer
 ├── tfv6/                    # TransFuser V6 model architecture
 └── training/                # Training pipeline
 

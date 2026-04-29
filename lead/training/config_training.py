@@ -133,6 +133,10 @@ class TrainingConfig(BaseConfig):
         """Height of LiDAR coverage area in meters."""
         return int(self.max_y_meter - self.min_y_meter)
 
+    # Model type: "tfv6" (default) or "plant".
+    # Drives model creation in training_utils.create_model().
+    model_type = "tfv6"
+
     # Flag to visualize the dataset and deactivate randomization and augmentation.
     visualize_dataset = False
     # Flag to visualize the failed scenarios and deactivate randomization and augmentation.
@@ -476,6 +480,10 @@ class TrainingConfig(BaseConfig):
             return False
         return True
 
+    # --- RGB ---
+    # If true load RGB camera images from disk. Disable for models that don't use RGB (e.g., PlanT).
+    use_rgb = True
+
     # --- Depth ---
     @overridable_property
     def use_depth(self):
@@ -483,6 +491,9 @@ class TrainingConfig(BaseConfig):
         return self.carla_leaderboard_mode
 
     # --- LiDAR setting ---
+    # If true load LiDAR points from disk and rasterize to BEV. Disable for models that don't use LiDAR (e.g., PlanT).
+    use_lidar = True
+
     @property
     def training_used_lidar_steps(self):
         """We stack lidar frames for motion cues. Number of past frames we stack for the model input."""
