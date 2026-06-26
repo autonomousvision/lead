@@ -9,7 +9,7 @@
 </h2>
 
 <p align="center">
-  <a href="https://ln2697.github.io/lead">Website</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://ln2697.github.io/lead/docs">Docs</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://huggingface.co/datasets/ln2697/lead">Dataset</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://huggingface.co/ln2697/tfv6">Model</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://huggingface.co/ln2697/ltfv6-navsim">NAVSIM Model</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://ln2697.github.io/assets/pdf/Nguyen2026LEADSUPP.pdf">Supplementary</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://arxiv.org/abs/2512.20563">Paper</a>
+  <a href="https://ln2697.github.io/lead">Website</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://kesai.eu/blog/2026-06-26-lead/">Blog</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://ln2697.github.io/lead/docs">Docs</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://huggingface.co/datasets/ln2697/lead">Dataset</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://huggingface.co/ln2697/tfv6">Model</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://huggingface.co/ln2697/ltfv6-navsim">NAVSIM Model</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://ln2697.github.io/assets/pdf/Nguyen2026LEADSUPP.pdf">Supplementary</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://arxiv.org/abs/2512.20563">Paper</a>
 </p>
 
 <p align="center">
@@ -74,6 +74,7 @@
 
 | Date         | Content                                                                                                                                                                                                               |
 | :----------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **26.06.26** | Release a new [blog](https://kesai.eu/blog/2026-06-26-lead/) highlighting our results on the target point bias.                                                               |
 | **26.04.29** | [PlanT 2.0](https://github.com/autonomousvision/plant2) privileged planner integration added, see [instructions](#33-plant-20-training-and-evaluation).                                                               |
 | **26.04.25** | [LEAD360](https://huggingface.co/datasets/ln2697/lead360) dataset published, features six cameras and metas to train PlanT 2.0.                                                                                                |
 | **26.04.19** | [LEAD123D](https://huggingface.co/datasets/ln2697/lead123d) dataset published: five hours driving logs in 123D format.                                                                                                             |
