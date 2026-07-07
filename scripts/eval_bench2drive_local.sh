@@ -13,7 +13,10 @@ GPUS="${2:-0}"
 TAG="${3:-run}"
 ROUTES_DIR="data/benchmark_routes/bench2drive"
 LOGDIR="/tmp/b2d_${TAG}"
-mkdir -p "$LOGDIR"
+# Per-model output root so two models can eval the SAME 220 route ids simultaneously
+# without colliding on outputs/local_evaluation/<id>/ (which is keyed by route id only).
+OUTROOT="outputs/local_evaluation_${TAG}"
+mkdir -p "$LOGDIR" "$OUTROOT"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 
 mapfile -t ROUTES < <(ls "$ROUTES_DIR"/*.xml | sort)
@@ -24,7 +27,9 @@ wait_port() { for _ in $(seq 1 60); do ss -ltn | grep -q ":$1 " && return 0; sle
 
 worker() {
   local gpu=$1; shift
-  local port=$((2000 + gpu*2)) tm=$((8000 + gpu*2)) strm=$((2000 + gpu*2 + 1))
+  # CARLA needs 3 consecutive ports (world, +1 secondary, streaming); stride 10 avoids overlap.
+  # Traffic-manager on a separate high range so it never collides with CARLA's 8000-ish defaults.
+  local port=$((2000 + gpu*10)) strm=$((2000 + gpu*10 + 1)) tm=$((30000 + gpu))
   # start ONE CARLA for this GPU (Epic quality -> no -quality-level)
   CUDA_VISIBLE_DEVICES=$gpu "$CARLA_ROOT/CarlaUE4.sh" --world-port=$port \
       --carla-streaming-port=$strm -nosound -graphicsadapter=$gpu -RenderOffScreen \
@@ -34,10 +39,11 @@ worker() {
   echo "[gpu$gpu] CARLA up on $port"
   for xml in "$@"; do
     local id; id=$(basename "$xml" .xml)
-    [ -f "outputs/local_evaluation/$id/checkpoint_endpoint.json" ] && { echo "[gpu$gpu] $id done, skip"; continue; }
+    [ -f "$OUTROOT/$id/checkpoint_endpoint.json" ] && { echo "[gpu$gpu] $id done, skip"; continue; }
     echo "[gpu$gpu] route $id ..."
     CUDA_VISIBLE_DEVICES=$gpu timeout 1500 python -m lead \
         --checkpoint "$CKPT" --routes "$xml" --bench2drive \
+        --output-dir "$OUTROOT/$id" \
         --port $port --traffic-manager-port $tm \
         >"$LOGDIR/route_${id}.log" 2>&1 || echo "[gpu$gpu] $id FAILED (see $LOGDIR/route_${id}.log)"
   done
@@ -53,5 +59,5 @@ done
 wait
 echo "=== all workers done. logs in $LOGDIR ==="
 echo "collect results + merge:"
-echo "  mkdir -p outputs/b2d_${TAG} && for f in outputs/local_evaluation/*/checkpoint_endpoint.json; do cp \$f outputs/b2d_${TAG}/\$(basename \$(dirname \$f)).json; done"
+echo "  mkdir -p outputs/b2d_${TAG} && for f in $OUTROOT/*/checkpoint_endpoint.json; do cp \$f outputs/b2d_${TAG}/\$(basename \$(dirname \$f)).json; done"
 echo "  python slurm/evaluation/merge_route_json.py -f outputs/b2d_${TAG}"
