@@ -212,7 +212,7 @@ class TrainingConfig(BaseConfig):
         """Path to SSD cache directory."""
         tmp_folder = "/scratch/" + str(os.environ.get("SLURM_JOB_ID"))
         if not self.is_on_tcml:
-            tmp_folder = str(os.environ.get("SCRATCH", f"/tmp/{os.environ['USER']}"))
+            tmp_folder = str(os.environ.get("SCRATCH", f"/tmp/{os.environ.get('USER', 'lead')}"))
         return tmp_folder
 
     # Root directory for CARLA sensor data.
@@ -916,6 +916,18 @@ class TrainingConfig(BaseConfig):
             and not self.mixed_data_training
         )
 
+    # --- Visual intent head (implicit-intent + reactive-control research) ---
+    # If true, add a single-channel soft BEV intent decoder (see intent_decoder.py).
+    use_intent_decoder = False
+    # Loss weight of the visual-intent heatmap term.
+    visual_intent_loss_weight = 1.0
+    # P2: if true, feed the intent field into the planning/control head as context.
+    use_control_conditioning = False
+    # P2.2: if true, add a differentiable collision cost on predicted waypoints.
+    use_collision_cost = False
+    collision_loss_weight = 1.0
+    collision_sigma_m = 2.0
+
     @beartype
     def detailed_loss_weights(self, source_dataset: int, _: int) -> dict[str, float]:
         """Computed loss weights for all auxiliary tasks with normalization."""
@@ -985,6 +997,15 @@ class TrainingConfig(BaseConfig):
             weights["loss_spatio_temporal_waypoints"] = 0.0
             weights["loss_spatial_route"] = 0.0
             weights["loss_target_speed"] = 0.0
+
+        # Visual-intent head (no source-dataset prefix)
+        weights["loss_visual_intent"] = (
+            self.visual_intent_loss_weight if self.use_intent_decoder else 0.0
+        )
+        # Reactive-control collision cost (P2.2)
+        weights["loss_collision"] = (
+            self.collision_loss_weight if self.use_collision_cost else 0.0
+        )
 
         return weights
 
@@ -1059,7 +1080,7 @@ class TrainingConfig(BaseConfig):
             cpus_per_task = os.environ.get("SLURM_CPUS_PER_TASK")
             if cpus_per_task:
                 return int(cpus_per_task)
-        return 8
+        return min(os.cpu_count() or 8, 144)
 
     @property
     def workers_per_cpu_cores(self):

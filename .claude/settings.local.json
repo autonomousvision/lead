@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(CUDA_VISIBLE_DEVICES=\"\" timeout 580 /mmu_mllm_hdd_3/liuzihan08/miniconda3/envs/lead/bin/python scripts/viz_intent_pred.py --n 6)",
+      "Bash(awk '{print $6,$7,$8,$9}')",
+      "Bash(/mmu_mllm_hdd_3/liuzihan08/miniconda3/envs/lead/bin/python -m py_compile lead/tfv6/tfv6.py lead/tfv6/planning_decoder.py lead/tfv6/intent_decoder.py lead/training/config_training.py lead/data_loader/carla_dataset.py)",
+      "Bash(CUDA_VISIBLE_DEVICES=\"\" /mmu_mllm_hdd_3/liuzihan08/miniconda3/envs/lead/bin/python -m lead.tfv6.collision_cost)",
+      "Bash(grep -avE \"^$\")",
+      "Bash(grep -vE \"\\\\.pth$\")",
+      "Bash(/mmu_mllm_hdd_3/liuzihan08/miniconda3/envs/lead/bin/python -c \"import torch; print\\('torch', torch.__version__\\); print\\('torch.version.cuda', torch.version.cuda\\); print\\('cudnn', torch.backends.cudnn.version\\(\\)\\)\")",
+      "Bash(nvidia-smi)",
+      "WebSearch",
+      "WebFetch(domain:www.autodl.com)"
+    ]
+  }
+}

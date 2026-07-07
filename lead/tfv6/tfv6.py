@@ -104,6 +104,13 @@ class TFv6(nn.Module):
                 device=self.device,
             ).to(self.device)
 
+        if self.config.use_intent_decoder:
+            from lead.tfv6.intent_decoder import IntentDecoder
+
+            self.intent_decoder = IntentDecoder(self.config, self.device).to(
+                self.device,
+            )
+
     @beartype
     def forward(self, data: dict[str, typing.Any]) -> Prediction:
         self.log = {}
@@ -112,6 +119,7 @@ class TFv6(nn.Module):
         ) = pred_headings = None
         pred_semantic = pred_depth = pred_bounding_box = pred_bev_semantic = None
         pred_bounding_box_navsim = pred_bev_semantic_navsim = None
+        pred_visual_intent = None
 
         # Backbone
         bev_features, image_features = self.backbone(data)
@@ -121,12 +129,23 @@ class TFv6(nn.Module):
         if self.config.use_carla_data and self.config.radar_detection:
             radar_features, radar_predictions = self.radar_detector(bev_features, data)
 
-        # Planning heads
+        # BEV feature grid (shared by intent / detection / bev-semantic heads)
+        bev_feature_grid = self.backbone.top_down(bev_features)
+
+        # Visual-intent head: soft BEV intent field. Computed before planning so the
+        # control head can be conditioned on it (P2).
+        if self.config.use_intent_decoder:
+            pred_visual_intent = self.intent_decoder(bev_feature_grid)
+
+        # Planning / control head
         if self.config.use_planning_decoder:
             planner_radar_features = radar_features
             planner_radar_predictions = radar_predictions
             if not self.config.use_radar_detection or not self.config.use_carla_data:
                 planner_radar_features = planner_radar_predictions = None
+            planner_intent = (
+                pred_visual_intent if self.config.use_control_conditioning else None
+            )
             (
                 pred_route,
                 pred_future_waypoints,
@@ -139,6 +158,7 @@ class TFv6(nn.Module):
                 planner_radar_predictions,
                 data,
                 log=self.log,
+                intent=planner_intent,
             )
 
         # Semantic segmentation forward pass
@@ -150,7 +170,6 @@ class TFv6(nn.Module):
             pred_depth = self.depth_decoder(data, image_features, self.log)
 
         # Bounding box detection forward pass
-        bev_feature_grid = self.backbone.top_down(bev_features)
         if self.config.detect_boxes:
             if self.config.use_carla_data:
                 pred_bounding_box = self.center_net_decoder(
@@ -196,6 +215,7 @@ class TFv6(nn.Module):
             pred_bounding_box_navsim=pred_bounding_box_navsim,
             pred_bev_semantic_navsim=pred_bev_semantic_navsim,
             pred_headings=pred_headings,
+            pred_visual_intent=pred_visual_intent,
         )
 
     @beartype
@@ -275,6 +295,15 @@ class TFv6(nn.Module):
                 log=self.log,
             )
 
+        # Visual-intent loss
+        if self.config.use_intent_decoder:
+            self.intent_decoder.compute_loss(
+                predictions.pred_visual_intent,
+                data,
+                loss,
+                log=self.log,
+            )
+
         return loss, self.log
 
 
@@ -309,3 +338,6 @@ class Prediction:
         jt.Float[torch.Tensor, "bs num_bev_classes_navsim bev_height bev_width"] | None
     )
     pred_headings: jt.Float[torch.Tensor, "bs n_waypoints"] | None
+    pred_visual_intent: (
+        jt.Float[torch.Tensor, "bs 1 bev_height bev_width"] | None
+    ) = None

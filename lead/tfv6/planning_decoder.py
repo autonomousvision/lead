@@ -99,6 +99,7 @@ class PlanningDecoder(nn.Module):
         radar_predictions: jt.Float[torch.Tensor, "B Q 4"] | None,
         data: dict,
         log: dict,
+        intent: jt.Float[torch.Tensor, "bs 1 ih iw"] | None = None,
     ) -> tuple[
         jt.Float[torch.Tensor, "B n_checkpoints 2"] | None,
         jt.Float[torch.Tensor, "B n_waypoints 2"],
@@ -126,6 +127,7 @@ class PlanningDecoder(nn.Module):
             radar_predictions=radar_predictions,
             data=data,
             log=log,
+            intent=intent,
         )
 
         bs = context_tokens.shape[0]
@@ -243,6 +245,19 @@ class PlanningDecoder(nn.Module):
                     predictions.pred_route[:, -1, :].float(),
                     route_label[:, -1, :].float(),
                 )  # FDE
+
+            # Differentiable collision cost on predicted waypoints (P2.2)
+            if self.config.use_collision_cost and (
+                predictions.pred_future_waypoints is not None
+            ):
+                from lead.tfv6.collision_cost import differentiable_collision
+
+                loss["loss_collision"] = differentiable_collision(
+                    predictions.pred_future_waypoints.float(),
+                    data["bev_semantic"].to(self.device, non_blocking=True),
+                    self.config,
+                    sigma_m=self.config.collision_sigma_m,
+                )
 
         if (
             "iteration" in data
@@ -505,6 +520,13 @@ class PlanningContextEncoder(nn.Module):
             self.config.transfuser_token_dim,
             kernel_size=1,
         )
+        # P2: encode the soft BEV intent field into planning-context tokens.
+        if self.config.use_control_conditioning:
+            self.intent_adapter = nn.Conv2d(
+                1,
+                self.config.transfuser_token_dim,
+                kernel_size=1,
+            )
         self.reset_parameters()
 
         self.target_points_normalization_constants = torch.tensor(
@@ -524,6 +546,7 @@ class PlanningContextEncoder(nn.Module):
         radar_predictions: jt.Float[torch.Tensor, "B Q 4"] | None,
         data: dict,
         log: dict,
+        intent: jt.Float[torch.Tensor, "B 1 ih iw"] | None = None,
     ) -> jt.Float[torch.Tensor, "B N D"]:
         """
         Args:
@@ -667,15 +690,14 @@ class PlanningContextEncoder(nn.Module):
             has_statuses = True
 
         # Process BEV features
-        context_tokens = self.dimension_adapter(
+        bev_context = self.dimension_adapter(
             bev_features,
         )  # (bs, transfuser_token_dim, height, width)
 
         # Concatenate and add positional embeddings
         if has_statuses:
-            context_tokens = context_tokens + self.cosine_pos_embeding(
-                context_tokens,
-            )  # (bs, transfuser_token_dim, height, width)
+            height, width = bev_context.shape[-2:]
+            context_tokens = bev_context + self.cosine_pos_embeding(bev_context)
             context_tokens = torch.flatten(
                 context_tokens,
                 start_dim=2,
@@ -685,13 +707,35 @@ class PlanningContextEncoder(nn.Module):
                 (0, 2, 1),
             )  # (bs, height * width, transfuser_token_dim)
 
+            tokens_to_cat = [context_tokens]
+
+            # P2: intent conditioning -- encode the soft BEV intent field as tokens.
+            # Detached so the control loss does not corrupt the intent head.
+            if self.config.use_control_conditioning and intent is not None:
+                intent_feat = torch.sigmoid(intent.detach().to(bev_context.dtype))
+                intent_feat = F.interpolate(
+                    intent_feat,
+                    size=(height, width),
+                    mode="bilinear",
+                    align_corners=False,
+                )  # (bs, 1, height, width)
+                intent_tokens = self.intent_adapter(intent_feat)
+                intent_tokens = intent_tokens + self.cosine_pos_embeding(intent_tokens)
+                intent_tokens = torch.flatten(intent_tokens, start_dim=2)
+                intent_tokens = torch.permute(
+                    intent_tokens,
+                    (0, 2, 1),
+                )  # (bs, height * width, transfuser_token_dim)
+                tokens_to_cat.append(intent_tokens)
+
             status_tokens = (
                 status_tokens + self.status_pos_embedding
             )  # (bs, num_status_tokens, transfuser_token_dim)
+            tokens_to_cat.append(status_tokens)
             context_tokens = torch.cat(
-                [context_tokens, status_tokens],
+                tokens_to_cat,
                 dim=1,
-            )  # (bs, height * width + num_status_tokens, transfuser_token_dim)
+            )  # (bs, tokens, transfuser_token_dim)
 
         return context_tokens
 

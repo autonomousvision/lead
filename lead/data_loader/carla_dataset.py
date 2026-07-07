@@ -396,6 +396,7 @@ class CARLAData(Dataset):
         # Route and target speed features
         if (
             self.config.use_planning_decoder
+            or self.config.use_intent_decoder
             or self.config.visualize_dataset
             or self.build_buckets
         ):
@@ -421,6 +422,20 @@ class CARLAData(Dataset):
             data["route_labels_curvature"] = common_utils.waypoints_curvature(
                 torch.from_numpy(data["route"]),
             )
+
+            # Precompute the soft BEV visual-intent label on the CPU worker so the
+            # heavy (B,N,H,W) rasterization stays off the GPU critical path.
+            if (
+                self.config.use_intent_decoder
+                and not self.build_cache
+                and not self.build_buckets
+            ):
+                from lead.tfv6.intent_decoder import rasterize_waypoints_to_bev
+
+                data["visual_intent_label"] = rasterize_waypoints_to_bev(
+                    torch.from_numpy(data["route"]).float().unsqueeze(0),
+                    self.config,
+                )[0].numpy()  # (1, H, W)
 
         # Velocity
         if self.config.use_velocity:
@@ -507,7 +522,14 @@ class CARLAData(Dataset):
         # Only load this for visualization or training.
         # ----------------------------------------------------------------------------------------
         start_loading_sensor_time = time.time()
-        sensor_data = self._load_sensor_data(data, meta, index, perturbate_sensor)
+        try:
+            sensor_data = self._load_sensor_data(data, meta, index, perturbate_sensor)
+        except Exception as e:
+            # Tolerate corrupt/truncated sensor files (e.g. LAZ lidar damaged by an
+            # interrupted unzip). Log and fall back to another random valid sample so
+            # build_cache and training do not crash on a single bad frame.
+            LOG.warning(f"[corrupt-skip] index={index}: {type(e).__name__}: {e}")
+            return self.__getitem__(random.randint(0, len(self) - 1))
         if self.build_cache:
             return data
         # BEV 3rd person images

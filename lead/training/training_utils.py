@@ -426,9 +426,9 @@ def set_start_method():
     # To edit code while processes run, we generally prefer fork.
     available_start_methods = mp.get_all_start_methods()
     if "fork" in available_start_methods:
-        mp.set_start_method("fork")
+        mp.set_start_method("fork", force=True)
     # Available on all OS.
     elif "spawn" in available_start_methods:
-        mp.set_start_method("spawn")
+        mp.set_start_method("spawn", force=True)
     elif "forkserver" in available_start_methods:
-        mp.set_start_method("forkserver")
+        mp.set_start_method("forkserver", force=True)

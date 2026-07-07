@@ -11,12 +11,16 @@ if [ "$2" != "" ]; then
 	streaming_port=$2
 fi
 
+export CUDA_VISIBLE_DEVICES=1
+
 $CARLA_ROOT/CarlaUE4.sh \
-    -quality-level=Poor \
+    --allow-root \
+    -quality-level=Low \
     -world-port=$port \
-    -resx=800 \
-    -resy=600 \
+    -resx=640 \
+    -resy=480 \
     -nosound \
     -graphicsadapter=0 \
     -carla-streaming-port=$streaming_port \
+    -opengl \
     -RenderOffScreen &

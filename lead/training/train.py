@@ -25,6 +25,10 @@ LOG = logging.getLogger(__name__)
 warnings.filterwarnings("error")
 warnings.filterwarnings(
     "ignore",
+    message=r".*cuDNN SDPA backward got grad_output\.strides\(\).*",
+)
+warnings.filterwarnings(
+    "ignore",
     message="Grad strides do not match bucket view strides",
 )
 warnings.filterwarnings(
