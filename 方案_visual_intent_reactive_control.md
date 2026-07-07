@@ -92,6 +92,16 @@ BEV 网格约定(来自 config,**待 P0 可视化确认朝向**):`pixels_per_met
 2. **P2/P3 的避障**:专家几乎不碰撞,真反应式安全需闭环/仿真造碰撞/RL → 必须解决能跑 CARLA 闭环的图形 GPU(本 H20 不行,见 `踩坑总结_LEAD_H20.md` §3c)。
 
 ## 8. 下一步
-- [ ] P0:写 `scripts/viz_visual_intent.py`(用 CARLAData 取样 → 栅格化 intent → 叠 bev_semantic → 存图),确认网格朝向
-- [ ] P1:接线 `use_intent_decoder` + tfv6,训 intent 头
+- [x] P0:`scripts/viz_visual_intent.py`,确认网格朝向 ✅
+- [x] P1:接线 `use_intent_decoder` + tfv6,训 intent 头 ✅(追平 LEAD,见 `P2_开环实测结果.md`)
+- [x] P2:条件化 control + 可微碰撞代价 ✅(开环追平 LEAD;碰撞开环无收益,待闭环)
+- [ ] 闭环 Driving Score(A800 上跑,LEAD vs P2)
 - [ ] 并行:deep-research 核 visual-intent / NMP / VLM-driving 防撞车
+
+## 9. 研究待办(当前只是路线验证,非最终方案)
+> P0-P2 用「专家 route 投影到 BEV」当 intent,只是**验证机制通不通**,不是终态。以下是要往最终方案演进的点:
+
+- [ ] **intent 视野太短(~10m ≈ 1-2 秒),要拉长做长线规划**:当前 intent = `route`(空间路径,`num_route_points_prediction=10` / `max_distance_future_waypoint=10.0` → 仅 ~10m)。长线 visual intent 需扩 route 视野(加点数/加距离上限),或换更长 horizon 的场景表征(**VGGT 几何支撑**)。
+- [ ] **多模态 intent(核心卖点)**:P1 证明单条专家 route + heatmap 回归会收敛成**单模**;真隐式多模需显式机制——地图定义 intent support(点亮所有可行驶臂)/ latent 变量 / 多未来聚合。这是相对 EvaDrive 的命根,尚未做。
+- [ ] **上 VLM(路线②/方案A)**:把 intent 生产者从 TFv6 BEV 头换成预训练 VLM(图像空间 intent)→ VGGT 抬到 BEV → 复用现有 control 头。训练放 H20(不需图形)。
+- [ ] **碰撞代价的真价值**:开环证不了,靠闭环 + 分布外/纠偏场景体现;必要时换更强的避障指标。
