@@ -46,12 +46,15 @@ kill_carla() {  # $1 pid  $2 port  $3 gpu -- kill and wait for the RPC port to f
 worker() {
   local gpu=$1; shift
   # CARLA needs 3 consecutive ports (world, +1 secondary/streaming); stride 10 avoids overlap.
-  # Traffic-manager on a separate high range so it never collides with CARLA's 8000-ish defaults.
-  local port=$((2000 + gpu*10)) strm=$((2000 + gpu*10 + 1)) tm=$((30000 + gpu))
-  local ok=0 fail=0
+  local port=$((2000 + gpu*10)) strm=$((2000 + gpu*10 + 1))
+  local ok=0 fail=0 i=0
   # Fresh CARLA PER ROUTE: a long-lived CARLA leaks/segfaults after ~dozens of routes and
   # then poisons every remaining route on that GPU. Restarting per route isolates crashes.
   for xml in "$@"; do
+    # ROTATE the traffic-manager port per route. CARLA's TM RPC socket lacks SO_REUSEADDR,
+    # so reusing one TM port across per-route restarts hits TCP TIME_WAIT -> bind error.
+    # Each GPU gets its own 190-wide band; 190 routes >> the ~60s TIME_WAIT window.
+    local tm=$((30000 + gpu*200 + i % 190)); i=$((i+1))
     local id; id=$(basename "$xml" .xml)
     [ -f "$OUTROOT/$id/checkpoint_endpoint.json" ] && { echo "[gpu$gpu] $id done, skip"; continue; }
     # make sure the ports are clear before we boot (belt-and-suspenders vs a prior straggler)
