@@ -48,13 +48,17 @@ worker() {
   # CARLA needs 3 consecutive ports (world, +1 secondary/streaming); stride 10 avoids overlap.
   local port=$((2000 + gpu*10)) strm=$((2000 + gpu*10 + 1))
   local ok=0 fail=0 i=0
+  # ROTATE the traffic-manager port per route. CARLA's TM RPC socket lacks SO_REUSEADDR, so
+  # reusing a TM port across per-route restarts hits TCP TIME_WAIT (~60s) -> bind error.
+  # Each GPU owns a 400-wide band (base 31000); we rotate a 190-wide window inside it, and
+  # start at a time-seeded offset so a *fresh run* also never lands on the previous run's
+  # still-cooling ports. seed varies by wall-clock + gpu.
+  local tmbase=$((31000 + gpu*400))
+  local off=$(( ( $(date +%s) + gpu*97 ) % 190 ))
   # Fresh CARLA PER ROUTE: a long-lived CARLA leaks/segfaults after ~dozens of routes and
   # then poisons every remaining route on that GPU. Restarting per route isolates crashes.
   for xml in "$@"; do
-    # ROTATE the traffic-manager port per route. CARLA's TM RPC socket lacks SO_REUSEADDR,
-    # so reusing one TM port across per-route restarts hits TCP TIME_WAIT -> bind error.
-    # Each GPU gets its own 190-wide band; 190 routes >> the ~60s TIME_WAIT window.
-    local tm=$((30000 + gpu*200 + i % 190)); i=$((i+1))
+    local tm=$(( tmbase + (off + i) % 190 )); i=$((i+1))
     local id; id=$(basename "$xml" .xml)
     [ -f "$OUTROOT/$id/checkpoint_endpoint.json" ] && { echo "[gpu$gpu] $id done, skip"; continue; }
     # make sure the ports are clear before we boot (belt-and-suspenders vs a prior straggler)
