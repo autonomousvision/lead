@@ -109,3 +109,27 @@ python -m lead --checkpoint <你的模型目录> \
 | 闭环通 | `outputs/local_evaluation/<route>/metric_info.json` 生成 |
 
 任一步空/崩,先解决它再往下,别跳。
+
+---
+
+## 6. 批量多卡评测(220 条 Bench2Drive)的坑 —— `scripts/eval_bench2drive_local.sh`
+
+单机多卡批量跑完整 benchmark 时踩过、已在 driver 里根治的 4 个坑:
+
+1. **端口间距**:CARLA 每实例要 3 个连续端口(world / +1 secondary+streaming / +2)。多卡时 world-port 用 `2000+gpu*10`(间距 10),别用 `gpu*2`——会重叠导致 msgpack `bad_cast`。
+2. **常驻 CARLA 会崩,且崩了污染后面所有 route**:一个 CARLA 连跑几十条 route 必然内存泄漏/段错误,之后该卡剩余 route 全 `Failed to connect to CARLA server`。→ **每条 route 起一个全新 CARLA,跑完 SIGTERM→SIGKILL 并等 world-port 释放**(官方 leaderboard 本就这么做)。
+3. **Traffic Manager 端口 TIME_WAIT bind error**:CARLA 的 TM RPC socket 没设 `SO_REUSEADDR`,每条 route 复用同一 TM 端口时,上一条关闭的 socket 卡在 ~60s TIME_WAIT → 下一条 `trying to create rpc server for traffic manager; but ... bind error`。→ **每条 route 轮转 TM 端口**,每卡一段 400 宽的带(base 31000),再加**按 wall-clock 的随机起始偏移**,这样连"快速重启撞上一轮 TIME_WAIT"也避开。
+4. **孤儿 python 评测进程**:`pkill` 只杀了 driver bash + CarlaUE4,**没杀正在跑的 `python -m lead`/`leaderboard_evaluator` 子进程**——它们变孤儿继续占 TM 端口 + 各吃一块 GPU 显存。→ 清理时必须一并:
+   ```bash
+   pkill -9 -f eval_bench2drive_local.sh
+   pkill -9 -f leaderboard_evaluator
+   pkill -9 -f "lead --checkpoint"
+   pkill -9 -f CarlaUE4
+   ```
+
+**两个模型同时评测**:输出按模型隔离(driver 传 `--output-dir outputs/local_evaluation_<TAG>/<id>`),否则两模型评同一批 route id 会写同一目录、互相"已完成跳过"污染。用法:
+```bash
+nohup bash scripts/eval_bench2drive_local.sh outputs/checkpoints/my_p2   "0 1" my_p2   > /tmp/drive_my_p2.log   2>&1 &
+nohup bash scripts/eval_bench2drive_local.sh outputs/checkpoints/my_lead "3 4" my_lead > /tmp/drive_my_lead.log 2>&1 &
+```
+跑完 `slurm/evaluation/merge_route_json.py -f outputs/b2d_<TAG>` 出 Driving Score。注意:**失败/撞车的 route 也会写 `checkpoint_endpoint.json`**(记 0 分结果),所以 skip 逻辑会把"已失败"当"已完成"跳过——真要重跑某条得先删它的输出目录。
