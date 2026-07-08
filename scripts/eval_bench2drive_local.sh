@@ -23,32 +23,59 @@ mapfile -t ROUTES < <(ls "$ROUTES_DIR"/*.xml | sort)
 GPU_ARR=($GPUS); NG=${#GPU_ARR[@]}
 echo "routes=${#ROUTES[@]}  gpus=$NG  ckpt=$CKPT"
 
-wait_port() { for _ in $(seq 1 60); do ss -ltn | grep -q ":$1 " && return 0; sleep 3; done; return 1; }
+wait_port()  { for _ in $(seq 1 60); do ss -ltn | grep -q ":$1 " && return 0; sleep 3; done; return 1; }
+wait_free()  { for _ in $(seq 1 30); do ss -ltn | grep -q ":$1 " || return 0; sleep 1; done; return 1; }
+
+start_carla() {  # $1 gpu  $2 port  $3 strm -> echoes pid
+  local gpu=$1 port=$2 strm=$3
+  CUDA_VISIBLE_DEVICES=$gpu "$CARLA_ROOT/CarlaUE4.sh" --world-port=$port \
+      --carla-streaming-port=$strm -nosound -graphicsadapter=$gpu -RenderOffScreen \
+      >"$LOGDIR/carla_gpu${gpu}.log" 2>&1 &
+  echo $!
+}
+
+kill_carla() {  # $1 pid  $2 port  $3 gpu -- kill and wait for the RPC port to free
+  local pid=$1 port=$2 gpu=$3
+  kill "$pid" 2>/dev/null
+  for _ in $(seq 1 15); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+  kill -9 "$pid" 2>/dev/null
+  pkill -9 -f "graphicsadapter=$gpu" 2>/dev/null   # sweep any orphaned UE child on this adapter
+  wait_free "$port"
+}
 
 worker() {
   local gpu=$1; shift
-  # CARLA needs 3 consecutive ports (world, +1 secondary, streaming); stride 10 avoids overlap.
+  # CARLA needs 3 consecutive ports (world, +1 secondary/streaming); stride 10 avoids overlap.
   # Traffic-manager on a separate high range so it never collides with CARLA's 8000-ish defaults.
   local port=$((2000 + gpu*10)) strm=$((2000 + gpu*10 + 1)) tm=$((30000 + gpu))
-  # start ONE CARLA for this GPU (Epic quality -> no -quality-level)
-  CUDA_VISIBLE_DEVICES=$gpu "$CARLA_ROOT/CarlaUE4.sh" --world-port=$port \
-      --carla-streaming-port=$strm -nosound -graphicsadapter=$gpu -RenderOffScreen \
-      >"$LOGDIR/carla_gpu$gpu.log" 2>&1 &
-  local carla_pid=$!
-  if ! wait_port $port; then echo "[gpu$gpu] CARLA failed to bind $port"; kill $carla_pid 2>/dev/null; return 1; fi
-  echo "[gpu$gpu] CARLA up on $port"
+  local ok=0 fail=0
+  # Fresh CARLA PER ROUTE: a long-lived CARLA leaks/segfaults after ~dozens of routes and
+  # then poisons every remaining route on that GPU. Restarting per route isolates crashes.
   for xml in "$@"; do
     local id; id=$(basename "$xml" .xml)
     [ -f "$OUTROOT/$id/checkpoint_endpoint.json" ] && { echo "[gpu$gpu] $id done, skip"; continue; }
-    echo "[gpu$gpu] route $id ..."
-    CUDA_VISIBLE_DEVICES=$gpu timeout 1500 python -m lead \
+    # make sure the ports are clear before we boot (belt-and-suspenders vs a prior straggler)
+    pkill -9 -f "graphicsadapter=$gpu" 2>/dev/null; wait_free "$port"
+    local carla_pid; carla_pid=$(start_carla $gpu $port $strm)
+    if ! wait_port $port; then
+      echo "[gpu$gpu] $id: CARLA failed to bind $port, retry once"
+      kill_carla "$carla_pid" "$port" "$gpu"
+      carla_pid=$(start_carla $gpu $port $strm)
+      if ! wait_port $port; then
+        echo "[gpu$gpu] $id CARLA-DOWN (see $LOGDIR/carla_gpu${gpu}.log)"; fail=$((fail+1))
+        kill_carla "$carla_pid" "$port" "$gpu"; continue
+      fi
+    fi
+    echo "[gpu$gpu] route $id (carla up on $port) ..."
+    if CUDA_VISIBLE_DEVICES=$gpu timeout 1500 python -m lead \
         --checkpoint "$CKPT" --routes "$xml" --bench2drive \
         --output-dir "$OUTROOT/$id" \
         --port $port --traffic-manager-port $tm \
-        >"$LOGDIR/route_${id}.log" 2>&1 || echo "[gpu$gpu] $id FAILED (see $LOGDIR/route_${id}.log)"
+        >"$LOGDIR/route_${id}.log" 2>&1; then ok=$((ok+1))
+    else echo "[gpu$gpu] $id FAILED (see $LOGDIR/route_${id}.log)"; fail=$((fail+1)); fi
+    kill_carla "$carla_pid" "$port" "$gpu"
   done
-  kill $carla_pid 2>/dev/null
-  echo "[gpu$gpu] finished ${#@} routes"
+  echo "[gpu$gpu] finished: ok=$ok fail=$fail"
 }
 
 for i in "${!GPU_ARR[@]}"; do
