@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import random
 import time
 
@@ -430,12 +431,38 @@ class CARLAData(Dataset):
                 and not self.build_cache
                 and not self.build_buckets
             ):
-                from lead.tfv6.intent_decoder import rasterize_waypoints_to_bev
+                if self.config.use_multimodal_intent:
+                    # P5: multimodal drivable-support label from the raw hdmap ROAD
+                    # mask (all forward-reachable arms), replacing the expert route.
+                    from lead.tfv6.intent_decoder import rasterize_reachable_support
 
-                data["visual_intent_label"] = rasterize_waypoints_to_bev(
-                    torch.from_numpy(data["route"]).float().unsqueeze(0),
-                    self.config,
-                )[0].numpy()  # (1, H, W)
+                    raw_hdmap = cv2.imread(
+                        str(self.bev_semantics[index], encoding="utf-8"),
+                        cv2.IMREAD_UNCHANGED,
+                    )
+                    data["visual_intent_label"] = rasterize_reachable_support(
+                        raw_hdmap,
+                        self.config,
+                        horizon_m=self.config.multimodal_intent_horizon_m,
+                    )  # (1, H, W)
+                else:
+                    from lead.tfv6.intent_decoder import rasterize_waypoints_to_bev
+
+                    data["visual_intent_label"] = rasterize_waypoints_to_bev(
+                        torch.from_numpy(data["route"]).float().unsqueeze(0),
+                        self.config,
+                    )[0].numpy()  # (1, H, W)
+
+            # P5b: attach the cached (frozen) VLM hidden states for this frame so the
+            # model can feed them through the frozen VLM intent head. The dataset is
+            # already restricted to cached frames in shuffle(), so the .npy exists.
+            if self.config.use_vlm_intent:
+                p = str(self.images[index], encoding="utf-8").split("/")
+                scenario, route, frame = p[-4], p[-3], p[-1].split(".")[0]
+                npy_path = os.path.join(
+                    self.config.vlm_cache_dir, scenario, route, frame + ".npy"
+                )
+                data["vlm_hidden"] = np.load(npy_path).astype(np.float32)
 
         # Velocity
         if self.config.use_velocity:
@@ -1176,6 +1203,26 @@ class CARLAData(Dataset):
             # Shuffle all arrays together
             indices = np.arange(len(self.images))
             rng.shuffle(indices)
+
+            # P5b: restrict to frames that have a cached VLM feature (the ~96k stride-10
+            # subset). Membership is tested against the extraction manifest in memory
+            # (no per-frame os.path.exists -> avoids a metadata storm on shared storage).
+            if self.config.use_vlm_intent:
+                if not hasattr(self, "_vlm_cached_keys"):
+                    import json as _json
+
+                    with open(self.config.vlm_manifest) as _f:
+                        self._vlm_cached_keys = {
+                            (e["scenario"], e["route"], e["frame"])
+                            for e in (_json.loads(line) for line in _f)
+                        }
+
+                def _cached(i: int) -> bool:
+                    q = str(self.images[i], encoding="utf-8").split("/")
+                    return (q[-4], q[-3], q[-1].split(".")[0]) in self._vlm_cached_keys
+
+                indices = np.array([i for i in indices if _cached(i)], dtype=indices.dtype)
+
             if self.config.carla_num_samples > 0:
                 if self.config.carla_num_samples <= len(indices):
                     indices = indices[: self.config.carla_num_samples]

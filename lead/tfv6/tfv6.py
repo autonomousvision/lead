@@ -111,8 +111,43 @@ class TFv6(nn.Module):
                 self.device,
             )
 
+        # P5b: frozen VLM intent head. Its output is fed to the planner as the intent
+        # condition (external_intent), replacing the TFv6-feature intent head, while
+        # backbone+planner are finetuned. Loaded here and kept frozen.
+        if self.config.use_vlm_intent:
+            import torch as _torch
+
+            from lead.tfv6.vlm_intent_decoder import VLMIntentDecoder
+
+            self.vlm_intent_decoder = VLMIntentDecoder(self.config).to(self.device)
+            ckpt = _torch.load(
+                self.config.vlm_intent_ckpt,
+                map_location=self.device,
+                weights_only=True,
+            )
+            self.vlm_intent_decoder.load_state_dict(ckpt["model"])
+            self.vlm_intent_decoder.eval()
+            self.vlm_intent_decoder.requires_grad_(False)
+
     @beartype
-    def forward(self, data: dict[str, typing.Any]) -> Prediction:
+    def forward(
+        self,
+        data: dict[str, typing.Any],
+        external_intent: jt.Float[torch.Tensor, "bs 1 ih iw"] | None = None,
+    ) -> Prediction:
+        """Run the full model.
+
+        Args:
+            data: Batched sensor/label dict.
+            external_intent: Optional externally-produced BEV intent logits. When
+                given, it replaces the internal ``intent_decoder`` output as the
+                planner's intent condition (P4b ablation: feed a VLM-produced
+                intent while keeping backbone + planner frozen). When ``None`` the
+                behaviour is unchanged.
+
+        Returns:
+            Model predictions.
+        """
         self.log = {}
         pred_route = pred_future_waypoints = pred_target_speed_distribution = (
             pred_target_speed_scalar
@@ -133,8 +168,20 @@ class TFv6(nn.Module):
         bev_feature_grid = self.backbone.top_down(bev_features)
 
         # Visual-intent head: soft BEV intent field. Computed before planning so the
-        # control head can be conditioned on it (P2).
-        if self.config.use_intent_decoder:
+        # control head can be conditioned on it (P2). An externally supplied intent
+        # (P4b) overrides the internal head, bypassing the intent_decoder entirely.
+        if external_intent is not None:
+            pred_visual_intent = external_intent
+        elif self.config.use_vlm_intent:
+            # P5b: intent from the frozen VLM head (no grad, fp32). The head was
+            # trained in fp32; force autocast off so its convs don't see mixed
+            # float/bf16 inside the training autocast context. The planner casts the
+            # intent to its own dtype internally (planning_decoder detach+to).
+            with torch.no_grad(), torch.amp.autocast(device_type="cuda", enabled=False):
+                pred_visual_intent = self.vlm_intent_decoder(
+                    data["vlm_hidden"].to(self.device).float()
+                )
+        elif self.config.use_intent_decoder:
             pred_visual_intent = self.intent_decoder(bev_feature_grid)
 
         # Planning / control head

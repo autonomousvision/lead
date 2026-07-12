@@ -793,6 +793,10 @@ class TrainingConfig(BaseConfig):
     freeze_backbone = False
     # Architecture name for image encoder backbone.
     image_architecture = "resnet34"
+    # If False, build the image encoder without downloading timm ImageNet weights
+    # (they get overwritten by load_file anyway). Use on offline nodes with no HF
+    # cache to avoid a hub fetch. Default True preserves original behaviour.
+    image_encoder_pretrained = True
     # Architecture name for LiDAR encoder backbone.
     lidar_architecture = "resnet34"
     # Latent TF
@@ -919,10 +923,29 @@ class TrainingConfig(BaseConfig):
     # --- Visual intent head (implicit-intent + reactive-control research) ---
     # If true, add a single-channel soft BEV intent decoder (see intent_decoder.py).
     use_intent_decoder = False
+    # P5b: if true, inject a FROZEN VLMIntentDecoder (loaded from vlm_intent_ckpt) as
+    # the planner's intent condition via TFv6.forward(external_intent=...), instead of
+    # the TFv6-feature intent head. Used to finetune backbone+planner on top of a frozen
+    # VLM intent (single-mode P4a for the S baseline, multimodal P5a for M).
+    use_vlm_intent = False
+    vlm_intent_ckpt = None
+    vlm_cache_dir = "data/p5/vlm_cache"
+    vlm_manifest = "data/p4/manifest.jsonl"
     # Loss weight of the visual-intent heatmap term.
     visual_intent_loss_weight = 1.0
+    # P5: extra Tversky (recall-weighted soft-Dice) term on the intent field to force
+    # coverage of ALL feasible arms (anti-collapse). 0 disables it (P4a behaviour).
+    # beta>alpha penalises missed arms (false negatives) more -> higher recall.
+    intent_tversky_weight = 0.0
+    intent_tversky_alpha = 0.3
+    intent_tversky_beta = 0.7
     # P2: if true, feed the intent field into the planning/control head as context.
     use_control_conditioning = False
+    # P5: if true, the visual-intent label is the multimodal drivable-support field
+    # (all forward-reachable arms from the hdmap) instead of the single expert route.
+    use_multimodal_intent = False
+    # P5: forward horizon (metres) for the drivable-support flood fill.
+    multimodal_intent_horizon_m = 30.0
     # P2.2: if true, add a differentiable collision cost on predicted waypoints.
     use_collision_cost = False
     collision_loss_weight = 1.0

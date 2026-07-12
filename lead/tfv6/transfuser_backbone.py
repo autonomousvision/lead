@@ -33,7 +33,7 @@ class TransfuserBackbone(nn.Module):
         # Image branch
         self.image_encoder = timm.create_model(
             config.image_architecture,
-            pretrained=True,
+            pretrained=config.image_encoder_pretrained,
             features_only=True,
         )
         self.avgpool_img = nn.AdaptiveAvgPool2d(

@@ -15,12 +15,81 @@ Run ``python -m lead.tfv6.intent_decoder`` for a shape smoke test (no data neede
 
 from __future__ import annotations
 
+import numpy as np
+import numpy.typing as npt
 import torch
 import torch.nn as nn
 from beartype import beartype
 from torch.nn import functional as F
 
+from lead.common.constants import ChaffeurNetBEVSemanticClass
 from lead.training.config_training import TrainingConfig
+
+
+@beartype
+def rasterize_reachable_support(
+    hdmap: npt.NDArray,  # raw ChaffeurNet hdmap raster (H0, W0), ego-centred, ROAD==1
+    config: TrainingConfig,
+    horizon_m: float = 30.0,
+    sigma_px: float = 2.0,
+) -> npt.NDArray:
+    """Rasterize the forward-reachable drivable region into a soft BEV support field.
+
+    P5 multimodal intent target: instead of the single expert route, light up every
+    drivable arm the ego can reach going forward within ``horizon_m`` (at a junction
+    this fans into all feasible turns). Derived purely from the hdmap ROAD class, so
+    it needs no simulator; it does not distinguish lane direction (oncoming lanes are
+    included -- a known v0 limitation to be refined with a lane graph).
+
+    Args:
+        hdmap: Raw ego-centred hdmap raster (single channel), ROAD encoded as
+            ``ChaffeurNetBEVSemanticClass.ROAD``.
+        config: Training config (BEV grid geometry).
+        horizon_m: Forward horizon for the reachable flood fill, in metres.
+        sigma_px: Gaussian smoothing to soften the support into a corridor.
+
+    Returns:
+        A ``(1, H, W)`` float32 field in ``[0, 1]`` aligned with the intent grid.
+    """
+    from scipy import ndimage
+
+    if hdmap.ndim == 3:
+        hdmap = hdmap[..., 0]
+    h_px = config.lidar_height_pixel
+    w_px = config.lidar_width_pixel
+    ppm = config.pixels_per_meter
+    ppm_c = config.pixels_per_meter_collection
+    row_ego = int((0 - config.min_y_meter) * ppm)
+    col_ego = int((0 - config.min_x_meter) * ppm)
+
+    # Resample the raw hdmap ROAD mask into the ego BEV intent grid (metric-aligned).
+    rows, cols = np.meshgrid(np.arange(h_px), np.arange(w_px), indexing="ij")
+    x_m = cols / ppm + config.min_x_meter  # longitudinal (forward)
+    y_m = rows / ppm + config.min_y_meter  # lateral
+    hx = np.round(hdmap.shape[1] / 2 + x_m * ppm_c).astype(np.int64)
+    hy = np.round(hdmap.shape[0] / 2 + y_m * ppm_c).astype(np.int64)
+    inside = (hx >= 0) & (hx < hdmap.shape[1]) & (hy >= 0) & (hy < hdmap.shape[0])
+    road = np.zeros((h_px, w_px), dtype=bool)
+    road[inside] = hdmap[hy[inside], hx[inside]] == ChaffeurNetBEVSemanticClass.ROAD
+
+    # Forward-reachable drivable region = the road component containing the ego,
+    # intersected with the forward horizon window.
+    labels, _ = ndimage.label(road, structure=np.ones((3, 3)))
+    ego_label = labels[row_ego, col_ego]
+    if ego_label == 0:  # ego pixel just off the rasterized road; snap to nearest label
+        window = labels[row_ego - 8 : row_ego + 9, col_ego - 8 : col_ego + 9]
+        nonzero = window[window > 0]
+        ego_label = int(nonzero[0]) if nonzero.size else 0
+    reachable = (labels == ego_label) & (ego_label > 0)
+    forward = np.zeros_like(reachable)
+    forward[:, col_ego : int(col_ego + horizon_m * ppm)] = True
+
+    support = (reachable & forward).astype(np.float32)
+    support = ndimage.gaussian_filter(support, sigma_px)
+    peak = support.max()
+    if peak > 0:
+        support /= peak
+    return support[None]  # (1, H, W)
 
 
 @beartype
