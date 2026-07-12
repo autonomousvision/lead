@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="3074" road_id="143" town="Town12">
+    <waypoints>
+      <position x="-819.5" y="4737.5" z="369.5" />
+      <position x="-819.5" y="4735.5" z="369.4" />
+      <position x="-819.5" y="4733.5" z="369.4" />
+      <position x="-819.5" y="4731.5" z="369.3" />
+      <position x="-819.5" y="4729.5" z="369.3" />
+      <position x="-819.5" y="4727.5" z="369.2" />
+      <position x="-819.5" y="4725.5" z="369.2" />
+      <position x="-819.5" y="4723.5" z="369.2" />
+      <position x="-819.5" y="4721.5" z="369.1" />
+      <position x="-819.5" y="4719.5" z="369.1" />
+      <position x="-819.5" y="4717.5" z="369.1" />
+      <position x="-819.6" y="4658.0" z="368.7" />
+      <position x="-819.6" y="4656.0" z="368.7" />
+      <position x="-819.6" y="4654.0" z="368.7" />
+      <position x="-819.6" y="4652.0" z="368.7" />
+      <position x="-819.6" y="4650.0" z="368.7" />
+      <position x="-819.6" y="4648.0" z="368.7" />
+      <position x="-819.6" y="4646.0" z="368.7" />
+      <position x="-819.6" y="4644.0" z="368.7" />
+      <position x="-819.6" y="4642.0" z="368.8" />
+      <position x="-819.7" y="4640.0" z="368.8" />
+      <position x="-819.7" y="4638.0" z="368.8" />
+      <position x="-819.7" y="4636.0" z="368.8" />
+      <position x="-819.7" y="4634.0" z="368.8" />
+      <position x="-819.7" y="4632.0" z="368.9" />
+      <position x="-819.7" y="4630.0" z="368.9" />
+    </waypoints>
+    <scenarios>
+      <scenario name="HighwayCutIn_1" type="HighwayCutIn">
+        <trigger_point x="-819.5" y="4735.5" yaw="269.9" z="369.4" />
+        <other_actor_location x="-805.2" y="4707.5" z="369.1" />
+        <end_location x="-819.6" y="4648.0" z="368.7" />
+      </scenario>
+    </scenarios>
+    <weathers>
+      <weather cloudiness="5.0" fog_density="2.0" precipitation="0.0" precipitation_deposits="0.0" route_percentage="0" sun_altitude_angle="90.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="10.0" />
+      <weather cloudiness="5.0" fog_density="2.0" precipitation="0.0" precipitation_deposits="0.0" route_percentage="100" sun_altitude_angle="90.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="10.0" />
+    </weathers>
+  </route>
+</routes>

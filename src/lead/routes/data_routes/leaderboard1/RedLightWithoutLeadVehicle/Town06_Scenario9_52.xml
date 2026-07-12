@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="52" town="Town06">
+    <waypoints>
+      <position x="-50.908318" y="250.166199" z="0.0" />
+      <position x="-8.961876" y="293.265839" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario type="RedLightWithoutLeadVehicle" name="RedLightWithoutLeadVehicle_1">
+        <trigger_point x="-48.71833038330078" y="250.15859985351562" z="0.0" yaw="-0.19892166554927826" />
+      </scenario>
+      <scenario type="RedLightWithoutLeadVehicle" name="RedLightWithoutLeadVehicle_2">
+        <trigger_point x="-45.71834945678711" y="250.14817810058594" z="0.0" yaw="-0.19892166554927826" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="28099" road_id="51" town="Town04">
+    <waypoints>
+      <position x="204.3" y="-267.4" z="0.0" />
+      <position x="204.4" y="-269.4" z="0.0" />
+      <position x="204.4" y="-271.4" z="0.0" />
+      <position x="204.5" y="-273.4" z="0.0" />
+      <position x="204.5" y="-275.4" z="0.0" />
+      <position x="204.6" y="-277.4" z="0.0" />
+      <position x="204.6" y="-279.4" z="0.0" />
+      <position x="204.7" y="-281.4" z="0.0" />
+      <position x="204.7" y="-283.4" z="0.0" />
+      <position x="204.7" y="-285.4" z="0.0" />
+      <position x="204.8" y="-287.4" z="0.0" />
+      <position x="204.8" y="-289.4" z="0.0" />
+      <position x="204.9" y="-291.4" z="0.0" />
+      <position x="204.9" y="-293.4" z="0.0" />
+      <position x="185.5" y="-311.2" z="0.0" />
+      <position x="183.5" y="-311.2" z="0.0" />
+      <position x="181.5" y="-311.2" z="0.0" />
+      <position x="179.5" y="-311.2" z="0.0" />
+      <position x="177.5" y="-311.2" z="0.0" />
+      <position x="175.5" y="-311.2" z="0.0" />
+      <position x="173.5" y="-311.2" z="0.0" />
+      <position x="171.5" y="-311.2" z="0.0" />
+      <position x="169.5" y="-311.2" z="0.0" />
+      <position x="167.5" y="-311.2" z="0.0" />
+      <position x="165.5" y="-311.2" z="0.0" />
+      <position x="163.5" y="-311.2" z="0.0" />
+      <position x="161.4" y="-311.2" z="0.0" />
+      <position x="159.4" y="-311.2" z="0.0" />
+      <position x="157.4" y="-311.1" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="SignalizedJunctionLeftTurnEnterFlow_1" type="SignalizedJunctionLeftTurnEnterFlow">
+        <trigger_point x="204.5" y="-274.4" yaw="271.3" z="0.0" />
+        <flow_speed value="8" />
+        <source_dist_interval from="24" to="28" />
+      </scenario>
+    </scenarios>
+    <weathers>
+      <weather cloudiness="5.0" fog_density="60.0" precipitation="0.0" precipitation_deposits="0.0" route_percentage="0" sun_altitude_angle="-90.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="10.0" />
+      <weather cloudiness="5.0" fog_density="60.0" precipitation="0.0" precipitation_deposits="0.0" route_percentage="100" sun_altitude_angle="-90.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="10.0" />
+    </weathers>
+  </route>
+</routes>

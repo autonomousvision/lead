@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="1062" town="Town13">
+    <weathers>
+      <weather route_percentage="0" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+      <weather route_percentage="100" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+    </weathers>
+    <waypoints>
+      <position x="6117.1" y="3331.1" z="159.3" />
+      <position x="6334.4" y="3330.6" z="162.3" />
+    </waypoints>
+    <scenarios>
+      <scenario name="PassableObstacleTwoWays" type="CustomObstacleTwoWays">
+        <objects a="id=static.prop.constructioncone y=-1.65" b="id=static.prop.constructioncone x=1 y=-1.65" c="id=static.prop.constructioncone x=2 y=-1.65" d="id=static.prop.constructioncone x=3 y=-1.65" />
+        <distance value="50" />
+        <frequency from="100" to="100" />
+        <trigger_point x="6155.4" y="3331.0" z="159.7" yaw="-0.1" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

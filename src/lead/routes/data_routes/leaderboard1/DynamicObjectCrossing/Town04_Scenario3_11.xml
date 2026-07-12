@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="11" town="Town04">
+    <waypoints>
+      <position x="-480.329285" y="352.013641" z="0.0" />
+      <position x="-111.004944" y="417.099609" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
+        <trigger_point x="-304.6282958984375" y="435.9534912109375" yaw="-0.2081967145204544" z="0.0" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

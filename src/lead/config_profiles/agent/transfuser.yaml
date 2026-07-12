@@ -1,0 +1,4 @@
+# Default agent config profile: TransFuser with the Python-default architecture.
+# Profiles only list the values they change; see
+# src/lead/config/agent/ for every knob and its default.
+target: lead.policy.transfuser.transfuser:Transfuser

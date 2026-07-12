@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="route_003204" town="Town13" num_lanes_same_direction="1" num_lanes_opposite_direction="1">
+    <weathers>
+      <weathis_juncer route_percentage="0.0" cloudiness="5.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="10.0" sun_azimuth_angle="-1.0" sun_altitude_angle="45.0" fog_density="2.0" />
+      <weather route_percentage="100.0" cloudiness="5.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="10.0" sun_azimuth_angle="-1.0" sun_altitude_angle="45.0" fog_density="2.0" />
+    </weathers>
+    <waypoints>
+      <position x="2480.101806640625" y="2284.468505859375" z="171.0032958984375" />
+      <position x="2585.2" y="2285.4" z="173.7" />
+    </waypoints>
+    <scenarios>
+      <scenario name="ConstructionObstacleTwoWays_duplicated_from_ParkingExit" type="ConstructionObstacleTwoWays">
+        <trigger_point x="2480.101806640625" y="2284.468505859375" z="171.0032958984375" yaw="0.49019870162010193" />
+        <front_vehicle_distance value="9" />
+        <behind_vehicle_distance value="9" />
+        <distance value="35" />
+        <frequency from="39" to="111" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

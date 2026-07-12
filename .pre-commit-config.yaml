@@ -1,0 +1,89 @@
+exclude: '^3rd_party/'
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files # prevents giant files from being committed.
+      - id: check-case-conflict # checks for files that would conflict in case-insensitive filesystems.
+      - id: check-merge-conflict # checks for files that contain merge conflict strings.
+      - id: check-yaml # checks yaml files for parseable syntax.
+      - id: end-of-file-fixer # ensures that a file is either empty, or ends with one newline.
+      - id: fix-byte-order-marker # removes utf-8 byte order marker.
+      - id: mixed-line-ending # replaces or checks mixed line ending.
+      - id: trailing-whitespace # trims trailing whitespace.
+      - id: check-json
+        exclude: /README\.rst$|\.pot?$|^\.vscode/.*\.json$
+      - id: pretty-format-json
+        exclude: /README\.rst$|\.pot?$|^\.vscode/.*\.json$|\.ipynb$
+        args: [--no-sort-keys, --autofix]
+
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.8.2
+    hooks:
+      - id: nbstripout
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.10
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/efrecon/pre-commit-hook-lxml
+    rev: v0.1.4
+    hooks:
+      - id: format-xml
+
+  - repo: https://github.com/jsh9/pydoclint
+    rev: 0.8.3
+    hooks:
+      - id: pydoclint
+        args:
+          [
+            --style=google,
+            --arg-type-hints-in-docstring=false,
+            --skip-checking-raises=true,
+            --allow-init-docstring=true,
+            --check-return-types=false,
+            --check-yield-types=false,
+          ]
+        types: [python]
+
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.17
+    hooks:
+      - id: mdformat
+        additional_dependencies:
+          - mdformat-gfm
+          - mdformat-black
+
+  - repo: https://github.com/tox-dev/pyproject-fmt
+    rev: "v2.21.1"
+    hooks:
+      - id: pyproject-fmt
+
+  - repo: https://github.com/asottile/add-trailing-comma
+    rev: v4.0.0
+    hooks:
+    -   id: add-trailing-comma
+
+  - repo: local
+    hooks:
+      - id: make-scripts-executable
+        name: Make scripts executable
+        entry: chmod +x
+        language: system
+        files: ^scripts/
+      - id: basedpyright
+        name: basedpyright
+        entry: basedpyright
+        language: system
+        types: [python]
+        files: |-
+          (?x)
+          ^(
+            src/lead/config
+            |src/lead/training/dataloader
+            |src/lead/policy/transfuser/dataloader
+            |src/lead/policy/transfuser/visualization
+          )/

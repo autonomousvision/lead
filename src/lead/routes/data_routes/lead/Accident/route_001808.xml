@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="route_001808" town="Town04">
+    <weathers>
+      <weather route_percentage="0" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="170.0" sun_altitude_angle="45.0" fog_density="3.0" fog_distance="0.75" fog_falloff="0.9" scattering_intensity="1.0" mie_scattering_scale="0.03" />
+      <weather route_percentage="100" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="170.0" sun_altitude_angle="45.0" fog_density="3.0" fog_distance="0.75" fog_falloff="0.9" scattering_intensity="1.0" mie_scattering_scale="0.03" />
+    </weathers>
+    <waypoints>
+      <position x="-357.55" y="37.02" z="0.0" />
+      <position x="-347.68" y="36.98" z="0.04" />
+      <position x="-337.68" y="36.99" z="0.11" />
+      <position x="-327.68" y="37.01" z="0.22" />
+      <position x="-317.68" y="37.02" z="0.36" />
+      <position x="-307.68" y="37.03" z="0.54" />
+      <position x="-297.68" y="37.05" z="0.76" />
+      <position x="-287.68" y="37.06" z="1.01" />
+      <position x="-277.68" y="37.07" z="1.3" />
+      <position x="-267.68" y="37.09" z="1.63" />
+      <position x="-257.68" y="37.1" z="2.0" />
+      <position x="-247.68" y="37.11" z="2.4" />
+      <position x="-237.68" y="37.13" z="2.83" />
+      <position x="-227.68" y="37.14" z="3.31" />
+      <position x="-217.68" y="37.16" z="3.81" />
+      <position x="-207.68" y="37.17" z="4.33" />
+      <position x="-197.68" y="37.18" z="4.85" />
+      <position x="-187.68" y="37.2" z="5.37" />
+      <position x="-177.68" y="37.21" z="5.89" />
+      <position x="-167.68" y="37.22" z="6.41" />
+      <position x="-157.68" y="37.24" z="6.92" />
+      <position x="-147.68" y="37.25" z="7.44" />
+      <position x="-137.68" y="37.26" z="7.96" />
+      <position x="-127.68" y="37.28" z="8.47" />
+    </waypoints>
+    <scenarios>
+      <scenario name="Accident_33" type="Accident">
+        <direction value="right" />
+        <trigger_point x="-352.56" y="36.99" z="0.02" yaw="-0.4" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="32" town="Town06">
+    <weathers>
+      <weather route_percentage="0" cloudiness="20.000000" precipitation="0.000000" precipitation_deposits="50.000000" wetness="0.000000" wind_intensity="0.350000" sun_azimuth_angle="0.000000" sun_altitude_angle="35.000000" fog_density="0.000000" fog_distance="0.000000" />
+    </weathers>
+    <waypoints>
+      <position x="635.1002197265625" y="45.16731643676758" z="0.0" />
+      <position x="627.8662109375" y="-10.637460708618164" z="0.0" />
+      <position x="596.0792236328125" y="-13.495409965515137" z="0.0" />
+      <position x="466.1062927246094" y="-14.021001815795898" z="0.0" />
+      <position x="269.1171569824219" y="-13.417054176330566" z="0.0" />
+      <position x="163.17001342773438" y="-13.031167030334473" z="0.0" />
+      <position x="74.2256851196289" y="-12.707209587097168" z="0.0" />
+      <position x="53.554473876953125" y="-12.631919860839844" z="0.0" />
+      <position x="32.5430793762207" y="-12.555390357971191" z="0.0" />
+      <position x="-26.248931884765625" y="-12.341254234313965" z="0.0" />
+      <position x="-52.12567138671875" y="-12.247005462646484" z="0.0" />
+      <position x="-113.02149963378906" y="-8.52518367767334" z="0.0" />
+      <position x="-125.57168579101562" y="41.95002746582031" z="0.0" />
+      <position x="-107.86263275146484" y="41.942874908447266" z="0.0" />
+      <position x="-67.71575927734375" y="45.42666244506836" z="0.0" />
+      <position x="-32.3732795715332" y="48.91238784790039" z="0.0" />
+      <position x="22.397157669067383" y="48.87731170654297" z="0.0" />
+      <position x="64.47239685058594" y="52.33769226074219" z="0.0" />
+      <position x="288.8294372558594" y="52.335906982421875" z="0.0" />
+      <position x="342.649169921875" y="48.80970001220703" z="0.0" />
+      <position x="462.2138671875" y="48.751487731933594" z="0.0" />
+      <position x="632.3695068359375" y="41.668643951416016" z="0.0" />
+      <position x="653.8077392578125" y="17.182004928588867" z="0.0" />
+      <position x="634.1001586914062" y="-7.691796779632568" z="0.0" />
+      <position x="623.9699096679688" y="-11.895185470581055" z="0.0" />
+      <position x="603.3630981445312" y="-13.442089080810547" z="0.0" />
+      <position x="444.09722900390625" y="-14.054376602172852" z="0.0" />
+      <position x="161.4589385986328" y="-13.024934768676758" z="0.0" />
+      <position x="81.0605239868164" y="-16.232126235961914" z="0.0" />
+      <position x="33.14240646362305" y="-23.057641983032227" z="0.0" />
+      <position x="10.020158767700195" y="-82.95751190185547" z="0.0" />
+      <position x="10.388376235961914" y="-109.08952331542969" z="0.0" />
+      <position x="14.069969177246094" y="-123.89266967773438" z="0.0" />
+      <position x="16.922264099121094" y="-137.06024169921875" z="0.0" />
+      <position x="1.6180614233016968" y="-152.35836791992188" z="0.0" />
+      <position x="-7.689512252807617" y="-150.29632568359375" z="0.0" />
+      <position x="-13.844392776489258" y="-121.79190826416016" z="0.0" />
+      <position x="-8.737929344177246" y="-44.340293884277344" z="0.0" />
+      <position x="-9.185128211975098" y="22.68013572692871" z="0.0" />
+      <position x="-8.931788444519043" y="116.60400390625" z="0.0" />
+      <position x="-7.004303455352783" y="189.1448211669922" z="0.0" />
+      <position x="46.47806930541992" y="244.54147338867188" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario type="SignalizedJunctionLeftTurn" name="SignalizedJunctionLeftTurn_1">
+        <trigger_point x="-8.675992965698242" y="-53.622528076171875" z="0.0" yaw="90.3823013305664" />
+      </scenario>
+      <scenario type="SignalizedJunctionLeftTurn" name="SignalizedJunctionLeftTurn_2">
+        <trigger_point x="172.6" y="-13.4" z="1.0" yaw="180.0" />
+      </scenario>
+      <scenario type="SignalizedJunctionLeftTurn" name="SignalizedJunctionLeftTurn_3">
+        <trigger_point x="44.225860595703125" y="-12.597942352294922" z="0.0" yaw="179.79132080078125" />
+      </scenario>
+      <scenario type="SignalizedJunctionLeftTurn" name="SignalizedJunctionLeftTurn_4">
+        <trigger_point x="626.9949951171875" y="41.671260833740234" z="0.0" yaw="-0.027896113693714142" />
+      </scenario>
+      <scenario type="OppositeVehicleRunningRedLight" name="OppositeVehicleRunningRedLight_1">
+        <trigger_point x="-3.2199301719665527" y="213.46353149414062" z="0.0" yaw="89.09619140625" />
+      </scenario>
+      <scenario type="DynamicObjectCrossing" name="DynamicObjectCrossing_1">
+        <trigger_point x="301.448486328125" y="-13.534812927246094" z="0.0" yaw="179.79132080078125" />
+      </scenario>
+      <scenario type="DynamicObjectCrossing" name="DynamicObjectCrossing_2">
+        <trigger_point x="18.993099212646484" y="48.880516052246094" z="0.0" yaw="-0.053955771028995514" />
+      </scenario>
+      <scenario type="DynamicObjectCrossing" name="DynamicObjectCrossing_3">
+        <trigger_point x="455.193115234375" y="-14.044830322265625" z="0.0" yaw="-179.87489318847656" />
+      </scenario>
+      <scenario type="DynamicObjectCrossing" name="DynamicObjectCrossing_4">
+        <trigger_point x="171.19" y="52.39" z="1.9" yaw="0.0" />
+      </scenario>
+      <scenario type="DynamicObjectCrossing" name="DynamicObjectCrossing_5">
+        <trigger_point x="607.91" y="-13.2" z="1.9" yaw="180.0" />
+      </scenario>
+      <scenario type="DynamicObjectCrossing" name="DynamicObjectCrossing_6">
+        <trigger_point x="324.2782287597656" y="48.818641662597656" z="0.0" yaw="-0.02789534069597721" />
+      </scenario>
+      <scenario type="ControlLoss" name="ControlLoss_1">
+        <trigger_point x="477.401611328125" y="41.74409484863281" z="0.0" yaw="-0.02789534069597721" />
+      </scenario>
+      <scenario type="DynamicObjectCrossing" name="DynamicObjectCrossing_7">
+        <trigger_point x="26.002647399902344" y="244.53448486328125" z="0.0" yaw="0.019545903429389" />
+      </scenario>
+      <scenario type="DynamicObjectCrossing" name="DynamicObjectCrossing_8">
+        <trigger_point x="-21.87944793701172" y="-12.357169151306152" z="0.0" yaw="179.79132080078125" />
+      </scenario>
+      <scenario type="ControlLoss" name="ControlLoss_2">
+        <trigger_point x="503.5177307128906" y="-13.939313888549805" z="0.0" yaw="-179.87489318847656" />
+      </scenario>
+      <scenario type="SignalizedJunctionLeftTurn" name="SignalizedJunctionLeftTurn_5">
+        <trigger_point x="-44.83" y="48.98" z="1.0" yaw="359.0" />
+      </scenario>
+      <scenario type="SignalizedJunctionLeftTurn" name="SignalizedJunctionLeftTurn_6">
+        <trigger_point x="-9.0" y="10.6" z="1.0" yaw="90.0" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

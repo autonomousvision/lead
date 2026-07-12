@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# Run from the repo root, regardless of the invoking directory.
+cd "$(dirname "$(realpath "${BASH_SOURCE:-$0}")")/../.."
+
+# Checkpoints
+export CHECKPOINT_DIR=outputs/checkpoints/tfv6_resnet34/
+export ROUTES=src/lead/routes/benchmark_routes/longest6/00.xml
+
+# Set environment variables
+export BENCHMARK_ROUTE_ID=$(basename $ROUTES .xml) # Last part of the route file name, e.g., 0 for 0.xml
+export EVALUATION_OUTPUT_DIR=outputs/local_evaluation/$BENCHMARK_ROUTE_ID/
+export PYTHONPATH=3rd_party/leaderboard/standard/leaderboard:$PYTHONPATH
+export PYTHONPATH=3rd_party/leaderboard/standard/scenario_runner:$PYTHONPATH
+export SCENARIO_RUNNER_ROOT=3rd_party/leaderboard/standard/scenario_runner
+export LEADERBOARD_ROOT=3rd_party/leaderboard/standard/leaderboard
+export IS_BENCH2DRIVE=0
+export PLANNER_TYPE=only_traj
+export SAVE_PATH=$EVALUATION_OUTPUT_DIR/
+export PYTHONUNBUFFERED=1
+
+set -x
+set +e
+
+# Recreate output folders
+rm -rf $EVALUATION_OUTPUT_DIR/
+mkdir -p $EVALUATION_OUTPUT_DIR
+
+# Reset CARLA World
+reset_carla_world
+
+CUDA_VISIBLE_DEVICES=0 python3 3rd_party/leaderboard/standard/leaderboard/leaderboard/leaderboard_evaluator.py \
+    --routes=$ROUTES \
+    --track=SENSORS \
+    --checkpoint=$EVALUATION_OUTPUT_DIR/checkpoint_endpoint.json \
+    --agent=src/lead/evaluation/transfuser_agent.py \
+    --agent-config=$CHECKPOINT_DIR \
+    --debug=0 \
+    --record=None \
+    --resume=False \
+    --port=2000 \
+    --traffic-manager-port=8000 \
+    --timeout=60 \
+    --debug-checkpoint=$EVALUATION_OUTPUT_DIR/debug_checkpoint/debug_checkpoint_endpoint.txt \
+    --traffic-manager-seed=0 \
+    --repetitions=1

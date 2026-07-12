@@ -1,0 +1,27 @@
+#!/usr/bin/bash
+
+port=2000
+# if there is first argument, use it as port
+if [ "$1" != "" ]; then
+	port=$1
+fi
+
+streaming_port=$((port + 1))
+if [ "$2" != "" ]; then
+	streaming_port=$2
+fi
+
+# Restrict Vulkan to the NVIDIA GPU: with an AMD iGPU and Mesa's software
+# lavapipe ICD also installed, -graphicsadapter=0 can otherwise select the
+# wrong device and CARLA renders on the CPU.
+VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json \
+__NV_PRIME_RENDER_OFFLOAD=1 \
+$(dotenv CARLA_ROOT)/CarlaUE4.sh \
+    -quality-level=Poor \
+    -world-port=$port \
+    -resx=800 \
+    -resy=600 \
+    -nosound \
+    -graphicsadapter=0 \
+    -carla-streaming-port=$streaming_port \
+    -RenderOffScreen

@@ -1,0 +1,33 @@
+#!/bin/bash
+# Parallel directory transfer used by the 2x_download_dir_* / 2x_upload_dir_*
+# hotkeys: rclone's sftp backend runs several file transfers at once, each
+# over its own SSH connection. --sftp-ssh shells out to the real ssh, so
+# ~/.ssh/config aliases (tcml3, galvani2, avg-a100-*) keep working.
+#
+# Usage: parallel_transfer download|upload <remote> <remote_base> <dir>
+
+PARALLEL_TRANSFERS="${PARALLEL_TRANSFERS:-8}"
+
+direction="$1"
+remote="$2"
+base="$3"
+dir="$4"
+
+case "$direction" in
+download)
+	mkdir -p "$dir"
+	src=":sftp:$base/$dir"
+	dst="$dir"
+	;;
+upload)
+	src="$dir"
+	dst=":sftp:$base/$dir"
+	;;
+*)
+	echo "Usage: parallel_transfer download|upload <remote> <remote_base> <dir>" >&2
+	exit 1
+	;;
+esac
+
+rclone copy --sftp-ssh "ssh $remote" "$src" "$dst" \
+	--transfers "$PARALLEL_TRANSFERS" --create-empty-src-dirs --progress

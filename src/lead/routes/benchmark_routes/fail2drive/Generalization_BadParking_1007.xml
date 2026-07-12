@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="1007" town="Town13">
+    <weathers>
+      <weather route_percentage="0" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+      <weather route_percentage="100" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+    </weathers>
+    <waypoints>
+      <position x="-2064.5" y="4514.5" z="169.0" />
+      <position x="-1761.2" y="4433.3" z="160.6" />
+    </waypoints>
+    <scenarios>
+      <scenario name="BadParkingObstacleTwoWays" type="BadParkingObstacleTwoWays">
+        <vehicle value="vehicle.mini.cooper_s_2021" />
+        <y value="2" />
+        <yaw value="-160" />
+        <distance value="70" />
+        <frequency from="70" to="70" />
+        <trigger_point x="-2000.6" y="4499.0" z="167.6" yaw="-14.1" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

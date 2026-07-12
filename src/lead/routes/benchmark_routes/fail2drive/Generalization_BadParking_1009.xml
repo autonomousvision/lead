@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="1009" town="Town13">
+    <weathers>
+      <weather route_percentage="0" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+      <weather route_percentage="100" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+    </weathers>
+    <waypoints>
+      <position x="3802.1" y="4814.6" z="165.0" />
+      <position x="3571.5" y="4811.5" z="177.6" />
+    </waypoints>
+    <scenarios>
+      <scenario name="BadParkingObstacleTwoWays" type="BadParkingObstacleTwoWays">
+        <vehicle value="vehicle.lincoln.mkz_2020" />
+        <y value="2.3" />
+        <yaw value="90" />
+        <distance value="40" />
+        <frequency from="40" to="40" />
+        <trigger_point x="3760.4" y="4814.0" z="167.4" yaw="180.8" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

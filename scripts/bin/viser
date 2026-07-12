@@ -1,0 +1,3 @@
+#!/usr/bin/bash
+
+PY123D_DATA_ROOT=$(dotenv PY123D_DATA_ROOT) py123d-viser 'scene_filter.split_names=[normal_view,perturbated_view]'

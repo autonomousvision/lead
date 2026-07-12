@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="route_001732" road_id="76" town="Town03">
+    <waypoints>
+      <position x="46.1" y="133.9" z="0.0" />
+      <position x="48.1" y="133.9" z="0.0" />
+      <position x="50.1" y="133.9" z="0.0" />
+      <position x="52.1" y="133.8" z="0.0" />
+      <position x="54.1" y="133.8" z="0.0" />
+      <position x="56.1" y="133.8" z="0.0" />
+      <position x="58.1" y="133.8" z="0.0" />
+      <position x="60.1" y="133.7" z="0.0" />
+      <position x="62.1" y="133.7" z="0.0" />
+      <position x="64.1" y="133.7" z="0.0" />
+      <position x="66.1" y="133.6" z="0.0" />
+      <position x="68.1" y="133.6" z="0.0" />
+      <position x="70.1" y="133.6" z="0.0" />
+      <position x="72.1" y="133.6" z="0.0" />
+      <position x="74.1" y="133.5" z="0.0" />
+      <position x="76.1" y="133.5" z="0.0" />
+      <position x="78.1" y="133.5" z="0.0" />
+      <position x="80.1" y="133.4" z="0.1" />
+      <position x="82.1" y="133.4" z="0.1" />
+      <position x="84.1" y="133.4" z="0.1" />
+      <position x="86.1" y="133.4" z="0.1" />
+      <position x="88.1" y="133.3" z="0.1" />
+      <position x="90.1" y="133.3" z="0.1" />
+      <position x="92.1" y="133.3" z="0.1" />
+      <position x="94.1" y="133.2" z="0.1" />
+      <position x="96.1" y="133.2" z="0.1" />
+      <position x="98.1" y="133.2" z="0.2" />
+      <position x="100.1" y="133.2" z="0.2" />
+      <position x="102.1" y="133.1" z="0.2" />
+      <position x="104.1" y="133.1" z="0.2" />
+      <position x="106.1" y="133.1" z="0.2" />
+      <position x="108.1" y="133.0" z="0.2" />
+      <position x="110.1" y="133.0" z="0.2" />
+      <position x="112.1" y="133.0" z="0.3" />
+      <position x="114.1" y="133.0" z="0.3" />
+      <position x="116.1" y="132.9" z="0.3" />
+      <position x="118.1" y="132.9" z="0.3" />
+      <position x="120.1" y="132.9" z="0.3" />
+      <position x="122.1" y="132.9" z="0.3" />
+      <position x="124.1" y="132.8" z="0.3" />
+      <position x="126.1" y="132.8" z="0.3" />
+      <position x="128.1" y="132.8" z="0.4" />
+      <position x="130.1" y="132.7" z="0.4" />
+      <position x="132.3" y="132.7" z="0.4" />
+      <position x="134.4" y="132.5" z="0.4" />
+      <position x="136.4" y="132.2" z="0.4" />
+      <position x="138.5" y="131.8" z="0.4" />
+      <position x="140.5" y="131.4" z="0.4" />
+      <position x="142.5" y="130.8" z="0.4" />
+      <position x="144.5" y="130.1" z="0.4" />
+      <position x="146.4" y="129.3" z="0.4" />
+      <position x="148.3" y="128.4" z="0.5" />
+      <position x="150.2" y="127.4" z="0.5" />
+      <position x="152.0" y="126.3" z="0.5" />
+      <position x="153.7" y="125.1" z="0.4" />
+      <position x="155.3" y="123.8" z="0.4" />
+      <position x="156.9" y="122.5" z="0.4" />
+      <position x="158.5" y="121.1" z="0.4" />
+      <position x="159.9" y="119.5" z="0.4" />
+      <position x="161.3" y="118.0" z="0.4" />
+      <position x="162.5" y="116.3" z="0.4" />
+      <position x="163.7" y="114.6" z="0.4" />
+      <position x="164.9" y="112.8" z="0.4" />
+      <position x="165.9" y="111.0" z="0.4" />
+      <position x="166.8" y="109.2" z="0.3" />
+      <position x="167.6" y="107.2" z="0.3" />
+      <position x="168.4" y="105.3" z="0.3" />
+      <position x="169.0" y="103.3" z="0.3" />
+    </waypoints>
+    <weathers>
+      <weather cloudiness="5.0" fog_density="50.0" precipitation="0.0" precipitation_deposits="0.0" route_percentage="0" sun_altitude_angle="45.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="10.0" />
+      <weather cloudiness="5.0" fog_density="50.0" precipitation="0.0" precipitation_deposits="0.0" route_percentage="100" sun_altitude_angle="45.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="10.0" />
+    </weathers>
+    <scenarios>
+      <scenario name="ParkingExit_1" type="ParkingExit">
+        <trigger_point x="46.1" y="133.9" z="0.0" yaw="-0.82" />
+        <direction value="right" />
+        <front_vehicle_distance value="9" />
+        <behind_vehicle_distance value="9" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="36" town="Town05">
+    <waypoints>
+      <position x="15.223194" y="191.141083" z="0.0" />
+      <position x="-229.299652" y="34.456886" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
+        <trigger_point x="-169.54745483398438" y="186.65440368652344" yaw="198.30105590820312" z="8.887364387512207" />
+      </scenario>
+      <scenario name="DynamicObjectCrossing_2" type="DynamicObjectCrossing">
+        <trigger_point x="-215.83291625976562" y="-148.8191680908203" yaw="302.9057922363281" z="10.003368377685547" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

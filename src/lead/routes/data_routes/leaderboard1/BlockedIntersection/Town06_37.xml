@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="37" town="Town06">
+    <waypoints>
+      <position x="-191.105057" y="52.476498" z="0.0" />
+      <position x="-123.535057" y="52.449207" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario type="BlockedIntersection" name="BlockedIntersection_1">
+        <trigger_point x="-188.77505493164062" y="52.475555419921875" z="0.0" yaw="-0.023140987381339073" />
+      </scenario>
+      <scenario type="BlockedIntersection" name="BlockedIntersection_2">
+        <trigger_point x="-181.77505493164062" y="52.47272872924805" z="0.0" yaw="-0.023140987381339073" />
+      </scenario>
+      <scenario type="BlockedIntersection" name="BlockedIntersection_3">
+        <trigger_point x="-169.77505493164062" y="52.4678840637207" z="0.0" yaw="-0.023140987381339073" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

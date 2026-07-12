@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="47" town="Town05">
+    <waypoints>
+      <position x="-45.663757" y="-109.762840" z="0.0" />
+      <position x="-107.562943" y="-145.674484" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="ControlLoss_1" type="ControlLoss">
+        <trigger_point x="-68.91853332519531" y="-140.21458435058594" yaw="207.905517578125" z="0.055450439453125" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

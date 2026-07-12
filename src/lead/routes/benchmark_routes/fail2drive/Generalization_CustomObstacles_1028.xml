@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="1028" town="Town13">
+    <weathers>
+      <weather route_percentage="0" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+      <weather route_percentage="100" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+    </weathers>
+    <waypoints>
+      <position x="4565.1" y="1975.6" z="149.6" />
+      <position x="4257.7" y="1974.4" z="158.9" />
+    </waypoints>
+    <scenarios>
+      <scenario name="CustomObstacleTwoWays" type="CustomObstacleTwoWays">
+        <objects a="id=static.prop.trashbag x=0.50 y=0.30 yaw=-30.00" c="id=static.prop.box03 x=-0.50 y=1.20 yaw=30.00" d="id=static.prop.box03 x=2.50 y=1.20 yaw=-10.00" e="id=static.prop.plasticbag x=1.20 y=0.40 yaw=10.00" f="id=static.prop.plasticbag x=-0.10 y=0.40 yaw=80.00" g="id=static.prop.container x=1.00 y=1.20 yaw=0.00" />
+        <distance value="50" />
+        <frequency from="50" to="50" />
+        <trigger_point x="4429.7" y="1975.1" z="153.4" yaw="180.2" />
+        <speed value="80" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

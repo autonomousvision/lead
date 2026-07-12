@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="27529" road_id="30" town="Town04">
+    <waypoints>
+      <position x="291.3" y="-250.0" z="0.0" />
+      <position x="289.3" y="-249.9" z="0.0" />
+      <position x="287.3" y="-249.9" z="0.0" />
+      <position x="285.3" y="-249.9" z="0.0" />
+      <position x="283.3" y="-249.9" z="0.0" />
+      <position x="281.3" y="-249.9" z="0.0" />
+      <position x="279.3" y="-249.9" z="0.0" />
+      <position x="277.3" y="-249.9" z="0.0" />
+      <position x="275.3" y="-249.8" z="0.0" />
+      <position x="273.3" y="-249.8" z="0.0" />
+      <position x="271.3" y="-249.8" z="0.0" />
+      <position x="258.7" y="-263.3" z="0.0" />
+      <position x="258.7" y="-265.3" z="0.0" />
+      <position x="258.7" y="-267.3" z="0.0" />
+      <position x="258.7" y="-269.3" z="0.0" />
+      <position x="258.7" y="-271.3" z="0.0" />
+      <position x="258.7" y="-273.3" z="0.0" />
+      <position x="258.8" y="-275.3" z="0.0" />
+      <position x="258.8" y="-277.3" z="0.0" />
+      <position x="258.8" y="-279.3" z="0.0" />
+      <position x="258.8" y="-281.3" z="0.0" />
+      <position x="258.8" y="-283.3" z="0.0" />
+      <position x="258.8" y="-285.3" z="0.0" />
+      <position x="258.8" y="-287.3" z="0.0" />
+      <position x="258.8" y="-289.3" z="0.0" />
+      <position x="258.8" y="-291.3" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="PedestrianCrossing_1" type="PedestrianCrossing">
+        <trigger_point x="286.3" y="-249.9" yaw="179.6" z="0.0" />
+      </scenario>
+    </scenarios>
+    <weathers>
+      <weather cloudiness="80.0" fog_density="60.0" precipitation="60.0" precipitation_deposits="60.0" route_percentage="0" sun_altitude_angle="-90.0" sun_azimuth_angle="-1.0" wetness="80.0" wind_intensity="60.0" />
+      <weather cloudiness="80.0" fog_density="60.0" precipitation="60.0" precipitation_deposits="60.0" route_percentage="100" sun_altitude_angle="-90.0" sun_azimuth_angle="-1.0" wetness="80.0" wind_intensity="60.0" />
+    </weathers>
+  </route>
+</routes>

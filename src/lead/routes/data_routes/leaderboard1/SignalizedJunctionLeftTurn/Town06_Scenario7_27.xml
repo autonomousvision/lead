@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="27" town="Town06">
+    <waypoints>
+      <position x="-8.600393" y="-64.952477" z="0.0" />
+      <position x="-9.236743" y="30.415392" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario type="SignalizedJunctionLeftTurn" name="SignalizedJunctionLeftTurn_1">
+        <trigger_point x="-8.616674423217773" y="-62.51253890991211" z="0.0" yaw="90.38229370117188" />
+      </scenario>
+      <scenario type="SignalizedJunctionLeftTurn" name="SignalizedJunctionLeftTurn_2">
+        <trigger_point x="-9.036569595336914" y="0.41605904698371887" z="0.0" yaw="90.38229370117188" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

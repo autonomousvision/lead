@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="74" town="Town06">
+    <waypoints>
+      <position x="5.843713" y="94.395683" z="0.0" />
+      <position x="5.982046" y="-2.323794" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario type="BlockedIntersection" name="BlockedIntersection_1">
+        <trigger_point x="5.78187370300293" y="27.675540924072266" z="0.0" yaw="270.3822937011719" />
+      </scenario>
+      <scenario type="BlockedIntersection" name="BlockedIntersection_2">
+        <trigger_point x="5.8243255615234375" y="92.15100860595703" z="0.0" yaw="269.505126953125" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

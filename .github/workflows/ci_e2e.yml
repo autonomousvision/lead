@@ -1,0 +1,101 @@
+name: E2E
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  collect-data:
+    runs-on: self-hosted
+    timeout-minutes: 180
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Configure .env
+      # CARLA lives in $HOME, not the workspace: checkout's git clean would
+      # delete an untracked in-repo install on every run (~20 GB re-download).
+      run: |
+        cp .env.example .env
+        sed -i "s|^CARLA_ROOT=.*|CARLA_ROOT=${HOME}/CARLA/standard_0916|" .env
+        sed -i "s|^PY123D_DATA_ROOT=.*|PY123D_DATA_ROOT=${GITHUB_WORKSPACE}/data/LEAD|" .env
+
+    - name: Use runner's micromamba and repo scripts
+      # Reuses whatever conda-format env root already exists on this self-hosted runner
+      # (same convention as the old $CONDA var, just renamed) so the persistent `lead` env
+      # survives the switch with no reinstall. Installs the micromamba binary itself if
+      # this runner doesn't already have it.
+      run: |
+        MAMBA_ROOT_PREFIX="${CONDA:-$HOME/micromamba}"
+        echo "MAMBA_ROOT_PREFIX=$MAMBA_ROOT_PREFIX" >> "$GITHUB_ENV"
+        if ! command -v micromamba >/dev/null; then
+          mkdir -p "$HOME/.local/bin"
+          curl -sSL -o /tmp/micromamba.tar.bz2 https://micro.mamba.pm/api/micromamba/linux-64/latest
+          tar -xjf /tmp/micromamba.tar.bz2 -C "$HOME/.local/bin" bin/micromamba --strip-components=1
+        fi
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        echo "$GITHUB_WORKSPACE/scripts/bin" >> "$GITHUB_PATH"
+
+    - name: Create lead environment (first run only)
+      run: |
+        [ -d "$MAMBA_ROOT_PREFIX/envs/lead" ] || micromamba create -y -n lead python=3.10
+
+    - name: Install uv and system tools (first run only)
+      run: |
+        [ -x "$MAMBA_ROOT_PREFIX/envs/lead/bin/uv" ] || \
+          micromamba install -y -n lead -c conda-forge uv ffmpeg parallel tree gcc zip unzip git-lfs
+
+    - name: Install project (torch, carla client, everything in uv.lock)
+      run: micromamba run -n lead env UV_PROJECT_ENVIRONMENT=$MAMBA_ROOT_PREFIX/envs/lead uv sync --extra dev
+
+    - name: Install CARLA server (first run only)
+      run: |
+        [ -x "$HOME/CARLA/standard_0916/CarlaUE4.sh" ] || \
+          bash scripts/common/setup_carla.sh "$HOME/CARLA/standard_0916"
+
+    - name: Pick random free ports
+      run: |
+        CARLA_PORT=$(random_free_port)
+        TM_PORT=$(random_free_port)
+        # CARLA also binds CARLA_PORT+1 for streaming; keep TM clear of both.
+        while [ "$TM_PORT" = "$CARLA_PORT" ] || [ "$TM_PORT" = "$((CARLA_PORT + 1))" ]; do
+          TM_PORT=$(random_free_port)
+        done
+        echo "CARLA_PORT=$CARLA_PORT" >> "$GITHUB_ENV"
+        echo "TM_PORT=$TM_PORT" >> "$GITHUB_ENV"
+
+    - name: Start CARLA server
+      run: |
+        clean_carla || true
+        start_carla "$CARLA_PORT" > carla_server.log 2>&1 &
+        for _ in $(seq 1 90); do
+          ss -ltn | grep -q ":$CARLA_PORT " && break
+          sleep 2
+        done
+        ss -ltn | grep -q ":$CARLA_PORT " || { cat carla_server.log; exit 1; }
+        sleep 10
+
+    - name: Run data collection (single route)
+      # Enables the beartype+jaxtyping import hook for all of lead.*
+      # (see src/lead/__init__.py).
+      env:
+        LEAD_RUNTIME_TYPE_CHECKING: "1"
+      run: |
+        micromamba run -n lead python -u -m lead --expert \
+            --routes=src/lead/routes/data_routes/leaderboard1/BlockedIntersection/Town06_13.xml \
+            --port="$CARLA_PORT" \
+            --traffic-manager-port="$TM_PORT" \
+            --timeout=600
+
+    - name: Verify collected data
+      run: |
+        cat outputs/expert_evaluation/checkpoint_endpoint.json
+        ! grep -q Failed outputs/expert_evaluation/checkpoint_endpoint.json
+        ls -R "$(dotenv PY123D_DATA_ROOT)/logs"
+        [ -n "$(ls -A "$(dotenv PY123D_DATA_ROOT)/logs")" ]
+
+    - name: Stop CARLA server
+      if: always()
+      run: clean_carla || true

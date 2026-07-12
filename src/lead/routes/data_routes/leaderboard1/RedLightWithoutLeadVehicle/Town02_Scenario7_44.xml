@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="44" town="Town02">
+    <waypoints>
+      <position x="193.681107" y="278.351349" z="0.0" />
+      <position x="193.688599" y="200.349533" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="RedLightWithoutLeadVehicle_1" type="RedLightWithoutLeadVehicle">
+        <trigger_point x="193.68231201171875" y="276.58135986328125" yaw="-89.96080780029297" z="0.0" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="route_001829" town="Town06">
+    <weathers>
+      <weather route_percentage="0" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="170.0" sun_altitude_angle="45.0" fog_density="3.0" fog_distance="0.75" fog_falloff="0.9" scattering_intensity="1.0" mie_scattering_scale="0.03" />
+      <weather route_percentage="100" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="170.0" sun_altitude_angle="45.0" fog_density="3.0" fog_distance="0.75" fog_falloff="0.9" scattering_intensity="1.0" mie_scattering_scale="0.03" />
+    </weathers>
+    <waypoints>
+      <position x="-239.41" y="135.08" z="0.0" />
+      <position x="-249.41" y="135.05" z="0.0" />
+      <position x="-259.41" y="135.03" z="0.0" />
+      <position x="-269.41" y="135.01" z="0.0" />
+      <position x="-279.22" y="134.77" z="0.0" />
+      <position x="-288.5" y="132.57" z="0.0" />
+      <position x="-296.94" y="128.14" z="0.0" />
+      <position x="-304.02" y="121.75" z="0.0" />
+      <position x="-309.3" y="113.81" z="0.0" />
+      <position x="-312.45" y="104.8" z="0.0" />
+      <position x="-313.27" y="95.3" z="0.0" />
+      <position x="-311.8" y="85.84" z="0.0" />
+      <position x="-308.2" y="76.98" z="0.0" />
+      <position x="-302.64" y="69.18" z="0.0" />
+      <position x="-295.43" y="62.88" z="0.0" />
+      <position x="-286.97" y="58.42" z="0.0" />
+      <position x="-277.7" y="56.02" z="0.0" />
+      <position x="-267.87" y="55.34" z="0.0" />
+      <position x="-257.89" y="54.79" z="0.0" />
+      <position x="-247.9" y="54.23" z="0.0" />
+      <position x="-237.92" y="53.68" z="0.0" />
+      <position x="-227.93" y="53.12" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="Accident_21" type="Accident">
+        <direction value="right" />
+        <trigger_point x="-244.41" y="135.07" z="0.00" yaw="180.1" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

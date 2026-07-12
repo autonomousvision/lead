@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="17569" road_id="1157" town="Town12">
+    <waypoints>
+      <position x="3122.9" y="6267.1" z="371.8" />
+      <position x="3118.0" y="6266.3" z="371.6" />
+      <position x="3113.0" y="6265.5" z="371.5" />
+      <position x="3108.1" y="6264.7" z="371.3" />
+      <position x="3103.2" y="6263.9" z="371.2" />
+      <position x="3098.2" y="6263.1" z="371.1" />
+      <position x="3093.3" y="6262.3" z="370.9" />
+      <position x="3088.4" y="6261.5" z="370.8" />
+      <position x="3083.4" y="6260.7" z="370.7" />
+      <position x="3077.9" y="6263.3" z="370.7" />
+      <position x="3073.0" y="6262.5" z="370.6" />
+      <position x="3068.1" y="6261.7" z="370.5" />
+      <position x="3063.1" y="6260.9" z="370.4" />
+      <position x="3058.2" y="6260.0" z="370.4" />
+      <position x="3053.3" y="6259.2" z="370.3" />
+      <position x="3048.3" y="6258.4" z="370.3" />
+      <position x="3043.4" y="6257.6" z="370.3" />
+      <position x="3038.5" y="6256.8" z="370.3" />
+      <position x="3033.0" y="6259.4" z="370.3" />
+      <position x="3028.0" y="6258.6" z="370.3" />
+      <position x="3023.1" y="6257.8" z="370.3" />
+      <position x="3018.2" y="6257.0" z="370.3" />
+      <position x="3013.2" y="6256.2" z="370.3" />
+      <position x="3008.3" y="6255.4" z="370.4" />
+    </waypoints>
+    <scenarios>
+      <scenario name="SequentialLaneChange_1" type="SequentialLaneChange">
+        <trigger_point x="3122.9" y="6267.1" yaw="-170.7" z="371.8" />
+      </scenario>
+    </scenarios>
+    <weathers>
+      <weather cloudiness="40.0" fog_density="2.0" precipitation="0.0" precipitation_deposits="50.0" route_percentage="0" sun_altitude_angle="15.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="10.0" />
+      <weather cloudiness="40.0" fog_density="2.0" precipitation="0.0" precipitation_deposits="50.0" route_percentage="100" sun_altitude_angle="15.0" sun_azimuth_angle="-1.0" wetness="0.0" wind_intensity="10.0" />
+    </weathers>
+  </route>
+</routes>

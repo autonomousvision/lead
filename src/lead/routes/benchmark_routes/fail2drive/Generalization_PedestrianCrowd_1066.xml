@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="1066" town="Town13">
+    <weathers>
+      <weather route_percentage="0" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+      <weather route_percentage="100" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="220.0" sun_altitude_angle="45.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.25" scattering_intensity="1.0" mie_scattering_scale="0.0" />
+    </weathers>
+    <waypoints>
+      <position x="6080.4" y="5428.1" z="166.6" />
+      <position x="6080.4" y="5261.7" z="167.3" />
+    </waypoints>
+    <scenarios>
+      <scenario name="ParkingExit_0" type="ParkingExit">
+        <speed value="30" />
+        <direction value="right" />
+        <trigger_point x="6080.4" y="5428.1" z="166.6" yaw="270.6" />
+      </scenario>
+      <scenario name="PedestrianCrowd" type="PedestrianCrowd">
+        <trigger_point x="6080.4" y="5428.1" z="166.6" yaw="270.6" />
+        <pedestrian_center value="1" />
+        <pedestrian_radius value="10" />
+        <side value="right" />
+        <pedestrians value="20" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

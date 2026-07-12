@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="15" town="Town03">
+    <weathers>
+      <weather route_percentage="0" cloudiness="80.000000" precipitation="30.000000" precipitation_deposits="50.000000" wetness="0.000000" wind_intensity="0.400000" sun_azimuth_angle="135.000000" sun_altitude_angle="75.000000" fog_density="0.000000" fog_distance="0.000000" />
+    </weathers>
+    <waypoints>
+      <position x="-100.14676666259766" y="132.73538208007812" z="0.0" />
+      <position x="-117.30316162109375" y="133.12374877929688" z="0.0" />
+      <position x="-145.55496215820312" y="89.65010070800781" z="0.0" />
+      <position x="-145.5149688720703" y="12.852255821228027" z="0.0" />
+      <position x="-145.50193786621094" y="-12.114513397216797" z="0.0" />
+      <position x="-145.47494506835938" y="-63.92374038696289" z="0.2360304743051529" />
+      <position x="-139.59185791015625" y="-114.88341522216797" z="0.8376060724258423" />
+      <position x="-102.75898742675781" y="-136.94598388671875" z="0.24817445874214172" />
+      <position x="-88.67143249511719" y="-112.35880279541016" z="-0.24409833550453186" />
+      <position x="-88.47688293457031" y="-41.02362823486328" z="-0.44483324885368347" />
+      <position x="-88.40773010253906" y="-15.666768074035645" z="-0.09768330305814743" />
+      <position x="-88.05729675292969" y="112.82613372802734" z="0.1535807102918625" />
+      <position x="-88.62556457519531" y="149.55592346191406" z="0.0" />
+      <position x="-73.8108901977539" y="194.4794158935547" z="0.0" />
+      <position x="-24.105792999267578" y="207.59124755859375" z="0.0" />
+      <position x="36.220802307128906" y="207.4407196044922" z="0.03519422188401222" />
+      <position x="123.5841293334961" y="207.2227325439453" z="1.826820731163025" />
+      <position x="160.85279846191406" y="206.94204711914062" z="2.6493380069732666" />
+      <position x="184.75640869140625" y="202.83895874023438" z="2.8074092864990234" />
+      <position x="216.18470764160156" y="188.14376831054688" z="2.1715049743652344" />
+      <position x="231.37132263183594" y="172.7161407470703" z="1.763698697090149" />
+      <position x="237.6007080078125" y="161.2047576904297" z="1.5179405212402344" />
+      <position x="242.37962341308594" y="133.31591796875" z="0.9737061858177185" />
+      <position x="243.5809783935547" y="83.9198226928711" z="0.10965587198734283" />
+      <position x="244.72901916503906" y="36.71669006347656" z="0.0" />
+      <position x="248.2423858642578" y="-107.74238586425781" z="0.0" />
+      <position x="248.80662536621094" y="-145.88040161132812" z="0.0" />
+      <position x="244.70706176757812" y="-168.1217498779297" z="0.0" />
+      <position x="239.55322265625" y="-181.19920349121094" z="0.0" />
+      <position x="219.55043029785156" y="-202.76622009277344" z="0.0" />
+      <position x="186.7594757080078" y="-207.89999389648438" z="0.0" />
+      <position x="137.04937744140625" y="-204.5634307861328" z="0.0" />
+      <position x="101.72634887695312" y="-205.4510955810547" z="0.0" />
+      <position x="70.51055908203125" y="-206.2355499267578" z="0.0" />
+      <position x="28.422487258911133" y="-207.29322814941406" z="0.0" />
+      <position x="-3.0450122356414795" y="-179.8217010498047" z="0.0" />
+      <position x="-3.6303980350494385" y="-156.0987548828125" z="0.0" />
+      <position x="-32.970603942871094" y="-138.9786834716797" z="0.0" />
+      <position x="-58.0109977722168" y="-139.51512145996094" z="0.0" />
+      <position x="-109.68946838378906" y="-139.8309326171875" z="0.3948628604412079" />
+      <position x="-121.81634521484375" y="-136.05043029785156" z="0.6803770065307617" />
+      <position x="-133.79580688476562" y="-127.8875503540039" z="0.8718399405479431" />
+      <position x="-147.49790954589844" y="-104.48455047607422" z="0.6941555738449097" />
+      <position x="-148.97427368164062" y="-65.22943878173828" z="0.2508713901042938" />
+      <position x="-149.0009765625" y="-13.97378921508789" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario type="SignalizedJunctionLeftTurn" name="SignalizedJunctionLeftTurn_1">
+        <trigger_point x="243.21473693847656" y="98.97915649414062" z="0.29888251423835754" yaw="271.3932189941406" />
+      </scenario>
+      <scenario type="SignalizedJunctionLeftTurn" name="SignalizedJunctionLeftTurn_2">
+        <trigger_point x="-88.84" y="-28.87" z="1.3" yaw="89.0" />
+      </scenario>
+      <scenario type="SignalizedJunctionRightTurn" name="SignalizedJunctionRightTurn_1">
+        <trigger_point x="-3.44" y="-167.82" z="1.0" yaw="91.0" />
+      </scenario>
+      <scenario type="OppositeVehicleRunningRedLight" name="OppositeVehicleRunningRedLight_1">
+        <trigger_point x="41.517005920410156" y="-206.9641571044922" z="0.0" yaw="-178.56045532226562" />
+      </scenario>
+      <scenario type="VehicleTurningRoute" name="VehicleTurningRoute_1">
+        <trigger_point x="25.680063247680664" y="-203.86105346679688" z="0.0" yaw="-178.56045532226562" />
+      </scenario>
+      <scenario type="DynamicObjectCrossing" name="DynamicObjectCrossing_1">
+        <trigger_point x="242.86146545410156" y="113.50442504882812" z="0.5679125189781189" yaw="271.3932189941406" />
+      </scenario>
+      <scenario type="DynamicObjectCrossing" name="DynamicObjectCrossing_2">
+        <trigger_point x="-87.55733489990234" y="167.6916961669922" z="0.0" yaw="438.6856689453125" />
+      </scenario>
+      <scenario type="DynamicObjectCrossing" name="DynamicObjectCrossing_3">
+        <trigger_point x="52.918731689453125" y="207.39906311035156" z="0.2592363655567169" yaw="359.8570556640625" />
+      </scenario>
+      <scenario type="ControlLoss" name="ControlLoss_1">
+        <trigger_point x="99.49" y="-205.37" z="1.4" yaw="184.0" />
+      </scenario>
+      <scenario type="SignalizedJunctionLeftTurn" name="SignalizedJunctionLeftTurn_3">
+        <trigger_point x="-145.53" y="26.3" z="1.0" yaw="269.0" />
+      </scenario>
+      <scenario type="ControlLoss" name="ControlLoss_2">
+        <trigger_point x="-149.26" y="-29.42" z="1.0" yaw="90.0" />
+      </scenario>
+      <scenario type="DynamicObjectCrossing" name="DynamicObjectCrossing_4">
+        <trigger_point x="-88.17547607421875" y="69.48959350585938" z="0.8320345282554626" yaw="89.84374237060547" />
+      </scenario>
+      <scenario type="DynamicObjectCrossing" name="DynamicObjectCrossing_5">
+        <trigger_point x="-88.58015441894531" y="-78.89077758789062" z="-0.8594440817832947" yaw="89.84374237060547" />
+      </scenario>
+      <scenario type="ControlLoss" name="ControlLoss_3">
+        <trigger_point x="244.55511474609375" y="43.866703033447266" z="0.0" yaw="271.3932189941406" />
+      </scenario>
+      <scenario type="DynamicObjectCrossing" name="DynamicObjectCrossing_6">
+        <trigger_point x="246.9384002685547" y="-54.12661361694336" z="0.0" yaw="271.3932189941406" />
+      </scenario>
+      <scenario type="DynamicObjectCrossing" name="DynamicObjectCrossing_7">
+        <trigger_point x="141.91873168945312" y="207.17698669433594" z="2.23475980758667" yaw="359.8570556640625" />
+      </scenario>
+      <scenario type="DynamicObjectCrossing" name="DynamicObjectCrossing_8">
+        <trigger_point x="248.77268981933594" y="-129.54676818847656" z="0.0" yaw="271.3932189941406" />
+      </scenario>
+      <scenario type="DynamicObjectCrossing" name="DynamicObjectCrossing_9">
+        <trigger_point x="240.00001525878906" y="-180.2597198486328" z="0.0" yaw="244.8795623779297" />
+      </scenario>
+      <scenario type="ControlLoss" name="ControlLoss_4">
+        <trigger_point x="-3.4487547874450684" y="-163.4599151611328" z="0.0" yaw="91.41353607177734" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

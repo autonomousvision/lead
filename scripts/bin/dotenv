@@ -1,0 +1,16 @@
+#!/usr/bin/bash
+# Shell counterpart of src/lead/common/dotenv.py: `dotenv KEY` prints the value of
+# KEY from the root .env (fallback: .env.example); variables already set in
+# the environment take precedence. Sourcing this file instead exports every
+# variable into the current shell.
+
+_dotenv_path="$(dirname "${BASH_SOURCE[0]}")/../../.env"
+[ -f "$_dotenv_path" ] || _dotenv_path="$(dirname "${BASH_SOURCE[0]}")/../../.env.example"
+
+while IFS='=' read -r _k _v; do
+	case "$_k" in '' | \#*) continue ;; esac
+	[ -n "${!_k}" ] || export "$_k=$_v"
+done <"$_dotenv_path"
+unset _dotenv_path _k _v
+
+[ "${BASH_SOURCE[0]}" != "$0" ] || [ $# -eq 0 ] || printf '%s\n' "${!1}"

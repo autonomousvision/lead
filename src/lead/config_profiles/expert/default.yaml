@@ -1,0 +1,3 @@
+# Default expert config profile: the Python defaults (single front camera,
+# CARLA_LEADERBOARD2_1CAMERA). Profiles only list the values they change;
+# see src/lead/config/expert/ for every knob and its default.

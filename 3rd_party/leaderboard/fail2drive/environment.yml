@@ -1,0 +1,12 @@
+name: fail2drive
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - ca-certificates
+  - freetype
+  - libpng
+  - python=3.10.15
+  - pip
+  - pip:
+    - -r team_code/requirements.txt

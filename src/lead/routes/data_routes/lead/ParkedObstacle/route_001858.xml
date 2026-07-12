@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="route_001858" town="Town05">
+    <weathers>
+      <weather route_percentage="0" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="170.0" sun_altitude_angle="45.0" fog_density="3.0" fog_distance="0.75" fog_falloff="0.9" scattering_intensity="1.0" mie_scattering_scale="0.03" />
+      <weather route_percentage="100" cloudiness="10.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="5.0" sun_azimuth_angle="170.0" sun_altitude_angle="45.0" fog_density="3.0" fog_distance="0.75" fog_falloff="0.9" scattering_intensity="1.0" mie_scattering_scale="0.03" />
+    </weathers>
+    <waypoints>
+      <position x="210.74" y="-11.27" z="0.0" />
+      <position x="210.62" y="-21.27" z="0.0" />
+      <position x="210.51" y="-31.27" z="0.0" />
+      <position x="210.39" y="-41.27" z="0.0" />
+      <position x="210.27" y="-51.27" z="0.0" />
+      <position x="210.16" y="-61.27" z="0.0" />
+      <position x="210.04" y="-71.27" z="0.0" />
+      <position x="209.92" y="-81.27" z="0.0" />
+      <position x="209.81" y="-91.27" z="0.0" />
+      <position x="209.67" y="-101.43" z="0.0" />
+      <position x="208.81" y="-112.25" z="0.0" />
+      <position x="206.88" y="-122.94" z="0.0" />
+      <position x="203.9" y="-133.39" z="0.0" />
+      <position x="199.91" y="-143.49" z="0.0" />
+      <position x="194.93" y="-153.15" z="0.0" />
+      <position x="189.03" y="-162.26" z="0.0" />
+      <position x="182.25" y="-170.75" z="0.0" />
+      <position x="174.67" y="-178.53" z="0.0" />
+      <position x="166.36" y="-185.52" z="0.0" />
+      <position x="157.39" y="-191.66" z="0.0" />
+      <position x="147.87" y="-196.87" z="0.0" />
+      <position x="137.87" y="-201.12" z="0.0" />
+      <position x="127.5" y="-204.37" z="0.0" />
+      <position x="116.87" y="-206.57" z="0.0" />
+      <position x="106.07" y="-207.71" z="0.0" />
+      <position x="95.55" y="-207.86" z="0.0" />
+      <position x="85.55" y="-207.82" z="0.0" />
+      <position x="75.55" y="-207.77" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario name="ParkedObstacle_13" type="ParkedObstacle">
+        <direction value="right" />
+        <trigger_point x="210.68" y="-16.27" z="0.00" yaw="-90.7" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>

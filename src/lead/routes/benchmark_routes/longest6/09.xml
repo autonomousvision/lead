@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+  <route id="9" town="Town02">
+    <weathers>
+      <weather route_percentage="0" cloudiness="90.000000" precipitation="0.000000" precipitation_deposits="50.000000" wetness="0.000000" wind_intensity="0.350000" sun_azimuth_angle="180.000000" sun_altitude_angle="75.000000" fog_density="0.000000" fog_distance="0.000000" />
+    </weathers>
+    <waypoints>
+      <position x="25.936994552612305" y="105.63590240478516" z="0.0" />
+      <position x="4.040321350097656" y="105.667724609375" z="0.0" />
+      <position x="-7.769290447235107" y="118.38006591796875" z="0.0" />
+      <position x="-7.702364444732666" y="174.83985900878906" z="0.0" />
+      <position x="7.460062026977539" y="192.22946166992188" z="0.0" />
+      <position x="29.824506759643555" y="192.21131896972656" z="0.0" />
+      <position x="41.70338821411133" y="205.06849670410156" z="0.0" />
+      <position x="41.6942024230957" y="226.1383514404297" z="0.0" />
+      <position x="56.21331024169922" y="240.9136505126953" z="0.0" />
+      <position x="87.24083709716797" y="241.0205078125" z="0.0" />
+      <position x="119.44264221191406" y="241.1313934326172" z="0.0" />
+      <position x="136.01722717285156" y="226.52333068847656" z="0.0" />
+      <position x="136.08560180664062" y="202.26036071777344" z="0.0" />
+      <position x="146.19561767578125" y="192.11688232421875" z="0.0" />
+      <position x="178.8236541748047" y="192.0904083251953" z="0.0" />
+      <position x="189.5445556640625" y="204.235107421875" z="0.0" />
+      <position x="189.54820251464844" y="225.80416870117188" z="0.0" />
+      <position x="179.0960235595703" y="237.33680725097656" z="0.0" />
+      <position x="147.47935485839844" y="237.22792053222656" z="0.0" />
+      <position x="136.01332092285156" y="227.90773010253906" z="0.0" />
+      <position x="136.08712768554688" y="201.72030639648438" z="0.0" />
+      <position x="121.87174987792969" y="188.13662719726562" z="0.0" />
+      <position x="58.4655876159668" y="188.18807983398438" z="0.0" />
+      <position x="41.70458221435547" y="202.3303985595703" z="0.0" />
+      <position x="41.69389724731445" y="226.83761596679688" z="0.0" />
+      <position x="41.68326950073242" y="251.22317504882812" z="0.0" />
+      <position x="41.66581344604492" y="291.2603454589844" z="0.0" />
+      <position x="33.00594711303711" y="302.952880859375" z="0.0" />
+      <position x="5.601693630218506" y="302.9405517578125" z="0.0" />
+      <position x="-3.5665111541748047" y="289.44573974609375" z="0.0" />
+      <position x="-3.6082019805908203" y="254.27467346191406" z="0.0" />
+      <position x="-3.667880058288574" y="203.92898559570312" z="0.0" />
+    </waypoints>
+    <scenarios>
+      <scenario type="OppositeVehicleRunningRedLight" name="OppositeVehicleRunningRedLight_1">
+        <trigger_point x="41.37" y="207.4" z="1.21" yaw="90.0" />
+      </scenario>
+      <scenario type="SignalizedJunctionRightTurn" name="SignalizedJunctionRightTurn_1">
+        <trigger_point x="136.12" y="220.86" z="1.21" yaw="270.0" />
+      </scenario>
+      <scenario type="SignalizedJunctionRightTurn" name="SignalizedJunctionRightTurn_2">
+        <trigger_point x="160.2" y="191.59" z="1.21" yaw="0.0" />
+      </scenario>
+      <scenario type="SignalizedJunctionRightTurn" name="SignalizedJunctionRightTurn_3">
+        <trigger_point x="41.37" y="272.34" z="1.21" yaw="90.0" />
+      </scenario>
+      <scenario type="ControlLoss" name="ControlLoss_1">
+        <trigger_point x="-3.28" y="221.41" z="1.22" yaw="270.0" />
+      </scenario>
+      <scenario type="SignalizedJunctionRightTurn" name="SignalizedJunctionRightTurn_4">
+        <trigger_point x="11.82" y="191.57" z="1.21" yaw="0.0" />
+      </scenario>
+      <scenario type="SignalizedJunctionRightTurn" name="SignalizedJunctionRightTurn_5">
+        <trigger_point x="189.41" y="207.2" z="1.21" yaw="90.0" />
+      </scenario>
+      <scenario type="SignalizedJunctionRightTurn" name="SignalizedJunctionRightTurn_6">
+        <trigger_point x="166.0" y="236.94" z="1.21" yaw="180.0" />
+      </scenario>
+      <scenario type="OppositeVehicleRunningRedLight" name="OppositeVehicleRunningRedLight_2">
+        <trigger_point x="-7.5" y="157.35" z="1.22" yaw="90.0" />
+      </scenario>
+    </scenarios>
+  </route>
+</routes>
