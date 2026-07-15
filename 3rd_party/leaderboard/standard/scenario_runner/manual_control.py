@@ -197,7 +197,8 @@ class World(object):
             self.collision_sensor.sensor,
             self.lane_invasion_sensor.sensor,
             self.gnss_sensor.sensor,
-            self.imu_sensor.sensor]
+            self.imu_sensor.sensor,
+        ]
         for sensor in sensors:
             if sensor is not None:
                 sensor.stop()
@@ -276,8 +277,10 @@ class KeyboardControl(object):
                 elif event.key == K_m:
                     self._control.manual_gear_shift = not self._control.manual_gear_shift
                     self._control.gear = world.player.get_control().gear
-                    world.hud.notification('%s Transmission' %
-                                            ('Manual' if self._control.manual_gear_shift else 'Automatic'))
+                    world.hud.notification(
+                        '%s Transmission' %
+                        ('Manual' if self._control.manual_gear_shift else 'Automatic'),
+                    )
                 elif self._control.manual_gear_shift and event.key == K_COMMA:
                     self._control.gear = max(-1, self._control.gear - 1)
                 elif self._control.manual_gear_shift and event.key == K_PERIOD:
@@ -286,7 +289,8 @@ class KeyboardControl(object):
                     self._autopilot_enabled = not self._autopilot_enabled
                     world.player.set_autopilot(self._autopilot_enabled)
                     world.hud.notification(
-                        'Autopilot %s' % ('On' if self._autopilot_enabled else 'Off'))
+                        'Autopilot %s' % ('On' if self._autopilot_enabled else 'Off'),
+                    )
                 elif event.key == K_l and pygame.key.get_mods() & KMOD_CTRL:
                     current_lights ^= carla.VehicleLightState.Special1
                 elif event.key == K_l and pygame.key.get_mods() & KMOD_SHIFT:
@@ -427,7 +431,8 @@ class HUD(object):
             'Location:% 20s' % ('(% 5.1f, % 5.1f)' % (t.location.x, t.location.y)),
             'GNSS:% 24s' % ('(% 2.6f, % 3.6f)' % (world.gnss_sensor.lat, world.gnss_sensor.lon)),
             'Height:  % 18.0f m' % t.location.z,
-            '']
+            '',
+        ]
         self._info_text += [
             ('Throttle:', c.throttle, 0.0, 1.0),
             ('Steer:', c.steer, -1.0, 1.0),
@@ -435,13 +440,15 @@ class HUD(object):
             ('Reverse:', c.reverse),
             ('Hand brake:', c.hand_brake),
             ('Manual:', c.manual_gear_shift),
-            'Gear:        %s' % {-1: 'R', 0: 'N'}.get(c.gear, c.gear)]
+            'Gear:        %s' % {-1: 'R', 0: 'N'}.get(c.gear, c.gear),
+        ]
         self._info_text += [
             '',
             'Collision:',
             collision,
             '',
-            'Number of vehicles: % 8d' % len(vehicles)]
+            'Number of vehicles: % 8d' % len(vehicles),
+        ]
         if len(vehicles) > 1:
             self._info_text += ['Nearby vehicles:']
             distance = lambda l: math.sqrt((l.x - t.location.x)**2 + (l.y - t.location.y)**2 + (l.z - t.location.z)**2)
@@ -672,12 +679,14 @@ class IMUSensor(object):
         world = self._parent.get_world()
         bp = world.get_blueprint_library().find('sensor.other.imu')
         self.sensor = world.spawn_actor(
-            bp, carla.Transform(), attach_to=self._parent)
+            bp, carla.Transform(), attach_to=self._parent,
+        )
         # We need to pass the lambda a weak reference to self to avoid circular
         # reference.
         weak_self = weakref.ref(self)
         self.sensor.listen(
-            lambda sensor_data: IMUSensor._IMU_callback(weak_self, sensor_data))
+            lambda sensor_data: IMUSensor._IMU_callback(weak_self, sensor_data),
+        )
 
     @staticmethod
     def _IMU_callback(weak_self, sensor_data):
@@ -688,11 +697,13 @@ class IMUSensor(object):
         self.accelerometer = (
             max(limits[0], min(limits[1], sensor_data.accelerometer.x)),
             max(limits[0], min(limits[1], sensor_data.accelerometer.y)),
-            max(limits[0], min(limits[1], sensor_data.accelerometer.z)))
+            max(limits[0], min(limits[1], sensor_data.accelerometer.z)),
+        )
         self.gyroscope = (
             max(limits[0], min(limits[1], math.degrees(sensor_data.gyroscope.x))),
             max(limits[0], min(limits[1], math.degrees(sensor_data.gyroscope.y))),
-            max(limits[0], min(limits[1], math.degrees(sensor_data.gyroscope.z))))
+            max(limits[0], min(limits[1], math.degrees(sensor_data.gyroscope.z))),
+        )
         self.compass = math.degrees(sensor_data.compass)
 
 
@@ -719,12 +730,15 @@ class RadarSensor(object):
             bp,
             carla.Transform(
                 carla.Location(x=bound_x + 0.05, z=bound_z+0.05),
-                carla.Rotation(pitch=5)),
-            attach_to=self._parent)
+                carla.Rotation(pitch=5),
+            ),
+            attach_to=self._parent,
+        )
         # We need a weak reference to self to avoid circular reference.
         weak_self = weakref.ref(self)
         self.sensor.listen(
-            lambda radar_data: RadarSensor._Radar_callback(weak_self, radar_data))
+            lambda radar_data: RadarSensor._Radar_callback(weak_self, radar_data),
+        )
 
     @staticmethod
     def _Radar_callback(weak_self, radar_data):
@@ -747,7 +761,9 @@ class RadarSensor(object):
                 carla.Rotation(
                     pitch=current_rot.pitch + alt,
                     yaw=current_rot.yaw + azi,
-                    roll=current_rot.roll)).transform(fw_vec)
+                    roll=current_rot.roll,
+                ),
+            ).transform(fw_vec)
 
             def clamp(min_v, max_v, value):
                 return max(min_v, min(value, max_v))
@@ -761,7 +777,8 @@ class RadarSensor(object):
                 size=0.075,
                 life_time=0.06,
                 persistent_lines=False,
-                color=carla.Color(r, g, b))
+                color=carla.Color(r, g, b),
+            )
 
 # ==============================================================================
 # -- CameraManager -------------------------------------------------------------
@@ -785,7 +802,8 @@ class CameraManager(object):
             (carla.Transform(carla.Location(x=+0.8*bound_x, y=+0.0*bound_y, z=1.3*bound_z)), Attachment.Rigid),
             (carla.Transform(carla.Location(x=+1.9*bound_x, y=+1.0*bound_y, z=1.2*bound_z)), Attachment.SpringArm),
             (carla.Transform(carla.Location(x=-2.8*bound_x, y=+0.0*bound_y, z=4.6*bound_z), carla.Rotation(pitch=6.0)), Attachment.SpringArm),
-            (carla.Transform(carla.Location(x=-1.0, y=-1.0*bound_y, z=0.4*bound_z)), Attachment.Rigid)]
+            (carla.Transform(carla.Location(x=-1.0, y=-1.0*bound_y, z=0.4*bound_z)), Attachment.Rigid),
+        ]
 
         self.transform_index = 1
         self.sensors = [['sensor.camera.rgb', cc.Raw, 'Camera RGB']]
@@ -815,7 +833,8 @@ class CameraManager(object):
                 self.sensors[index][-1],
                 self._camera_transforms[self.transform_index][0],
                 attach_to=self._parent,
-                attachment_type=self._camera_transforms[self.transform_index][1])
+                attachment_type=self._camera_transforms[self.transform_index][1],
+            )
             # We need to pass the lambda a weak reference to self to avoid
             # circular reference.
             weak_self = weakref.ref(self)
@@ -853,8 +872,11 @@ class CameraManager(object):
         elif self.sensors[self.index][0].startswith('sensor.camera.dvs'):
             # Example of converting the raw_data from a carla.DVSEventArray
             # sensor into a NumPy array and using it as an image
-            dvs_events = np.frombuffer(image.raw_data, dtype=np.dtype([
-                ('x', np.uint16), ('y', np.uint16), ('t', np.int64), ('pol', np.bool)]))
+            dvs_events = np.frombuffer(
+                image.raw_data, dtype=np.dtype([
+                ('x', np.uint16), ('y', np.uint16), ('t', np.int64), ('pol', np.bool),
+                ]),
+            )
             dvs_img = np.zeros((image.height, image.width, 3), dtype=np.uint8)
             # Blue is positive, red is negative
             dvs_img[dvs_events[:]['y'], dvs_events[:]['x'], dvs_events[:]['pol'] * 2] = 255
@@ -893,7 +915,8 @@ def game_loop(args):
 
         display = pygame.display.set_mode(
             (args.width, args.height),
-            pygame.HWSURFACE | pygame.DOUBLEBUF)
+            pygame.HWSURFACE | pygame.DOUBLEBUF,
+        )
         display.fill((0,0,0))
         pygame.display.flip()
 
@@ -934,45 +957,54 @@ def game_loop(args):
 
 def main():
     argparser = argparse.ArgumentParser(
-        description='CARLA Manual Control Client')
+        description='CARLA Manual Control Client',
+    )
     argparser.add_argument(
         '-v', '--verbose',
         action='store_true',
         dest='debug',
-        help='print debug information')
+        help='print debug information',
+    )
     argparser.add_argument(
         '--host',
         metavar='H',
         default='127.0.0.1',
-        help='IP of the host server (default: 127.0.0.1)')
+        help='IP of the host server (default: 127.0.0.1)',
+    )
     argparser.add_argument(
         '-p', '--port',
         metavar='P',
         default=2000,
         type=int,
-        help='TCP port to listen to (default: 2000)')
+        help='TCP port to listen to (default: 2000)',
+    )
     argparser.add_argument(
         '-a', '--autopilot',
         action='store_true',
-        help='enable autopilot. This does not autocomplete the scenario')
+        help='enable autopilot. This does not autocomplete the scenario',
+    )
     argparser.add_argument(
         '--rolename',
         metavar='NAME',
         default='hero',
-        help='role name of ego vehicle to control (default: "hero")')
+        help='role name of ego vehicle to control (default: "hero")',
+    )
     argparser.add_argument(
         '--res',
         metavar='WIDTHxHEIGHT',
         default='1280x720',
-        help='window resolution (default: 1280x720)')
+        help='window resolution (default: 1280x720)',
+    )
     argparser.add_argument(
         '--keep_ego_vehicle',
         action='store_true',
-        help='do not destroy ego vehicle on exit')
+        help='do not destroy ego vehicle on exit',
+    )
     argparser.add_argument(
         '--wait-for-repetitions',
         action='store_true',
-        help='Avoids stopping the manual control when the scenario ends.')
+        help='Avoids stopping the manual control when the scenario ends.',
+    )
     args = argparser.parse_args()
 
     args.width, args.height = [int(x) for x in args.res.split('x')]

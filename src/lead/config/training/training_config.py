@@ -13,15 +13,7 @@ if TYPE_CHECKING:
 
 # Process-specific values excluded from serialized configs: they describe the
 # machine/job, not the experiment (see src/lead/common/runtime.py).
-RUNTIME_KEYS: frozenset[str] = frozenset(
-    {
-        "rank",
-        "world_size",
-        "local_rank",
-        "device",
-        "assigned_cpu_cores",
-    },
-)
+RUNTIME_KEYS: frozenset[str] = frozenset({"device", "assigned_cpu_cores"})
 
 
 class TrainingConfig(ConfigNode):
@@ -34,24 +26,9 @@ class TrainingConfig(ConfigNode):
     @property
     def is_pretraining(self) -> bool:
         """If true indicates pretraining phase."""
-        return not self._root.agent.transfuser.use_planning_decoder
+        return not self._root.policy.transfuser.use_planning_decoder
 
     # --- Process runtime (delegated, excluded from serialization) ---
-    @property
-    def rank(self) -> int:
-        """Current process rank in distributed training."""
-        return runtime.rank()
-
-    @property
-    def world_size(self) -> int:
-        """Total number of processes in distributed training."""
-        return runtime.world_size()
-
-    @property
-    def local_rank(self) -> int:
-        """Local rank of current process on the node."""
-        return runtime.local_rank()
-
     @property
     def device(self) -> "torch.device":
         """PyTorch device to use for training."""

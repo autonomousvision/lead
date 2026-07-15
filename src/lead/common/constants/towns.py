@@ -50,19 +50,3 @@ ALL_TOWNS = [
     "Town13",
     "Town15",
 ]
-
-# Mapping from town name to a zero-padded index for logging (e.g., Town01 -> "01")
-TOWN_NAME_TO_INDEX = {
-    "Town01": "01",
-    "Town02": "02",
-    "Town03": "03",
-    "Town04": "04",
-    "Town05": "05",
-    "Town06": "06",
-    "Town07": "07",
-    "Town10HD": "10HD",
-    "Town11": "11",
-    "Town12": "12",
-    "Town13": "13",
-    "Town15": "15",
-}

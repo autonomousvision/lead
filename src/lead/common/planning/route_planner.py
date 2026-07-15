@@ -1,28 +1,29 @@
-"""Route planning utilities for autonomous driving navigation.
+"""Tracking of the ego's progress along a route's target points."""
 
-This module provides route planning functionality including waypoint management,
-trajectory interpolation, and coordinate transformations for CARLA simulation.
-"""
+from __future__ import annotations
 
-import math
-import xml.etree.ElementTree as ET
-from collections import deque
+import typing
 from typing import Any
 
-import carla
 import jaxtyping as jt
 import numpy as np
 import numpy.typing as npt
-from agents.navigation.global_route_planner import GlobalRoutePlanner
 
-from lead.common import common_utils
+from lead.common.localization import gps as gps_utils
+from lead.dataloader.log_format import ordered_target_points
+
+if typing.TYPE_CHECKING:
+    import carla
+
+__all__ = ["RoutePlanner", "ordered_target_points"]
 
 
 class RoutePlanner:
-    """Manages route planning and waypoint navigation for autonomous driving.
+    """Tracks which target point of a route the ego is currently heading to.
 
-    This class handles route management including waypoint tracking, distance
-    calculations, and route modifications based on vehicle position.
+    The target points are fixed once set; navigating the route advances
+    ``target_point_index``, the index of the last target point the ego has
+    come within ``min_distance`` of.
     """
 
     def __init__(self, min_distance: float, max_distance: float) -> None:
@@ -32,222 +33,107 @@ class RoutePlanner:
             min_distance: Minimum distance threshold for route planning.
             max_distance: Maximum distance threshold for route planning.
         """
-        self.route: deque = deque()
-        self.route_distances: deque = deque()
+        self.target_points: jt.Float[npt.NDArray, "n 3"] = np.zeros((0, 3))
+        self.target_point_distances: jt.Float[npt.NDArray, " n"] = np.zeros(0)
+        self.target_point_index: int = 0
 
         self.min_distance = min_distance
         self.max_distance = max_distance
-        self.is_last = False
-        self.previous_target_points: list[jt.Float[npt.NDArray, " 3"]] = []
+
+    @property
+    def is_last(self) -> bool:
+        """Whether the ego has reached the last target point of the route."""
+        return self.target_point_index >= len(self.target_points) - 2
 
     def set_route(
         self,
         global_plan: list[tuple[Any, Any]],
-        gps: bool = False,
+        is_gps: bool = False,
         carla_map: carla.Map | None = None,
         lat_ref: float | None = None,
         lon_ref: float | None = None,
     ) -> None:
         """Set the global route plan for navigation.
 
+        Consecutive duplicates are merged, so every target point is distinct.
+
         Args:
             global_plan: List of tuples containing positions and (ignored) commands.
-            gps: Whether the positions are in GPS coordinates.
+            is_gps: Whether the positions are in GPS coordinates.
             carla_map: CARLA map object for waypoint extension.
             lat_ref: Latitude reference for GPS conversion.
             lon_ref: Longitude reference for GPS conversion.
         """
-        self.route.clear()
+        route: list[jt.Float[npt.NDArray, " 3"]] = []
 
         for pos, _ in global_plan:
-            if gps:
+            if is_gps:
+                assert lat_ref is not None and lon_ref is not None, (
+                    "lat_ref and lon_ref are required when is_gps=True"
+                )
                 pos = np.array([pos["lat"], pos["lon"], pos["z"]])
-                pos = common_utils.convert_gps_to_carla(pos, lat_ref, lon_ref)
+                pos = gps_utils.convert_gps_to_carla(pos, lat_ref, lon_ref)
             else:
                 # important to use the z variable, otherwise there are some rare bugs at carla.map.get_waypoint(carla.Location)
                 pos = np.array([pos.location.x, pos.location.y, pos.location.z])
 
-            self.route.append(pos)
+            route.append(pos)
 
         if carla_map is not None:
+            import carla
+
             for _ in range(50):
                 loc = carla.Location(
-                    x=self.route[-1][0],
-                    y=self.route[-1][1],
-                    z=self.route[-1][2],
+                    x=route[-1][0],
+                    y=route[-1][1],
+                    z=route[-1][2],
                 )
                 next_loc = carla_map.get_waypoint(loc).next(1)[0].transform.location
-                self.route.append(np.array([next_loc.x, next_loc.y, next_loc.z]))
+                route.append(np.array([next_loc.x, next_loc.y, next_loc.z]))
+
+        self.target_points = np.array(
+            [
+                point
+                for i, point in enumerate(route)
+                if i == 0 or not np.allclose(point[:2], route[i - 1][:2])
+            ],
+        )
+        self.target_point_index = 0
 
         # We do the calculations in the beginning once so that we don't have
         # to do them every time in run_step
-        self.route_distances.append(0.0)
-        for i in range(1, len(self.route)):
-            diff = self.route[i] - self.route[i - 1]
-            distance = (diff[0] ** 2 + diff[1] ** 2) ** 0.5
-            self.route_distances.append(distance)
+        self.target_point_distances = np.zeros(len(self.target_points))
+        self.target_point_distances[1:] = np.linalg.norm(
+            np.diff(self.target_points[:, :2], axis=0),
+            axis=1,
+        )
 
-    def run_step(self, gps: jt.Float[npt.NDArray, " 3"]) -> deque:
-        """Execute one step of route planning based on current GPS position.
+    def run_step(self, gps: jt.Float[npt.NDArray, " 3"]) -> int:
+        """Advance the target point index to the ego's current position.
 
         Args:
             gps: Current GPS position as a 3D array (x, y, z).
 
         Returns:
-            Updated route deque with waypoints.
+            The index of the previous target point.
         """
-        if len(self.route) <= 2:
-            self.is_last = True
-            return self.route
+        if self.is_last:
+            return self.target_point_index
 
-        to_pop = 0
         farthest_in_range = -np.inf
         cumulative_distance = 0.0
-        for i in range(1, len(self.route)):
+        for i in range(self.target_point_index + 1, len(self.target_points)):
             if cumulative_distance > self.max_distance:
                 break
 
-            cumulative_distance += self.route_distances[i]
+            cumulative_distance += self.target_point_distances[i]
 
-            diff = self.route[i] - gps
+            diff = self.target_points[i] - gps
             distance = (diff[0] ** 2 + diff[1] ** 2) ** 0.5
 
             if farthest_in_range < distance <= self.min_distance:
                 farthest_in_range = distance
-                to_pop = i
-        self.pop(to_pop)
-        return self.route
-
-    def pop(self, to_pop: int, save_popped: bool = True) -> None:
-        """Remove waypoints from the front of the route.
-
-        Args:
-            to_pop: Number of waypoints to remove from the route.
-            save_popped: Whether to save the popped waypoints to history.
-        """
-        for _ in range(to_pop):
-            if len(self.route) > 2:
-                if save_popped:
-                    self.previous_target_points.append(self.route[0])
-                self.route.popleft()
-                self.route_distances.popleft()
-
-
-def interpolate_trajectory(
-    world_map: carla.Map,
-    waypoints_trajectory: list[carla.Location],
-    hop_resolution: float = 1.0,
-    max_len: int = 400,
-) -> tuple[list[tuple[dict[str, float], Any]], list[tuple[carla.Transform, Any]]]:
-    """Interpolate a dense trajectory from sparse keypoints.
-
-    Given raw keypoints, interpolate a full dense trajectory to be used
-    by the vehicle navigation system. Returns both GPS coordinates and
-    original form trajectories.
-
-    Args:
-        world_map: Reference to the CARLA world map for route planning.
-        waypoints_trajectory: Current coarse trajectory as waypoint list.
-        hop_resolution: Resolution density for the interpolated trajectory.
-        max_len: Maximum length for interpolated trace segments.
-
-    Returns:
-        A tuple containing:
-            - GPS route as list of (GPS coordinates, connection) tuples
-            - Original route as list of (transform, connection) tuples
-    """
-
-    grp = GlobalRoutePlanner(world_map, hop_resolution)
-    # Obtain route plan
-    lat_ref, lon_ref = _get_latlon_ref(world_map)
-
-    route = []
-    gps_route = []
-
-    for i in range(len(waypoints_trajectory) - 1):
-        waypoint = waypoints_trajectory[i]
-        waypoint_next = waypoints_trajectory[i + 1]
-        if waypoint.x != waypoint_next.x or waypoint.y != waypoint_next.y:
-            interpolated_trace = grp.trace_route(waypoint, waypoint_next)
-            if len(interpolated_trace) > max_len:
-                waypoints_trajectory[i + 1] = waypoints_trajectory[i]
-            else:
-                for wp, connection in interpolated_trace:
-                    route.append((wp.transform, connection))
-                    gps_coord = _location_to_gps(
-                        lat_ref,
-                        lon_ref,
-                        wp.transform.location,
-                    )
-                    gps_route.append((gps_coord, connection))
-
-    return gps_route, route
-
-
-def _get_latlon_ref(world_map: carla.Map) -> tuple[float, float]:
-    """Extract latitude and longitude reference from CARLA map.
-
-    Converts from waypoints world coordinates to CARLA GPS coordinates
-    by parsing the OpenDRIVE map data.
-
-    Args:
-        world_map: CARLA map object to extract reference from.
-
-    Returns:
-        Tuple containing latitude and longitude reference coordinates.
-    """
-    xodr = world_map.to_opendrive()
-    tree = ET.ElementTree(ET.fromstring(xodr))
-
-    # default reference
-    lat_ref = 42.0
-    lon_ref = 2.0
-
-    for opendrive in tree.iter("OpenDRIVE"):
-        for header in opendrive.iter("header"):
-            for georef in header.iter("geoReference"):
-                if georef.text:
-                    str_list = georef.text.split(" ")
-                    for item in str_list:
-                        if "+lat_0" in item:
-                            lat_ref = float(item.split("=")[1])
-                        if "+lon_0" in item:
-                            lon_ref = float(item.split("=")[1])
-    return lat_ref, lon_ref
-
-
-def _location_to_gps(
-    lat_ref: float,
-    lon_ref: float,
-    location: carla.Location,
-) -> dict[str, float]:
-    """Convert from world coordinates to GPS coordinates.
-
-    Transforms CARLA world coordinates to GPS latitude/longitude
-    coordinates using the provided reference points.
-
-    Args:
-        lat_ref: Latitude reference for the current map.
-        lon_ref: Longitude reference for the current map.
-        location: CARLA location to convert to GPS.
-
-    Returns:
-        Dictionary containing 'lat', 'lon', and 'z' GPS coordinates.
-    """
-
-    EARTH_RADIUS_EQUA = 6378137.0  # pylint: disable=invalid-name
-    scale = math.cos(lat_ref * math.pi / 180.0)
-    mx = scale * lon_ref * math.pi * EARTH_RADIUS_EQUA / 180.0
-    my = (
-        scale
-        * EARTH_RADIUS_EQUA
-        * math.log(math.tan((90.0 + lat_ref) * math.pi / 360.0))
-    )
-    mx += location.x
-    my -= location.y
-
-    lon = mx * 180.0 / (math.pi * EARTH_RADIUS_EQUA * scale)
-    lat = 360.0 * math.atan(math.exp(my / (EARTH_RADIUS_EQUA * scale))) / math.pi - 90.0
-    z = location.z
-
-    return {"lat": lat, "lon": lon, "z": z}
+                # The last target point is never the current one: it stays
+                # ahead of the ego as the route's final destination.
+                self.target_point_index = min(i, len(self.target_points) - 2)
+        return self.target_point_index

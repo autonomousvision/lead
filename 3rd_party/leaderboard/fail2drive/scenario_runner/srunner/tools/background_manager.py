@@ -35,7 +35,7 @@ class ChangeRoadBehavior(AtomicBehavior):
 
     def update(self):
         py_trees.blackboard.Blackboard().set(
-            "BA_ChangeRoadBehavior", [self._num_front, self._num_back, self._spawn_dist, self._extra_space], overwrite=True
+            "BA_ChangeRoadBehavior", [self._num_front, self._num_back, self._spawn_dist, self._extra_space], overwrite=True,
         )
         return py_trees.common.Status.SUCCESS
 
@@ -58,7 +58,7 @@ class ChangeOppositeBehavior(AtomicBehavior):
 
     def update(self):
         py_trees.blackboard.Blackboard().set(
-            "BA_ChangeOppositeBehavior", [self._source_dist, self._spawn_dist, self._active], overwrite=True
+            "BA_ChangeOppositeBehavior", [self._source_dist, self._spawn_dist, self._active], overwrite=True,
         )
         return py_trees.common.Status.SUCCESS
 
@@ -82,7 +82,7 @@ class ChangeJunctionBehavior(AtomicBehavior):
 
     def update(self):
         py_trees.blackboard.Blackboard().set(
-            "BA_ChangeJunctionBehavior", [self._source_dist, self._spawn_dist, self._max_actors, self._perc], overwrite=True
+            "BA_ChangeJunctionBehavior", [self._source_dist, self._spawn_dist, self._max_actors, self._perc], overwrite=True,
         )
         return py_trees.common.Status.SUCCESS
 
@@ -187,7 +187,7 @@ class SwitchRouteSources(AtomicBehavior):
 
 class RemoveRoadLane(AtomicBehavior):
     """
-    Updates the blackboard to tell the background activity to remove its actors from the given lane 
+    Updates the blackboard to tell the background activity to remove its actors from the given lane
     and stop generating new ones on this lane, or recover from stopping.
 
     Args:
@@ -265,9 +265,11 @@ class HandleJunctionScenario(AtomicBehavior):
             It also deactivates the road sources.
         active (bool)
     """
-    def __init__(self, clear_junction=True, clear_ego_entry=True, remove_entries=[],
-                 remove_exits=[], stop_entries=True, extend_road_exit=0,
-                 name="HandleJunctionScenario"):
+    def __init__(
+        self, clear_junction=True, clear_ego_entry=True, remove_entries=[],
+        remove_exits=[], stop_entries=True, extend_road_exit=0,
+        name="HandleJunctionScenario",
+    ):
         self._clear_junction = clear_junction
         self._clear_ego_entry = clear_ego_entry
         self._remove_entries = remove_entries
@@ -280,7 +282,10 @@ class HandleJunctionScenario(AtomicBehavior):
         """Updates the blackboard and succeds"""
         py_trees.blackboard.Blackboard().set(
             "BA_HandleJunctionScenario",
-            [self._clear_junction, self._clear_ego_entry, self._remove_entries,
-             self._remove_exits, self._stop_entries, self._extend_road_exit],
-            overwrite=True)
+            [
+                self._clear_junction, self._clear_ego_entry, self._remove_entries,
+                self._remove_exits, self._stop_entries, self._extend_road_exit,
+            ],
+            overwrite=True,
+        )
         return py_trees.common.Status.SUCCESS

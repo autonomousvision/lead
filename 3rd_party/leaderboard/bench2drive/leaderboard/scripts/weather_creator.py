@@ -12,7 +12,8 @@ import carla
 
 def main():
     argparser = argparse.ArgumentParser(
-        description=__doc__)
+        description=__doc__,
+    )
     argparser.add_argument('--host', metavar='H', default='localhost', help='IP of the host CARLA Simulator (default: localhost)')
     argparser.add_argument('--port', metavar='P', default=2000, type=int, help='TCP port of CARLA Simulator (default: 2000)')
     argparser.add_argument('-f', '--file', action="store_true", help='File to start')
@@ -47,4 +48,3 @@ if __name__ == '__main__':
         main()
     except RuntimeError as e:
         print(e)
-

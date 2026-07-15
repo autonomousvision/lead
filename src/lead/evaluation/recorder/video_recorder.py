@@ -13,7 +13,8 @@ import numpy.typing as npt
 import PIL.Image
 import torch
 
-from lead.common import common_utils
+from lead.common import geometry
+from lead.common.sensors import camera
 from lead.config import EvaluationConfig, LeadConfig
 
 LOG = logging.getLogger(__name__)
@@ -24,8 +25,7 @@ class FFmpegVideoWriter:
 
     The output is a fragmented MP4 (``-movflags +frag_keyframe+empty_moov``), so
     the file stays watchable up to the last written fragment even if the process
-    is killed without cleanup (e.g. a SLURM job hitting its time limit). No
-    separate compression pass is needed afterwards.
+    is killed without cleanup (e.g. a SLURM job hitting its time limit).
     """
 
     def __init__(
@@ -88,10 +88,12 @@ class FFmpegVideoWriter:
         Args:
             frame: BGR image matching the width/height given at construction.
         """
+        assert self._process.stdin is not None
         self._process.stdin.write(np.ascontiguousarray(frame).tobytes())
 
     def release(self) -> None:
         """Close the input stream and wait for ffmpeg to finalize the file."""
+        assert self._process.stdin is not None
         self._process.stdin.close()
         returncode = self._process.wait()
         if returncode != 0:
@@ -133,12 +135,8 @@ DEMO_CAMERAS = [
 class VideoRecorder:
     """Handles all video recording and processing for agent evaluation.
 
-    This class manages:
-    - Demo camera setup and positioning
-    - Video writer initialization
-    - Frame capture and processing
-    - Direct H.264 encoding via ffmpeg
-    - Waypoint and target point visualization
+    Manages the demo camera, video writers, H.264 encoding via ffmpeg, and
+    waypoint/target point visualization.
     """
 
     def __init__(
@@ -200,7 +198,7 @@ class VideoRecorder:
                 y=camera_config["y"],
                 z=camera_config["z"],
             )
-            world_camera_location = common_utils.get_world_coordinate_2d(
+            world_camera_location = geometry.get_world_coordinate_2d(
                 self.vehicle.get_transform(),
                 demo_camera_location,
             )
@@ -259,7 +257,7 @@ class VideoRecorder:
                     y=camera_config["y"],
                     z=camera_config["z"],
                 )
-                world_camera_location = common_utils.get_world_coordinate_2d(
+                world_camera_location = geometry.get_world_coordinate_2d(
                     self.vehicle.get_transform(),
                     demo_camera_location,
                 )
@@ -380,17 +378,21 @@ class VideoRecorder:
 
         # Extract camera parameters from config
         camera_fov = float(camera_config["fov"])
-        camera_pos = [camera_config["x"], camera_config["y"], camera_config["z"]]
+        camera_pos = [
+            float(camera_config["x"]),
+            float(camera_config["y"]),
+            float(camera_config["z"]),
+        ]
         camera_rot = [
-            camera_config.get("roll", 0.0),
-            camera_config["pitch"],
-            camera_config["yaw"],
+            float(camera_config.get("roll", 0.0)),
+            float(camera_config["pitch"]),
+            float(camera_config["yaw"]),
         ]  # roll, pitch, yaw
 
         # Draw route in blue
         if pred_waypoints is not None and len(pred_waypoints) > 0:
             route_points = pred_waypoints.detach().cpu().float().numpy()
-            projected_route, points_inside_image = common_utils.project_points_to_image(
+            projected_route, points_inside_image = camera.project_points_to_image(
                 camera_rot,
                 camera_pos,
                 camera_fov,
@@ -450,11 +452,15 @@ class VideoRecorder:
 
         # Extract camera parameters from config
         camera_fov = float(camera_config["fov"])
-        camera_pos = [camera_config["x"], camera_config["y"], camera_config["z"]]
+        camera_pos = [
+            float(camera_config["x"]),
+            float(camera_config["y"]),
+            float(camera_config["z"]),
+        ]
         camera_rot = [
-            camera_config.get("roll", 0.0),
-            camera_config["pitch"],
-            camera_config["yaw"],
+            float(camera_config.get("roll", 0.0)),
+            float(camera_config["pitch"]),
+            float(camera_config["yaw"]),
         ]
 
         # Define colors and sizes for each target point (BGR format)
@@ -465,14 +471,15 @@ class VideoRecorder:
         ]
 
         for key, color in targets_config:
-            if key in target_points and target_points[key] is not None:
+            target_xy = target_points.get(key)
+            if target_xy is not None:
                 # Get target point in vehicle coordinates
                 target_point = np.array(
-                    [[target_points[key][0], target_points[key][1]]],
+                    [[target_xy[0], target_xy[1]]],
                 )
 
                 # Project center point to image
-                projected, points_inside_image = common_utils.project_points_to_image(
+                projected, points_inside_image = camera.project_points_to_image(
                     camera_rot,
                     camera_pos,
                     camera_fov,
@@ -495,14 +502,12 @@ class VideoRecorder:
 
                             # Calculate 3D distance from camera to target point
                             target_3d = np.array(
-                                [target_points[key][0], target_points[key][1], 0.0],
+                                [target_xy[0], target_xy[1], 0.0],
                             )
                             camera_3d = np.array(camera_pos)
                             distance = np.linalg.norm(target_3d - camera_3d)
 
                             # Calculate pixel radius using perspective projection
-                            # pixel_size = (object_size * focal_length) / distance
-                            # focal_length ≈ (image_width / 2) / tan(fov/2)
                             focal_length = (camera_width / 2.0) / np.tan(
                                 np.radians(camera_fov / 2.0),
                             )
@@ -640,12 +645,8 @@ class VideoRecorder:
     ) -> None:
         """Save grid layout with demo and input images stacked vertically.
 
-        Creates a grid by:
-        - Cropping x% from top and bottom of demo image
-        - Cropping x% from top and bottom of input image
-        - Resizing input image width to match demo image width
-        - Optionally drawing waypoints and target points on input image
-        - Stacking them vertically
+        Both images are cropped and width-matched, and waypoints and target
+        points are optionally drawn on the input image before stacking.
 
         Args:
             demo_image: BGR demo image (concatenated cinematic + BEV). If None, uses last stored demo image.
@@ -680,7 +681,7 @@ class VideoRecorder:
         ) and self.lead_config is not None:
             # The input image is stitched from multiple cameras horizontally
             # We need to draw on each camera section separately with correct calibration
-            input_height, input_width = input_image.shape[:2]
+            input_width = input_image.shape[1]
             num_cameras = self.lead_config.expert.sensor_rig.num_cameras
             camera_width = input_width // num_cameras
 
@@ -743,13 +744,13 @@ class VideoRecorder:
                 input_with_viz[:, x_start:x_end, :] = camera_section
 
         # Process demo image: crop 20% from top and bottom
-        demo_h, demo_w = demo_image.shape[:2]
+        demo_h = demo_image.shape[0]
         crop_demo_top = int(demo_h * 0.25)
         crop_demo_bottom = int(demo_h * 0.25)
         demo_cropped = demo_image[crop_demo_top : demo_h - crop_demo_bottom, :]
 
         # Process input image: crop 10% from top and bottom (use visualized version)
-        input_h, input_w = input_with_viz.shape[:2]
+        input_h = input_with_viz.shape[0]
         crop_input_top = int(input_h * 0.078125)
         crop_input_bottom = int(input_h * 0.078125)
         input_cropped = input_with_viz[crop_input_top : input_h - crop_input_bottom, :]

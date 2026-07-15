@@ -12,7 +12,8 @@ IGNORE_EMPTY = True  # treat results with empty records as non-failed
 
 
 def is_failed(json_path: str) -> bool:
-    """Mirror of the criterion from 009_check_successful_routes.py."""
+    """A route is failed if its result is missing, has a composed score below 100
+    with infractions beyond the ignorable ones, or a Failed/crash status."""
     if not os.path.isfile(json_path):
         print(f"File not found: {json_path}")
         return True
@@ -82,15 +83,15 @@ for scenario in os.listdir(RESULTS_DIR):
         timestamp = failed_run_timestamp(json_path)
         if timestamp is None:
             missing_timestamp_counts += 1
-            print(f"[{failed_counts}] No timestamp in {json_path}, only deleting result file.")
+            print(
+                f"[{failed_counts}] No timestamp in {json_path}, only deleting result file.",
+            )
             to_be_deleted.append(json_path)
             failed_counts += 1
             continue
 
         # Find matching log dir + json + data dir by timestamp suffix.
-        matched_log_dirs = [
-            name for name in log_entries if name.endswith(timestamp)
-        ]
+        matched_log_dirs = [name for name in log_entries if name.endswith(timestamp)]
         matched_data_dirs = (
             [name for name in os.listdir(scenario_data_dir) if name.endswith(timestamp)]
             if os.path.isdir(scenario_data_dir)
@@ -132,6 +133,7 @@ print(
 print(f"Paths queued for deletion: {len(to_be_deleted)}")
 
 if not DRY_RUN and to_be_deleted:
+
     def _delete(path: str) -> str:
         if os.path.isdir(path):
             shutil.rmtree(path)

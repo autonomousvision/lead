@@ -26,4 +26,3 @@ markdown_extensions:
   - admonition
   - markdown_include.include:
       base_path: '.'
-

@@ -190,7 +190,7 @@ class SlurmJobPool:
 
         del self.wandb_logger
 
-        os.exit(0)
+        os._exit(0)
 
 
 def main():

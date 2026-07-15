@@ -26,7 +26,7 @@ class ROS1Server(object):
         self._server_process.run(
             package="rosbridge_server",
             launch_file="rosbridge_websocket.launch",
-            wait=False
+            wait=False,
         )
         ROS1Server.client.run(30)
 
@@ -108,7 +108,7 @@ class ROS1Agent(ROSBaseAgent):
         spawn_point = BridgeHelper.carla2ros_pose(
             transform.location.x, transform.location.y, transform.location.z,
             transform.rotation.roll, transform.rotation.pitch, transform.rotation.yaw,
-            to_quat=True
+            to_quat=True,
         )
         attributes = [{"key": str(key), "value": str(value)} for key, value in attributes.items()]
 
@@ -141,29 +141,37 @@ class ROS1Agent(ROSBaseAgent):
 
         poses = []
         for wp in self._global_plan_world_coord:
-            poses.append(BridgeHelper.carla2ros_pose(
-                wp[0].location.x, wp[0].location.y, wp[0].location.z,
-                wp[0].rotation.roll, wp[0].rotation.pitch, wp[0].rotation.yaw,
-                to_quat=True
-            ))
+            poses.append(
+                BridgeHelper.carla2ros_pose(
+                    wp[0].location.x, wp[0].location.y, wp[0].location.z,
+                    wp[0].rotation.roll, wp[0].rotation.pitch, wp[0].rotation.yaw,
+                    to_quat=True,
+                ),
+            )
 
-        self._path_publisher.publish(roslibpy.Message(
+        self._path_publisher.publish(
+            roslibpy.Message(
             {
                 "header": {
-                    "frame_id": "/map"
+                    "frame_id": "/map",
                 },
-                "road_options": [ int(wp[1]) for wp in self._global_plan_world_coord ],
-                "poses": [ pose for pose in poses ]
-            }))
+                "road_options": [ int(wp[1]) for wp in self._global_plan_world_coord],
+                "poses": [ pose for pose in poses],
+            },
+            ),
+        )
 
-        self._path_gnss_publisher.publish(roslibpy.Message(
+        self._path_gnss_publisher.publish(
+            roslibpy.Message(
             {
                 "header": {
-                    "frame_id": "/map"
+                    "frame_id": "/map",
                 },
-                "road_options": [ int(wp[1]) for wp in self._global_plan ],
-                "coordinates": [ {"latitude": wp[0]["lat"], "longitude": wp[0]["lon"], "altitude": wp[0]["z"]} for wp in self._global_plan ]
-            }))
+                "road_options": [ int(wp[1]) for wp in self._global_plan],
+                "coordinates": [ {"latitude": wp[0]["lat"], "longitude": wp[0]["lon"], "altitude": wp[0]["z"]} for wp in self._global_plan],
+            },
+            ),
+        )
 
     def destroy(self):
         """

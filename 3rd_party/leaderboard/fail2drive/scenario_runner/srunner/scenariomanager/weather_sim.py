@@ -217,7 +217,7 @@ class RouteWeatherBehavior(py_trees.behaviour.Behaviour):
                         location + carla.Location(z=1),
                         str(new_perc),
                         color=carla.Color(50, 50, 50),
-                        life_time=100000
+                        life_time=100000,
                     )
                     debug_perc = new_perc
         self._route_weathers = self.get_route_weathers()
@@ -297,7 +297,7 @@ class RouteWeatherBehavior(py_trees.behaviour.Behaviour):
             if route_veh_vec.dot(route_transform.get_forward_vector()) > 0:
                 new_index = index
 
-        
+
         # Do not change the weather during datagen
         if int(os.environ.get('DATAGEN', 0)) == 0:
             if new_index > self._current_index:

@@ -18,11 +18,13 @@ import py_trees
 import carla
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorTransformSetter,
-                                                                      ActorDestroy,
-                                                                      ActorSource,
-                                                                      ActorSink,
-                                                                      WaypointFollower)
+from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
+    ActorTransformSetter,
+    ActorDestroy,
+    ActorSource,
+    ActorSink,
+    WaypointFollower,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import CollisionTest
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import DriveDistance
 from srunner.scenarios.basic_scenario import BasicScenario
@@ -37,8 +39,10 @@ class ManeuverOppositeDirection(BasicScenario):
     This is a single ego vehicle scenario
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 obstacle_type='barrier', timeout=120):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        obstacle_type='barrier', timeout=120,
+    ):
         """
         Setup all relevant parameters and create scenario
         obstacle_type -> flag to select type of leading obstacle. Values: vehicle, barrier
@@ -69,7 +73,8 @@ class ManeuverOppositeDirection(BasicScenario):
             config,
             world,
             debug_mode,
-            criteria_enable=criteria_enable)
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
         """
@@ -81,7 +86,8 @@ class ManeuverOppositeDirection(BasicScenario):
 
         first_actor_transform = carla.Transform(
             first_actor_waypoint.transform.location,
-            first_actor_waypoint.transform.rotation)
+            first_actor_waypoint.transform.rotation,
+        )
         if self._obstacle_type == 'vehicle':
             first_actor_model = 'vehicle.nissan.micra'
         else:
@@ -91,9 +97,11 @@ class ManeuverOppositeDirection(BasicScenario):
             position_yaw = second_prop_waypoint.transform.rotation.yaw + 90
             offset_location = carla.Location(
                 0.50 * second_prop_waypoint.lane_width * math.cos(math.radians(position_yaw)),
-                0.50 * second_prop_waypoint.lane_width * math.sin(math.radians(position_yaw)))
+                0.50 * second_prop_waypoint.lane_width * math.sin(math.radians(position_yaw)),
+            )
             second_prop_transform = carla.Transform(
-                second_prop_waypoint.transform.location + offset_location, first_actor_transform.rotation)
+                second_prop_waypoint.transform.location + offset_location, first_actor_transform.rotation,
+            )
             second_prop_actor = CarlaDataProvider.request_new_actor(first_actor_model, second_prop_transform)
             second_prop_actor.set_simulate_physics(True)
         first_actor = CarlaDataProvider.request_new_actor(first_actor_model, first_actor_transform)
@@ -126,12 +134,14 @@ class ManeuverOppositeDirection(BasicScenario):
         # Leaf nodes
         actor_source = ActorSource(
             ['vehicle.audi.tt', 'vehicle.tesla.model3', 'vehicle.nissan.micra'],
-            self._source_transform, self._source_gap, self._blackboard_queue_name)
+            self._source_transform, self._source_gap, self._blackboard_queue_name,
+        )
         actor_sink = ActorSink(self._sink_location, 10)
         ego_drive_distance = DriveDistance(self.ego_vehicles[0], self._ego_vehicle_drive_distance)
         waypoint_follower = WaypointFollower(
             self.other_actors[1], self._opposite_speed,
-            blackboard_queue_name=self._blackboard_queue_name, avoid_collision=True)
+            blackboard_queue_name=self._blackboard_queue_name, avoid_collision=True,
+        )
 
         # Non-leaf nodes
         parallel_root = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)

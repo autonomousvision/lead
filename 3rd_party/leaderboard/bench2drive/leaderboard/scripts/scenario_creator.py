@@ -47,7 +47,7 @@ SCENARIO_TYPES ={
         ["distance", "value"],
         ["direction", "value"],
         ["blocker_model", "value"],
-        ["crossing_angle", "value"]
+        ["crossing_angle", "value"],
     ],
     "ParkingCrossingPedestrian": [
         ["distance", "value"],
@@ -246,7 +246,7 @@ def get_scenario_type(tmap, world, spectator):
         str(round(wp.transform.location.x, 1)),
         str(round(wp.transform.location.y, 1)),
         str(round(wp.transform.location.z, 1)),
-        str(round(wp.transform.rotation.yaw, 1))
+        str(round(wp.transform.rotation.yaw, 1)),
     )
     return scen_type, trigger_point
 
@@ -279,7 +279,7 @@ def get_transform_data(a_name, scen_type, tmap, world, spectator):
         str(round(wp.transform.location.x, 1)),
         str(round(wp.transform.location.y, 1)),
         str(round(wp.transform.location.z, 1)),
-        str(round(wp.transform.rotation.yaw, 1))
+        str(round(wp.transform.rotation.yaw, 1)),
     )
 
 def get_location_data(a_name, scen_type, tmap, world, spectator, a_type):
@@ -300,8 +300,8 @@ def get_location_data(a_name, scen_type, tmap, world, spectator, a_type):
     loc =  (
             str(round(wp.transform.location.x, 1)),
             str(round(wp.transform.location.y, 1)),
-            str(round(wp.transform.location.z, 1))
-        )
+            str(round(wp.transform.location.z, 1)),
+    )
 
     if "probability" in a_type:
         p = input(f"\033[1m> Enter the '{a_name}' probability \033[0m")

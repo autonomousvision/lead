@@ -1,6 +1,5 @@
 """Expert (data collection) section of the config tree."""
 
-from lead.common.constants import TargetDataset
 from lead.config.expert.bicycle_model_config import BicycleModelConfig
 from lead.config.expert.data_collection_config import DataCollectionConfig
 from lead.config.expert.driving_config import ExpertDrivingConfig
@@ -17,18 +16,15 @@ from lead.config.node import ConfigNode, child_node
 class ExpertConfig(ConfigNode):
     """Configuration of the privileged expert and the data it collects.
 
-    This section fully describes a dataset: the sensor rig, the planning area,
-    storage encoding and the expert's driving behavior. Data collection stores
-    the resolved section with the dataset; training loads it back so shared
-    values always match the data.
+    This section fully describes a dataset — the sensor rig, the planning
+    area, storage encoding and the expert's driving behavior; data collection
+    stores the resolved section with the dataset and training loads it back so
+    shared values always match the data.
     """
 
-    # Name of the expert config profile (yaml in ``config_profiles/expert/``)
+    # Name of the expert config profile (yaml in ``config/profiles/expert/``)
     # whose deltas are applied over these defaults.
     config_profile: str = "default"
-
-    # Dataset flavor this configuration targets.
-    target_dataset: TargetDataset = TargetDataset.CARLA_LEADERBOARD2_1CAMERA
 
     simulation = child_node(SimulationConfig)
     sensor_rig = child_node(SensorRigConfig)

@@ -14,23 +14,29 @@ import py_trees
 import carla
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorDestroy,
-                                                                      ActorTransformSetter,
-                                                                      SwitchWrongDirectionTest,
-                                                                      ScenarioTimeout,
-                                                                      Idle, WaitForever,
-                                                                      OppositeActorFlow,
-                                                                      KeepVelocity)
-from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (InTriggerDistanceToLocation,
-                                                                               WaitUntilInFrontPosition,
-                                                                               InTimeToArrivalToLocation)
+from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
+    ActorDestroy,
+    ActorTransformSetter,
+    SwitchWrongDirectionTest,
+    ScenarioTimeout,
+    Idle, WaitForever,
+    OppositeActorFlow,
+    KeepVelocity,
+)
+from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
+    InTriggerDistanceToLocation,
+    WaitUntilInFrontPosition,
+    InTimeToArrivalToLocation,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import CollisionTest, ScenarioTimeoutTest
 from srunner.scenarios.basic_scenario import BasicScenario
-from srunner.tools.background_manager import (RemoveRoadLane,
-                                              ReAddRoadLane,
-                                              SetMaxSpeed,
-                                              ChangeOppositeBehavior,
-                                              ChangeRoadBehavior)
+from srunner.tools.background_manager import (
+    RemoveRoadLane,
+    ReAddRoadLane,
+    SetMaxSpeed,
+    ChangeOppositeBehavior,
+    ChangeRoadBehavior,
+)
 
 
 def get_value_parameter(config, name, p_type, default):
@@ -43,7 +49,7 @@ def get_interval_parameter(config, name, p_type, default):
     if name in config.other_parameters:
         return [
             p_type(config.other_parameters[name]['from']),
-            p_type(config.other_parameters[name]['to'])
+            p_type(config.other_parameters[name]['to']),
         ]
     else:
         return default
@@ -58,8 +64,10 @@ class ConstructionObstacle(BasicScenario):
     This is a single ego vehicle scenario
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False,
-                 criteria_enable=True, timeout=60):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False,
+        criteria_enable=True, timeout=60,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -172,11 +180,15 @@ class ConstructionObstacle(BasicScenario):
     def _create_construction_setup(self, start_transform, lane_width):
         """Create construction setup"""
 
-        _initial_offset = {'cones': {'yaw': 270, 'k': 0.85 * lane_width / 2.0},
-                           'warning_sign': {'yaw': 180, 'k': 5, 'z': 0},
-                           'debris': {'yaw': 0, 'k': 2, 'z': 1}}
-        _prop_names = {'warning_sign': 'static.prop.trafficwarning',
-                       'debris': 'static.prop.dirtdebris02'}
+        _initial_offset = {
+            'cones': {'yaw': 270, 'k': 0.85 * lane_width / 2.0},
+            'warning_sign': {'yaw': 180, 'k': 5, 'z': 0},
+            'debris': {'yaw': 0, 'k': 2, 'z': 1},
+        }
+        _prop_names = {
+            'warning_sign': 'static.prop.trafficwarning',
+            'debris': 'static.prop.dirtdebris02',
+        }
 
         _perp_angle = 90
         _setup = {'lengths': [4, 3], 'offsets': [2, 1]}
@@ -188,7 +200,8 @@ class ConstructionObstacle(BasicScenario):
                 continue
             transform = carla.Transform(
                 start_transform.location,
-                start_transform.rotation)
+                start_transform.rotation,
+            )
             transform.rotation.yaw += value['yaw']
             transform.location += value['k'] * \
                 transform.rotation.get_forward_vector()
@@ -198,7 +211,8 @@ class ConstructionObstacle(BasicScenario):
             spawn_transform = carla.Transform(transform.location, transform.rotation)
             spawn_transform.location.z -= 200
             static = CarlaDataProvider.request_new_actor(
-                _prop_names[key], spawn_transform)
+                _prop_names[key], spawn_transform,
+            )
             static.set_simulate_physics(False)
             self.other_actors.append(static)
 
@@ -207,7 +221,8 @@ class ConstructionObstacle(BasicScenario):
         # Cones
         side_transform = carla.Transform(
             start_transform.location,
-            start_transform.rotation)
+            start_transform.rotation,
+        )
         side_transform.rotation.yaw += _perp_angle
         offset_vec = _initial_offset['cones']['k'] * side_transform.rotation.get_forward_vector()
         if self._direction == 'right':
@@ -223,7 +238,8 @@ class ConstructionObstacle(BasicScenario):
                 forward_vector=side_transform.rotation.get_forward_vector(),
                 z_inc=_z_increment,
                 cone_length=_setup['lengths'][i],
-                cone_offset=_setup['offsets'][i])
+                cone_offset=_setup['offsets'][i],
+            )
             side_transform.location += side_transform.get_forward_vector() * \
                 _setup['lengths'][i] * _setup['offsets'][i]
             if i == 0 and self._direction == 'left':
@@ -243,14 +259,17 @@ class ConstructionObstacle(BasicScenario):
 
         for actor, transform in self._construction_transforms:
             root.add_child(ActorTransformSetter(actor, transform, True))
-    
+
         end_condition = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
         end_condition.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
         end_condition.add_child(WaitUntilInFrontPosition(self.ego_vehicles[0], self._end_wp.transform, False))
 
         behavior = py_trees.composites.Sequence()
-        behavior.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], self._construction_wp.transform.location, self._trigger_distance))
+        behavior.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], self._construction_wp.transform.location, self._trigger_distance,
+            ),
+        )
         behavior.add_child(Idle(self._opposite_wait_duration))
         if self.route_mode:
             behavior.add_child(SetMaxSpeed(self._max_speed))
@@ -309,14 +328,17 @@ class ConstructionObstacleTwoWays(ConstructionObstacle):
 
         for actor, transform in self._construction_transforms:
             root.add_child(ActorTransformSetter(actor, transform, True))
-    
+
         end_condition = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
         end_condition.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
         end_condition.add_child(WaitUntilInFrontPosition(self.ego_vehicles[0], self._end_wp.transform, False))
 
         behavior = py_trees.composites.Sequence()
-        behavior.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], self._construction_wp.transform.location, self._trigger_distance))
+        behavior.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], self._construction_wp.transform.location, self._trigger_distance,
+            ),
+        )
         behavior.add_child(Idle(self._opposite_wait_duration))
         if self.route_mode:
             behavior.add_child(SwitchWrongDirectionTest(False))
@@ -390,14 +412,17 @@ class CustomConstructionObstacleTwoWays(CustomConstructionObstacle):
 
         for actor, transform in self._construction_transforms:
             root.add_child(ActorTransformSetter(actor, transform, True))
-    
+
         end_condition = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
         end_condition.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
         end_condition.add_child(WaitUntilInFrontPosition(self.ego_vehicles[0], self._end_wp.transform, False))
 
         behavior = py_trees.composites.Sequence()
-        behavior.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], self._construction_wp.transform.location, self._trigger_distance))
+        behavior.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], self._construction_wp.transform.location, self._trigger_distance,
+            ),
+        )
         behavior.add_child(Idle(self._opposite_wait_duration))
         if self.route_mode:
             behavior.add_child(SwitchWrongDirectionTest(False))
@@ -427,11 +452,15 @@ class PermutedConstructionObstacle(CustomConstructionObstacle):
     def _create_construction_setup(self, start_transform, lane_width):
         """Create construction setup"""
 
-        _initial_offset = {'cones': {'yaw': 270, 'k': 0.85 * lane_width / 2.0},
-                        'warning_sign': {'yaw': 180, 'k': 5, 'z': 0},
-                        'debris': {'yaw': 0, 'k': 2, 'z': 1}}
-        _prop_names = {'warning_sign': get_value_parameter(self.config, 'warning_sign', str, 'static.prop.trafficwarning'),
-                    'debris': get_value_parameter(self.config, 'debris', str, 'static.prop.dirtdebris02')}
+        _initial_offset = {
+            'cones': {'yaw': 270, 'k': 0.85 * lane_width / 2.0},
+            'warning_sign': {'yaw': 180, 'k': 5, 'z': 0},
+            'debris': {'yaw': 0, 'k': 2, 'z': 1},
+        }
+        _prop_names = {
+            'warning_sign': get_value_parameter(self.config, 'warning_sign', str, 'static.prop.trafficwarning'),
+            'debris': get_value_parameter(self.config, 'debris', str, 'static.prop.dirtdebris02'),
+        }
 
         _perp_angle = 90
         _setup = {'lengths': [4, 3], 'offsets': [2, 1]}
@@ -443,7 +472,8 @@ class PermutedConstructionObstacle(CustomConstructionObstacle):
                 continue
             transform = carla.Transform(
                 start_transform.location,
-                start_transform.rotation)
+                start_transform.rotation,
+            )
             transform.rotation.yaw += value['yaw']
             transform.location += value['k'] * \
                 transform.rotation.get_forward_vector()
@@ -453,7 +483,8 @@ class PermutedConstructionObstacle(CustomConstructionObstacle):
             spawn_transform = carla.Transform(transform.location, transform.rotation)
             spawn_transform.location.z -= 200
             static = CarlaDataProvider.request_new_actor(
-                _prop_names[key], spawn_transform)
+                _prop_names[key], spawn_transform,
+            )
             static.set_simulate_physics(False)
             self.other_actors.append(static)
 
@@ -462,7 +493,8 @@ class PermutedConstructionObstacle(CustomConstructionObstacle):
         # Cones
         side_transform = carla.Transform(
             start_transform.location,
-            start_transform.rotation)
+            start_transform.rotation,
+        )
         side_transform.rotation.yaw += _perp_angle
         offset_vec = _initial_offset['cones']['k'] * side_transform.rotation.get_forward_vector()
         if self._direction == 'right':
@@ -478,7 +510,8 @@ class PermutedConstructionObstacle(CustomConstructionObstacle):
                 forward_vector=side_transform.rotation.get_forward_vector(),
                 z_inc=_z_increment,
                 cone_length=_setup['lengths'][i],
-                cone_offset=_setup['offsets'][i])
+                cone_offset=_setup['offsets'][i],
+            )
             side_transform.location += side_transform.get_forward_vector() * \
                 _setup['lengths'][i] * _setup['offsets'][i]
             if i == 0 and self._direction == 'left':
@@ -504,11 +537,15 @@ class PermutedConstructionObstacleTwoWays(CustomConstructionObstacleTwoWays):
     def _create_construction_setup(self, start_transform, lane_width):
         """Create construction setup"""
 
-        _initial_offset = {'cones': {'yaw': 270, 'k': 0.85 * lane_width / 2.0},
-                        'warning_sign': {'yaw': 180, 'k': 5, 'z': 0},
-                        'debris': {'yaw': 0, 'k': 2, 'z': 1}}
-        _prop_names = {'warning_sign': get_value_parameter(self.config, 'warning_sign', str, 'static.prop.trafficwarning'),
-                    'debris': get_value_parameter(self.config, 'debris', str, 'static.prop.dirtdebris02')}
+        _initial_offset = {
+            'cones': {'yaw': 270, 'k': 0.85 * lane_width / 2.0},
+            'warning_sign': {'yaw': 180, 'k': 5, 'z': 0},
+            'debris': {'yaw': 0, 'k': 2, 'z': 1},
+        }
+        _prop_names = {
+            'warning_sign': get_value_parameter(self.config, 'warning_sign', str, 'static.prop.trafficwarning'),
+            'debris': get_value_parameter(self.config, 'debris', str, 'static.prop.dirtdebris02'),
+        }
 
         _perp_angle = 90
         _setup = {'lengths': [4, 3], 'offsets': [2, 1]}
@@ -520,7 +557,8 @@ class PermutedConstructionObstacleTwoWays(CustomConstructionObstacleTwoWays):
                 continue
             transform = carla.Transform(
                 start_transform.location,
-                start_transform.rotation)
+                start_transform.rotation,
+            )
             transform.rotation.yaw += value['yaw']
             transform.location += value['k'] * \
                 transform.rotation.get_forward_vector()
@@ -530,7 +568,8 @@ class PermutedConstructionObstacleTwoWays(CustomConstructionObstacleTwoWays):
             spawn_transform = carla.Transform(transform.location, transform.rotation)
             spawn_transform.location.z -= 200
             static = CarlaDataProvider.request_new_actor(
-                _prop_names[key], spawn_transform)
+                _prop_names[key], spawn_transform,
+            )
             static.set_simulate_physics(False)
             self.other_actors.append(static)
 
@@ -539,7 +578,8 @@ class PermutedConstructionObstacleTwoWays(CustomConstructionObstacleTwoWays):
         # Cones
         side_transform = carla.Transform(
             start_transform.location,
-            start_transform.rotation)
+            start_transform.rotation,
+        )
         side_transform.rotation.yaw += _perp_angle
         offset_vec = _initial_offset['cones']['k'] * side_transform.rotation.get_forward_vector()
         if self._direction == 'right':
@@ -555,7 +595,8 @@ class PermutedConstructionObstacleTwoWays(CustomConstructionObstacleTwoWays):
                 forward_vector=side_transform.rotation.get_forward_vector(),
                 z_inc=_z_increment,
                 cone_length=_setup['lengths'][i],
-                cone_offset=_setup['offsets'][i])
+                cone_offset=_setup['offsets'][i],
+            )
             side_transform.location += side_transform.get_forward_vector() * \
                 _setup['lengths'][i] * _setup['offsets'][i]
             if i == 0 and self._direction == 'left':
@@ -590,8 +631,9 @@ class CustomObstacle(CustomConstructionObstacle):
             roll = float(static.get("roll", 0))
             transform = carla.Transform(
                 start_transform.location,
-                start_transform.rotation)
-            
+                start_transform.rotation,
+            )
+
             transform.location += x * transform.rotation.get_forward_vector()
             transform.location += y * transform.rotation.get_right_vector()
             transform.location += z * transform.rotation.get_up_vector()
@@ -607,7 +649,7 @@ class CustomObstacle(CustomConstructionObstacle):
 
             actors.append(static)
             self._construction_transforms.append([static, transform])
-        
+
         sortedactors = sorted(zip(actors, statics), key=lambda l: l[1].get("x", 0)) # sorted by x
         self.first = sortedactors[0][0]
         self.last = sortedactors[-1][0]
@@ -637,8 +679,9 @@ class CustomObstacleTwoWays(CustomConstructionObstacleTwoWays):
             roll = float(static.get("roll", 0))
             transform = carla.Transform(
                 start_transform.location,
-                start_transform.rotation)
-            
+                start_transform.rotation,
+            )
+
             transform.location += x * transform.rotation.get_forward_vector()
             transform.location += y * transform.rotation.get_right_vector()
             transform.location += z * transform.rotation.get_up_vector()
@@ -649,12 +692,13 @@ class CustomObstacleTwoWays(CustomConstructionObstacleTwoWays):
             spawn_transform = carla.Transform(transform.location, transform.rotation) # WTF WHY?
             spawn_transform.location.z -= 200
             static = CarlaDataProvider.request_new_actor(
-                prop, spawn_transform)
+                prop, spawn_transform,
+            )
             static.set_simulate_physics(False)
             actors.append(static)
 
             self._construction_transforms.append([static, transform])
-        
+
         sortedactors = sorted(zip(actors, statics), key=lambda l: float(l[1].get("x", 0))) # sorted by x
         self.first = sortedactors[0][0]
         self.last = sortedactors[-1][0]
@@ -672,8 +716,10 @@ class ConstructionObstaclePedestrian(CustomConstructionObstacle):
     This is a single ego vehicle scenario
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False,
-                 criteria_enable=True, timeout=60):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False,
+        criteria_enable=True, timeout=60,
+    ):
 
         self._adversary_speed = 2.0  # Speed of the adversary [m/s]
         # self._crossing_angle = get_value_parameter(config, 'crossing_angle', float, 0)
@@ -732,20 +778,30 @@ class ConstructionObstaclePedestrian(CustomConstructionObstacle):
 
         # Wait until ego is close to the adversary
         trigger_adversary = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart")
-        trigger_adversary.add_child(InTimeToArrivalToLocation(
-            self.ego_vehicles[0], self._reaction_time, collision_location))
-        trigger_adversary.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], collision_location, self._min_trigger_dist))
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart",
+        )
+        trigger_adversary.add_child(
+            InTimeToArrivalToLocation(
+            self.ego_vehicles[0], self._reaction_time, collision_location,
+            ),
+        )
+        trigger_adversary.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], collision_location, self._min_trigger_dist,
+            ),
+        )
         sequence.add_child(trigger_adversary)
 
         # Move the adversary
         distance = 8.0
         duration = distance / self._adversary_speed
 
-        sequence.add_child(KeepVelocity(
+        sequence.add_child(
+            KeepVelocity(
             self.adversary, self._adversary_speed,
-            duration=duration, distance=distance, name="AdversaryCrossing"))
+            duration=duration, distance=distance, name="AdversaryCrossing",
+            ),
+        )
 
         # Remove everything
         sequence.add_child(ActorDestroy(self.adversary, name="DestroyAdversary"))

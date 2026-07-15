@@ -27,8 +27,10 @@ class PriorityAtJunction(BasicScenario):
 
     timeout = 80  # Timeout of scenario in seconds
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80,
+    ):
         """
         Setup all relevant parameters and create scenario
         """
@@ -37,12 +39,14 @@ class PriorityAtJunction(BasicScenario):
         self._tl_dict = {}
 
         self.timeout = timeout
-        super().__init__("PriorityAtJunction",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "PriorityAtJunction",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
         """

@@ -2,16 +2,60 @@ import logging
 import math
 
 import jaxtyping as jt
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
+from torch.amp.autocast_mode import autocast
 
-import lead.common.common_utils as common_utils
 from lead.common.constants import RadarLabels
 from lead.config import LeadConfig
-from lead.policy.transfuser.utils import transfuser_utils as fn
+from lead.policy.transfuser import ops
 
 logger = logging.getLogger(__name__)
+
+
+def average_displacement_error(
+    predictions: torch.Tensor,
+    observed_traj: torch.Tensor,
+) -> float:
+    """Compute L2 distance between proposed trajectories and ground truth.
+
+    Args:
+        predictions: A numpy array representing model predictions of size: [# batch, # time steps, spatial features].
+        observed_traj: A tensor representing the observed trajectory in the logs of size [# batch, time steps, spatial features]
+
+    Returns:
+        float: L2 distance
+    """
+    predictions_np = predictions.detach().cpu().float().numpy()
+    observed_traj_np = observed_traj.detach().cpu().float().numpy()
+    return float(
+        np.linalg.norm(predictions_np - observed_traj_np, axis=-1).mean(axis=-1).mean(),
+    )
+
+
+def final_displacement_error(
+    predictions: torch.Tensor,
+    observed_traj: torch.Tensor,
+) -> float:
+    """Compute final L2 distance between proposed trajectories and ground truth.
+
+    Args:
+        predictions: Model predictions of size: [# batch, # time steps, spatial features].
+        observed_traj: Observed trajectory in the logs of size [# batch, time steps, spatial features]
+
+    Returns:
+        float: L2 distance
+    """
+    predictions_np = predictions.detach().cpu().float().numpy()
+    observed_traj_np = observed_traj.detach().cpu().float().numpy()
+    return float(
+        np.linalg.norm(
+            predictions_np[:, -1] - observed_traj_np[:, -1],
+            axis=-1,
+        ).mean(),
+    )
 
 
 class PlanningDecoder(nn.Module):
@@ -24,7 +68,7 @@ class PlanningDecoder(nn.Module):
         super().__init__()
         self.device = device
         self.lead_config = lead_config
-        config = lead_config.agent.transfuser
+        config = lead_config.policy.transfuser
         self.config = config
         self.planning_context_encoder = PlanningContextEncoder(
             lead_config=lead_config,
@@ -78,15 +122,6 @@ class PlanningDecoder(nn.Module):
                 ),
             )
 
-        self.tp_normalization_constants = torch.tensor(
-            self.config.target_points_normalization_constants,
-            device=self.device,
-            dtype=self.lead_config.training.optimization.torch_float_type,
-        )
-
-        self.reset_parameters()
-
-    def reset_parameters(self):
         nn.init.uniform_(self.query)
 
     def forward(
@@ -98,7 +133,7 @@ class PlanningDecoder(nn.Module):
         log: dict,
     ) -> tuple[
         jt.Float[torch.Tensor, "B n_checkpoints 2"] | None,
-        jt.Float[torch.Tensor, "B n_waypoints 2"],
+        jt.Float[torch.Tensor, "B n_waypoints 2"] | None,
         jt.Float[torch.Tensor, "B speed_classes"] | None,
         jt.Float[torch.Tensor, " B"] | None,
     ]:
@@ -154,7 +189,7 @@ class PlanningDecoder(nn.Module):
             target_speed_query = queries[:, query_idx]
             target_speed_dist = self.target_speed_decoder(target_speed_query)
 
-            with torch.amp.autocast(device_type="cuda", enabled=False):
+            with autocast(device_type="cuda", enabled=False):
                 target_speed_softmax = torch.softmax(target_speed_dist.float(), dim=-1)
                 target_speed_scalar = decode_two_hot(
                     target_speed_softmax,
@@ -171,7 +206,7 @@ class PlanningDecoder(nn.Module):
 
     def compute_loss(self, predictions, data: dict, loss: dict, log: dict):
         # Prepare loss dictionary
-        with torch.amp.autocast(device_type="cuda", enabled=False):
+        with autocast(device_type="cuda", enabled=False):
             if self.config.predict_temporal_spatial_waypoints:
                 waypoints_label = data["future_waypoints"].to(
                     self.device,
@@ -236,11 +271,11 @@ class PlanningDecoder(nn.Module):
                 )
                 log.update(
                     {
-                        "metric/route_ade": common_utils.average_displacement_error(
+                        "metric/route_ade": average_displacement_error(
                             predictions.pred_route,
                             route_label,
                         ),
-                        "metric/route_fde": common_utils.final_displacement_error(
+                        "metric/route_fde": final_displacement_error(
                             predictions.pred_route,
                             route_label,
                         ),
@@ -294,11 +329,11 @@ class PlanningDecoder(nn.Module):
                 )[:, : self.config.num_way_points_prediction]
                 log.update(
                     {
-                        "metric/waypoints_ade": common_utils.average_displacement_error(
+                        "metric/waypoints_ade": average_displacement_error(
                             predictions.pred_future_waypoints,
                             waypoints_label,
                         ),
-                        "metric/waypoints_fde": common_utils.final_displacement_error(
+                        "metric/waypoints_fde": final_displacement_error(
                             predictions.pred_future_waypoints,
                             waypoints_label,
                         ),
@@ -326,7 +361,7 @@ def decode_two_hot(
         device=device,
         dtype=two_hot_label.dtype,
     ).unsqueeze(0)
-    decoded = (two_hot_label * classes).sum(axis=-1)
+    decoded = (two_hot_label * classes).sum(dim=-1)
     return decoded
 
 
@@ -393,7 +428,7 @@ class PlanningContextEncoder(nn.Module):
         super().__init__()
         self.device = device
         self.lead_config = lead_config
-        config = lead_config.agent.transfuser
+        config = lead_config.policy.transfuser
         self.config = config
 
         self.num_status_tokens = 0
@@ -547,13 +582,14 @@ class PlanningContextEncoder(nn.Module):
             and self.config.use_radar_detection
             and self.config.use_radar_detection
         ):
+            assert radar_predictions is not None
             radar_token = self.radar_encoder(radar_logits).reshape(
                 -1,
                 self.config.num_radar_queries,
                 self.config.transfuser_token_dim,
             )  # (bs, num_radar_queries, transfuser_token_dim)
-            radar_pos_embed = fn.gen_sineembed_for_position(
-                fn.unit_normalize_bev_points(
+            radar_pos_embed = ops.gen_sineembed_for_position(
+                ops.unit_normalize_bev_points(
                     radar_predictions[..., [RadarLabels.X, RadarLabels.Y]].reshape(
                         -1,
                         2,

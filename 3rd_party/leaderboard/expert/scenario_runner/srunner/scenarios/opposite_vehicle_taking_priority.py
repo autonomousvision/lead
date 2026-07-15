@@ -17,19 +17,23 @@ import py_trees
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
     ActorDestroy, ActorTransformSetter, ConstantVelocityAgentBehavior, Idle,
-    TrafficLightFreezer)
+    TrafficLightFreezer,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import \
     CollisionTest
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
     InTimeToArrivalToLocation, InTriggerDistanceToLocation,
-    WaitEndIntersection)
+    WaitEndIntersection,
+)
 from srunner.scenarios.basic_scenario import BasicScenario
 from srunner.tools.background_manager import HandleJunctionScenario
-from srunner.tools.scenario_helper import (filter_junction_wp_direction,
-                                           generate_target_waypoint,
-                                           get_closest_traffic_light,
-                                           get_geometric_linear_intersection,
-                                           get_junction_topology)
+from srunner.tools.scenario_helper import (
+    filter_junction_wp_direction,
+    generate_target_waypoint,
+    get_closest_traffic_light,
+    get_geometric_linear_intersection,
+    get_junction_topology,
+)
 
 
 class OppositeVehicleJunction(BasicScenario):
@@ -38,8 +42,10 @@ class OppositeVehicleJunction(BasicScenario):
     forcing it to break to avoid a collision
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=90):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=90,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -63,12 +69,14 @@ class OppositeVehicleJunction(BasicScenario):
 
         self._lights = carla.VehicleLightState.Special1 | carla.VehicleLightState.Special2
 
-        super().__init__("OppositeVehicleJunction",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "OppositeVehicleJunction",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
         """
@@ -110,13 +118,14 @@ class OppositeVehicleJunction(BasicScenario):
         source_transform = spawn_wp.transform
         self._spawn_location = carla.Transform(
             source_transform.location + carla.Location(z=0.1),
-            source_transform.rotation
+            source_transform.rotation,
         )
         self.parking_slots.append(source_transform.location)
 
         # Spawn the actor and move it below ground
         opposite_actor = CarlaDataProvider.request_new_actor(
-            'vehicle.*', self._spawn_location, attribute_filter={'special_type': 'emergency'})
+            'vehicle.*', self._spawn_location, attribute_filter={'special_type': 'emergency'},
+        )
         if not opposite_actor:
             raise Exception("Couldn't spawn the actor")
         lights = opposite_actor.get_light_state()
@@ -126,7 +135,7 @@ class OppositeVehicleJunction(BasicScenario):
 
         opposite_transform = carla.Transform(
             source_transform.location - carla.Location(z=500),
-            source_transform.rotation
+            source_transform.rotation,
         )
         opposite_actor.set_transform(opposite_transform)
         opposite_actor.set_simulate_physics(enabled=False)
@@ -140,7 +149,8 @@ class OppositeVehicleJunction(BasicScenario):
 
         # get the collision location
         self._collision_location = get_geometric_linear_intersection(
-            starting_wp.transform.location, source_entry_wps[0].transform.location, True)
+            starting_wp.transform.location, source_entry_wps[0].transform.location, True,
+        )
         if not self._collision_location:
             raise ValueError("Couldn't find an intersection point")
 
@@ -175,8 +185,10 @@ class OppositeVehicleRunningRedLight(OppositeVehicleJunction):
     Signalized junction version, where the other vehicle runs a red light
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=90):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=90,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -199,16 +211,18 @@ class OppositeVehicleRunningRedLight(OppositeVehicleJunction):
                 self._tl_dict[tl] = carla.TrafficLightState.Red
         from srunner.scenariomanager.carla_data_provider import ActiveScenario
         scenario_id = id(self)
-        CarlaDataProvider.active_scenarios.append(ActiveScenario(
-            type(self).__name__, 
-            first_actor=self.opposite_actor, 
-            metadata=self._direction, 
-            scenario_id=scenario_id, 
-            trigger_location=config.trigger_points[0].location,
-            extra_meta={
-                "adversarial_actors": [self.opposite_actor]
-            }
-        ))
+        CarlaDataProvider.active_scenarios.append(
+            ActiveScenario(
+                type(self).__name__,
+                first_actor=self.opposite_actor,
+                metadata=self._direction,
+                scenario_id=scenario_id,
+                trigger_location=config.trigger_points[0].location,
+                extra_meta={
+                    "adversarial_actors": [self.opposite_actor],
+                },
+            ),
+        )
 
     def _create_behavior(self):
         """
@@ -219,11 +233,18 @@ class OppositeVehicleRunningRedLight(OppositeVehicleJunction):
 
         # Wait until ego is close to the adversary
         trigger_adversary = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart")
-        trigger_adversary.add_child(InTimeToArrivalToLocation(
-            self.ego_vehicles[0], self._sync_time, self._collision_location))
-        trigger_adversary.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], self._collision_location, self._min_trigger_dist))
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart",
+        )
+        trigger_adversary.add_child(
+            InTimeToArrivalToLocation(
+            self.ego_vehicles[0], self._sync_time, self._collision_location,
+            ),
+        )
+        trigger_adversary.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], self._collision_location, self._min_trigger_dist,
+            ),
+        )
 
         sequence.add_child(trigger_adversary)
 
@@ -232,11 +253,13 @@ class OppositeVehicleRunningRedLight(OppositeVehicleJunction):
         time = start_location.distance(end_location) / self._adversary_speed
 
         main_behavior = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
-        main_behavior.add_child(ConstantVelocityAgentBehavior(
-            self.other_actors[0], target_location=end_location,
-            target_speed=self._adversary_speed,
-            opt_dict={'ignore_vehicles': True, 'ignore_traffic_lights': True},
-            name="AdversaryCrossing")
+        main_behavior.add_child(
+            ConstantVelocityAgentBehavior(
+                self.other_actors[0], target_location=end_location,
+                target_speed=self._adversary_speed,
+                opt_dict={'ignore_vehicles': True, 'ignore_traffic_lights': True},
+                name="AdversaryCrossing",
+            ),
         )
         main_behavior.add_child(Idle(time))
 
@@ -250,14 +273,16 @@ class OppositeVehicleRunningRedLight(OppositeVehicleJunction):
 
         root = py_trees.composites.Sequence()
         if self.route_mode:
-            root.add_child(HandleJunctionScenario(
-                clear_junction=True,
-                clear_ego_entry=True,
-                remove_entries=[self._spawn_wp],
-                remove_exits=[self._sink_wp],
-                stop_entries=False,
-                extend_road_exit=0
-            ))
+            root.add_child(
+                HandleJunctionScenario(
+                    clear_junction=True,
+                    clear_ego_entry=True,
+                    remove_entries=[self._spawn_wp],
+                    remove_exits=[self._sink_wp],
+                    stop_entries=False,
+                    extend_road_exit=0,
+                ),
+            )
         root.add_child(ActorTransformSetter(self.other_actors[0], self._spawn_location))
         root.add_child(tls_behavior)
 
@@ -272,8 +297,10 @@ class OppositeVehicleTakingPriority(OppositeVehicleJunction):
     Non signalized version
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=90):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=90,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -289,11 +316,18 @@ class OppositeVehicleTakingPriority(OppositeVehicleJunction):
 
         # Wait until ego is close to the adversary
         trigger_adversary = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart")
-        trigger_adversary.add_child(InTimeToArrivalToLocation(
-            self.ego_vehicles[0], self._sync_time, self._collision_location))
-        trigger_adversary.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], self._collision_location, self._min_trigger_dist))
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart",
+        )
+        trigger_adversary.add_child(
+            InTimeToArrivalToLocation(
+            self.ego_vehicles[0], self._sync_time, self._collision_location,
+            ),
+        )
+        trigger_adversary.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], self._collision_location, self._min_trigger_dist,
+            ),
+        )
 
         sequence.add_child(trigger_adversary)
 
@@ -302,11 +336,13 @@ class OppositeVehicleTakingPriority(OppositeVehicleJunction):
         time = start_location.distance(end_location) / self._adversary_speed
 
         main_behavior = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
-        main_behavior.add_child(ConstantVelocityAgentBehavior(
-            self.other_actors[0], target_location=end_location,
-            target_speed=self._adversary_speed,
-            opt_dict={'ignore_vehicles': True, 'ignore_traffic_lights': True},
-            name="AdversaryCrossing")
+        main_behavior.add_child(
+            ConstantVelocityAgentBehavior(
+                self.other_actors[0], target_location=end_location,
+                target_speed=self._adversary_speed,
+                opt_dict={'ignore_vehicles': True, 'ignore_traffic_lights': True},
+                name="AdversaryCrossing",
+            ),
         )
         main_behavior.add_child(Idle(time))
 
@@ -314,14 +350,16 @@ class OppositeVehicleTakingPriority(OppositeVehicleJunction):
 
         root = py_trees.composites.Sequence()
         if self.route_mode:
-            root.add_child(HandleJunctionScenario(
-                clear_junction=True,
-                clear_ego_entry=True,
-                remove_entries=[self._spawn_wp],
-                remove_exits=[self._sink_wp],
-                stop_entries=True,
-                extend_road_exit=0
-            ))
+            root.add_child(
+                HandleJunctionScenario(
+                    clear_junction=True,
+                    clear_ego_entry=True,
+                    remove_entries=[self._spawn_wp],
+                    remove_exits=[self._sink_wp],
+                    stop_entries=True,
+                    extend_road_exit=0,
+                ),
+            )
 
         root.add_child(ActorTransformSetter(self.other_actors[0], self._spawn_location))
         root.add_child(sequence)
@@ -341,13 +379,15 @@ class OppositeVehicleTakingPriority(OppositeVehicleJunction):
         super()._initialize_actors(config)
         from srunner.scenariomanager.carla_data_provider import ActiveScenario
         scenario_id = id(self)
-        CarlaDataProvider.active_scenarios.append(ActiveScenario(
-            type(self).__name__, 
-            first_actor=self.opposite_actor, 
-            metadata=self._direction, 
-            scenario_id=scenario_id, 
-            trigger_location=config.trigger_points[0].location,
-            extra_meta={
-                "adversarial_actors": [self.opposite_actor]
-            }
-        ))
+        CarlaDataProvider.active_scenarios.append(
+            ActiveScenario(
+                type(self).__name__,
+                first_actor=self.opposite_actor,
+                metadata=self._direction,
+                scenario_id=scenario_id,
+                trigger_location=config.trigger_points[0].location,
+                extra_meta={
+                    "adversarial_actors": [self.opposite_actor],
+                },
+            ),
+        )

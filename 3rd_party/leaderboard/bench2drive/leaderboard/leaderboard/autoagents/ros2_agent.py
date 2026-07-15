@@ -37,7 +37,8 @@ def wait_for_message(node, topic, topic_type, timeout=None):
             topic_type,
             topic,
             lambda msg: future.set_result(msg.data),
-            qos_profile=QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
+            qos_profile=QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL),
+        )
         rclpy.spin_until_future_complete(node, future, timeout)
 
     finally:
@@ -69,7 +70,7 @@ class ROS2Agent(ROSBaseAgent):
 
         self._path_publisher = self.ros_node.create_publisher(CarlaRoute, "/carla/hero/global_plan", qos_profile=QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
         self._path_gnss_publisher = self.ros_node.create_publisher(CarlaGnssRoute, "/carla/hero/global_plan_gnss", qos_profile=QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
-        
+
         self.ctrl_subscriber = self.ros_node.create_subscription(CarlaEgoVehicleControl, "/carla/hero/vehicle_control_cmd", self._vehicle_control_cmd_callback, qos_profile=QoSProfile(depth=1))
 
         wait_for_message(self.ros_node, "/carla/hero/status", Bool)
@@ -85,7 +86,7 @@ class ROS2Agent(ROSBaseAgent):
         spawn_point = BridgeHelper.carla2ros_pose(
             transform.location.x, transform.location.y, transform.location.z,
             transform.rotation.roll, transform.rotation.pitch, transform.rotation.yaw,
-            to_quat=True
+            to_quat=True,
         )
 
         request = SpawnObject.Request()
@@ -123,17 +124,19 @@ class ROS2Agent(ROSBaseAgent):
             pose = BridgeHelper.carla2ros_pose(
                 wp[0].location.x, wp[0].location.y, wp[0].location.z,
                 wp[0].rotation.roll, wp[0].rotation.pitch, wp[0].rotation.yaw,
-                to_quat=True
+                to_quat=True,
             )
             path.poses.append(
-                Pose(position=Point(**pose["position"]), orientation=Quaternion(**pose["orientation"])))
+                Pose(position=Point(**pose["position"]), orientation=Quaternion(**pose["orientation"])),
+            )
         self._path_publisher.publish(path)
 
         path_gnss = CarlaGnssRoute()
         for wp in self._global_plan:
             path_gnss.road_options.append(wp[1])
             path.poses.append(
-                NavSatFix(latitude=wp[0]["lat"], longitude=wp[0]["lon"], altitude=wp[0]["z"]))
+                NavSatFix(latitude=wp[0]["lat"], longitude=wp[0]["lon"], altitude=wp[0]["z"]),
+            )
         self._path_gnss_publisher.publish(path_gnss)
 
     def destroy(self):

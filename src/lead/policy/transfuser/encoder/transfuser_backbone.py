@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from lead.config import LeadConfig
-from lead.policy.transfuser.utils import transfuser_utils as fn
+from lead.policy.transfuser import ops
 
 
 class TransfuserBackbone(nn.Module):
@@ -27,7 +27,7 @@ class TransfuserBackbone(nn.Module):
         super().__init__()
         self.device = device
         self.lead_config = lead_config
-        config = lead_config.agent.transfuser
+        config = lead_config.policy.transfuser
         self.config = config
         self.data_config = lead_config.expert.data_collection
 
@@ -216,8 +216,7 @@ class TransfuserBackbone(nn.Module):
         self,
         image: jt.Float[torch.Tensor, "B 3 img_h img_w"],
         lidar: jt.Float[torch.Tensor, "B 1 bev_h bev_w"]
-        | jt.Float[torch.Tensor, "B 2 bev_h bev_w"]
-        | None,
+        | jt.Float[torch.Tensor, "B 2 bev_h bev_w"],
     ) -> tuple[
         jt.Float[torch.Tensor, "B D1 H1 W1"],
         jt.Float[torch.Tensor, "B D2 H2 W2"],
@@ -231,13 +230,12 @@ class TransfuserBackbone(nn.Module):
             lidar_features: BEV feature map for planning.
             image_features: Image feature map for perception.
         """
-        image_features = fn.normalize_imagenet(image)
+        image_features = ops.normalize_imagenet(image)
         lidar_features = lidar
 
         if self.lead_config.training.optimization.channel_last:
             image = image.to(memory_format=torch.channels_last)
-            if lidar is not None:
-                lidar = lidar.to(memory_format=torch.channels_last)
+            lidar = lidar.to(memory_format=torch.channels_last)
 
         # Generate an iterator for all the layers in the network that one can loop through.
         image_layers = iter(self.image_encoder.items())
@@ -363,7 +361,7 @@ class GPT(nn.Module):
         """
         super().__init__()
         self.n_embd = n_embd
-        config = lead_config.agent.transfuser
+        config = lead_config.policy.transfuser
         self.config = config
         # positional embedding parameter (learnable), image + lidar
         self.pos_emb = nn.Parameter(

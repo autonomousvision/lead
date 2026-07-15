@@ -36,14 +36,14 @@ def calculate_velocity(actor):
 
 def get_memory_entry(scenario_type, scenario_id=None):
     """DEPRECATED: Get or create the meta dict for an active scenario.
-    
+
     This function is deprecated. Use ActiveScenario's extra_meta parameter instead
     when creating scenarios.
-    
+
     Args:
         scenario_type: The type of scenario (e.g., 'EnterActorFlow')
         scenario_id: Unique identifier for this scenario instance
-    
+
     Returns:
         The meta dict for this scenario instance from the active scenario
     """
@@ -52,7 +52,7 @@ def get_memory_entry(scenario_type, scenario_id=None):
     for scenario in CarlaDataProvider.active_scenarios:
         if scenario.name == scenario_type and (scenario_id is None or scenario.scenario_id == scenario_id):
             return scenario.meta
-    
+
     # If not found in active scenarios, this shouldn't happen in normal operation
     print(f"[WARNING] get_memory_entry called for {scenario_type} (id={scenario_id}) but no matching active scenario found")
     return ActiveScenario._initialize_meta_for_scenario_type(scenario_type, scenario_id)
@@ -61,7 +61,7 @@ def get_memory_entry(scenario_type, scenario_id=None):
 class ActiveScenario:
     """
     Represents an active scenario with its associated data.
-    
+
     Attributes:
         name: The scenario type name (e.g., "VehicleOpensDoorTwoWays")
         first_actor: The primary actor in the scenario (e.g., parked vehicle, traffic warning, obstacle)
@@ -76,9 +76,11 @@ class ActiveScenario:
         meta: Dictionary holding scenario-specific memory/state data
     """
     @beartype
-    def __init__(self, name, first_actor: carla.Actor | None=None, last_actor: carla.Actor | None =None, metadata=None, 
-                 changed_route=False, from_index=1e9, to_index=1e9, path_clear=False, scenario_id=None, trigger_location=None, 
-                 meta=None, extra_meta=None):
+    def __init__(
+        self, name, first_actor: carla.Actor | None=None, last_actor: carla.Actor | None =None, metadata=None,
+        changed_route=False, from_index=1e9, to_index=1e9, path_clear=False, scenario_id=None, trigger_location=None,
+        meta=None, extra_meta=None,
+    ):
         self.name = name
         self.first_actor = first_actor
         self.last_actor = last_actor
@@ -96,7 +98,7 @@ class ActiveScenario:
                 self.meta.update(extra_meta)
         else:
             self.meta = meta
-    
+
     @staticmethod
     def _initialize_meta_for_scenario_type(scenario_type, scenario_id) -> dict:
         """Initialize meta dictionary with appropriate defaults for scenario type."""
@@ -105,15 +107,15 @@ class ActiveScenario:
                 "id": scenario_id,
                 "adversarial_actors": [], "source_wp": None, "sink_wp": None, "intersection_point": None,
                 "dangerous_adversarial_actor_ids": [], "safe_adversarial_actors_ids": [], "ignored_adversarial_actors_ids": [],
-                "opponent_traffic_route": None
+                "opponent_traffic_route": None,
             }
         elif scenario_type == "InterurbanAdvancedActorFlow":
             return {
                 "id": scenario_id,
                 "adversarial_actors": [], "source_wp_1": None, "sink_wp_1": None, "source_wp_2": None, "sink_wp_2": None,
                 "intersection_point_1": None, "intersection_point_2": None, "dangerous_adversarial_actor_ids": [],
-                "safe_adversarial_actors_ids": [], "ignored_adversarial_actors_ids": [], 
-                "opponent_traffic_route_1": None, "opponent_traffic_route_2": None
+                "safe_adversarial_actors_ids": [], "ignored_adversarial_actors_ids": [],
+                "opponent_traffic_route_1": None, "opponent_traffic_route_2": None,
             }
         elif scenario_type in ["VehicleTurningRoute", "VehicleTurningRoutePedestrian", "DynamicObjectCrossing", "ParkingCrossingPedestrian", "PedestrianCrossing"]:
             return {"id": scenario_id, "pedestrian_moved": defaultdict(lambda: False)}
@@ -123,18 +125,18 @@ class ActiveScenario:
             return {
                 "id": scenario_id, "source_lane": None, "target_lane": None, "adversarial_actors": [],
                 "changed_route": False, "from_index": None, "dangerous_adversarial_actor_ids": [],
-                "safe_adversarial_actors_ids": [], "ignored_adversarial_actors_ids": [], "obstacles": []
+                "safe_adversarial_actors_ids": [], "ignored_adversarial_actors_ids": [], "obstacles": [],
             }
         elif scenario_type in ["HazardAtSideLane"]:
             return {
                 "id": scenario_id, "source_lane": None, "target_lane": None, "bicycle_1": None,
-                "adversarial_actors": [], "dangerous_adversarial_actor_ids": [], "safe_adversarial_actors_ids": []
+                "adversarial_actors": [], "dangerous_adversarial_actor_ids": [], "safe_adversarial_actors_ids": [],
             }
         elif scenario_type in ["HazardAtSideLaneTwoWays"]:
             return {
                 "id": scenario_id, "source_lane": None, "target_lane": None, "adversarial_actors": [],
                 "changed_route": False, "from_index": None, "dangerous_adversarial_actor_ids": [],
-                "safe_adversarial_actors_ids": [], "ignored_adversarial_actors_ids": []
+                "safe_adversarial_actors_ids": [], "ignored_adversarial_actors_ids": [],
             }
         elif scenario_type == "VehicleOpensDoorTwoWays":
             return {"id": scenario_id, "obstacles": [], "vehicle_opened_door": False, "vehicle_door_side": None}
@@ -144,39 +146,39 @@ class ActiveScenario:
             return {
                 "id": scenario_id, "source_lane": None, "target_lane": None, "adversarial_actors": [],
                 "changed_route": False, "from_index": None, "dangerous_adversarial_actor_ids": [],
-                "safe_adversarial_actors_ids": [], "ignored_adversarial_actors_ids": []
+                "safe_adversarial_actors_ids": [], "ignored_adversarial_actors_ids": [],
             }
         elif scenario_type in ["StaticCutIn", "ParkingCutIn", "HighwayCutIn"]:
             return {"id": scenario_id, "cut_in_vehicle": None, "stopped": False}
         else:
             return {"id": scenario_id}
-    
+
     def __repr__(self):
         return f"ActiveScenario(name='{self.name}', first_actor={self.first_actor}, last_actor={self.last_actor}, scenario_id={self.scenario_id})"
-    
+
     def get_actors_from_memory(self) -> list:
         """Extract all alive actors from this scenario's meta/memory.
-        
+
         Recursively searches through all meta values to find actor objects,
         regardless of how they are stored (lists, dicts, single values, etc.).
-        
+
         Returns:
             List of alive actors from the scenario's meta.
         """
         actors = []
-        
+
         # Recursively extract all actors from meta
         def extract_actors(obj, visited=None):
             """Recursively extract actors from any data structure."""
             if visited is None:
                 visited = set()
-            
+
             # Avoid infinite recursion
             obj_id = id(obj)
             if obj_id in visited:
                 return
             visited.add(obj_id)
-            
+
             # Check if this is an actor
             if obj is not None and isinstance(obj, carla.Actor) and hasattr(obj, 'is_alive'):
                 try:
@@ -196,18 +198,18 @@ class ActiveScenario:
             elif isinstance(obj, tuple):
                 for item in obj:
                     extract_actors(item, visited)
-        
+
         # Extract actors from meta dict (skip 'id' key)
         for key, value in self.meta.items():
             if key != 'id':
                 extract_actors(value)
-        
+
         # Also include first_actor and last_actor from scenario itself
         if self.first_actor is not None and self.first_actor.is_alive:
             actors.append(self.first_actor)
         if self.last_actor is not None and self.last_actor.is_alive:
             actors.append(self.last_actor)
-        
+
         return actors
 
 
@@ -230,10 +232,10 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
     # Saves, which type of scenario is currently running.
     # That's necessary since some scenarios can't be detected / distinguished.
     active_scenarios: list[ActiveScenario]= []
-    previous_active_scenario: ActiveScenario | None = None 
+    previous_active_scenario: ActiveScenario | None = None
     _global_memory = {"allow_new_actors": True, "next_traffic_light": None}
     _route_xml_path = None  # Path to the current route XML file
-    
+
     # ============================================================================
     _actor_velocity_map = {}
     _actor_location_map = {}
@@ -262,7 +264,7 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         if len(CarlaDataProvider.active_scenarios) > 0:
             return CarlaDataProvider.active_scenarios[0].name
         return None
-    
+
     @staticmethod
     def get_current_scenario_memory() -> dict:
         """Get the meta dict for the current active scenario (first in list)."""
@@ -271,7 +273,7 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
     @staticmethod
     def remove_scenario(scenario: ActiveScenario):
         """Remove a scenario from active scenarios.
-        
+
         Args:
             scenario: The ActiveScenario to remove and clean up.
         """
@@ -279,7 +281,7 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         if scenario in CarlaDataProvider.active_scenarios:
             CarlaDataProvider.active_scenarios.remove(scenario)
             print(f"[CarlaDataProvider] Removed scenario {scenario.name} with ID {scenario.scenario_id}")
-        
+
         # Print queue status after removal
         print(f"[CarlaDataProvider] Queue after removing {scenario.name}:")
         scenarios_str = "\t" + '\n\t'.join([str(scenario) for scenario in CarlaDataProvider.active_scenarios])
@@ -292,7 +294,7 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
             current_scenario = CarlaDataProvider.active_scenarios[0]
             CarlaDataProvider.previous_active_scenario = current_scenario
             CarlaDataProvider.active_scenarios = CarlaDataProvider.active_scenarios[1:]
-            
+
             print(f"[CarlaDataProvider] Cleaned active scenario {current_scenario.name} (id={current_scenario.scenario_id})")
             print(f"[CarlaDataProvider] Queue after cleaning {current_scenario.name}:")
             scenarios_str = "\t" + '\n\t'.join([str(scenario) for scenario in CarlaDataProvider.active_scenarios])
@@ -304,7 +306,7 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
     def set_route_xml_path(xml_path):
         """
         Set the path to the current route XML file.
-        
+
         Args:
             xml_path: Path to the XML file containing the route configuration
         """
@@ -314,7 +316,7 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
     def get_route_xml_path():
         """
         Get the path to the current route XML file.
-        
+
         Returns:
             Path to the XML file or None if not set
         """
@@ -329,12 +331,14 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         with CarlaDataProvider._lock:
             if actor in CarlaDataProvider._actor_velocity_map:
                 raise KeyError(
-                    "Vehicle '{}' already registered. Cannot register twice!".format(actor.id))
+                    "Vehicle '{}' already registered. Cannot register twice!".format(actor.id),
+                )
             else:
                 CarlaDataProvider._actor_velocity_map[actor] = 0.0
             if actor in CarlaDataProvider._actor_location_map:
                 raise KeyError(
-                    "Vehicle '{}' already registered. Cannot register twice!".format(actor.id))
+                    "Vehicle '{}' already registered. Cannot register twice!".format(actor.id),
+                )
             elif transform:
                 CarlaDataProvider._actor_location_map[actor] = transform.location
             else:
@@ -342,7 +346,8 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
 
             if actor in CarlaDataProvider._actor_transform_map:
                 raise KeyError(
-                    "Vehicle '{}' already registered. Cannot register twice!".format(actor.id))
+                    "Vehicle '{}' already registered. Cannot register twice!".format(actor.id),
+                )
             else:
                 CarlaDataProvider._actor_transform_map[actor] = transform
 
@@ -568,7 +573,8 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
                 CarlaDataProvider._traffic_light_map[traffic_light] = traffic_light.get_transform()
             else:
                 raise KeyError(
-                    "Traffic light '{}' already registered. Cannot register twice!".format(traffic_light.id))
+                    "Traffic light '{}' already registered. Cannot register twice!".format(traffic_light.id),
+                )
 
     @staticmethod
     def annotate_trafficlight_in_group(traffic_light):
@@ -648,11 +654,13 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
                 prev_green_time = light.get_green_time()
                 prev_red_time = light.get_red_time()
                 prev_yellow_time = light.get_yellow_time()
-                reset_params.append({'light': light,
-                                     'state': prev_state,
-                                     'green_time': prev_green_time,
-                                     'red_time': prev_red_time,
-                                     'yellow_time': prev_yellow_time})
+                reset_params.append({
+                    'light': light,
+                    'state': prev_state,
+                    'green_time': prev_green_time,
+                    'red_time': prev_red_time,
+                    'yellow_time': prev_yellow_time,
+                })
 
                 light.set_state(states[state])
                 if freeze:
@@ -780,7 +788,9 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
             if not blueprint.has_attribute('color'):
                 print(
                     "WARNING: Cannot set Color ({}) for actor {} due to missing blueprint attribute".format(
-                        color, blueprint.id))
+                        color, blueprint.id,
+                    ),
+                )
             else:
                 default_color_rgba = blueprint.get_attribute('color').as_color()
                 default_color = '({}, {}, {})'.format(default_color_rgba.r, default_color_rgba.g, default_color_rgba.b)
@@ -788,8 +798,11 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
                     blueprint.set_attribute('color', color)
                 except ValueError:
                     # Color can't be set for this vehicle
-                    print("WARNING: Color ({}) cannot be set for actor {}. Using instead: ({})".format(
-                        color, blueprint.id, default_color))
+                    print(
+                        "WARNING: Color ({}) cannot be set for actor {}. Using instead: ({})".format(
+                        color, blueprint.id, default_color,
+                        ),
+                    )
                     blueprint.set_attribute('color', default_color)
         else:
             if blueprint.has_attribute('color') and rolename != 'hero':
@@ -839,9 +852,11 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         return actors
 
     @staticmethod
-    def request_new_actor(model, spawn_point, rolename='scenario', autopilot=False,
-                          random_location=False, color=None, actor_category="car",
-                          attribute_filter=None, tick=True):
+    def request_new_actor(
+        model, spawn_point, rolename='scenario', autopilot=False,
+        random_location=False, color=None, actor_category="car",
+        attribute_filter=None, tick=True,
+    ):
         """
         This method tries to create a new actor, returning it if successful (None otherwise).
         """
@@ -918,7 +933,8 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
 
             # Get the blueprint
             blueprint = CarlaDataProvider.create_blueprint(
-                actor.model, actor.rolename, actor.color, actor.category, attribute_filter)
+                actor.model, actor.rolename, actor.color, actor.category, attribute_filter,
+            )
 
             # Get the spawn point
             transform = actor.transform
@@ -969,9 +985,11 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         return actors
 
     @staticmethod
-    def request_new_batch_actors(model, amount, spawn_points, autopilot=False,
-                                 random_location=False, rolename='scenario',
-                                 attribute_filter=None, tick=True):
+    def request_new_batch_actors(
+        model, amount, spawn_points, autopilot=False,
+        random_location=False, rolename='scenario',
+        attribute_filter=None, tick=True,
+    ):
         """
         Simplified version of "request_new_actors". This method also create several actors in batch.
 
@@ -1011,8 +1029,11 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
                     break
 
             if spawn_point:
-                batch.append(SpawnActor(blueprint, spawn_point).then(
-                    SetAutopilot(FutureActor, autopilot, CarlaDataProvider._traffic_manager_port)))
+                batch.append(
+                    SpawnActor(blueprint, spawn_point).then(
+                    SetAutopilot(FutureActor, autopilot, CarlaDataProvider._traffic_manager_port),
+                    ),
+                )
 
         actors = CarlaDataProvider.handle_actor_batch(batch, tick)
         for actor in actors:

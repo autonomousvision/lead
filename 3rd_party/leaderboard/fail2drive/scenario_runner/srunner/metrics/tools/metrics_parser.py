@@ -21,8 +21,8 @@ def parse_actor(info):
         "location": carla.Location(
             x=float(info[5][1:-1]) / 100,
             y=float(info[6][:-1]) / 100,
-            z=float(info[7][:-1]) / 100
-        )
+            z=float(info[7][:-1]) / 100,
+        ),
     }
     return actor
 
@@ -36,9 +36,9 @@ def parse_transform(info):
         ),
         carla.Rotation(
             roll=float(info[7][1:-1]),
-            pitch=float(info[8][:-1]), 
-            yaw=float(info[9][:-1])
-        )
+            pitch=float(info[8][:-1]),
+            yaw=float(info[9][:-1]),
+        ),
     )
     return transform
 
@@ -99,7 +99,7 @@ def parse_velocity(info):
     velocity = carla.Vector3D(
         x=float(info[3][1:-1]),
         y=float(info[4][:-1]),
-        z=float(info[5][:-1])
+        z=float(info[5][:-1]),
     )
     return velocity
 
@@ -108,7 +108,7 @@ def parse_angular_velocity(info):
     velocity = carla.Vector3D(
         x=float(info[7][1:-1]),
         y=float(info[8][:-1]),
-        z=float(info[9][:-1])
+        z=float(info[9][:-1]),
     )
     return velocity
 
@@ -123,7 +123,7 @@ def parse_scene_lights(info):
         intensity=int(float(info[5])),
         color=carla.Color(red, green, blue),
         group=carla.LightGroup.NONE,
-        active=bool(info[3])
+        active=bool(info[3]),
     )
     return scene_light
 
@@ -196,7 +196,8 @@ def parse_wheels_control(info):
         position=carla.Vector3D(
             x=float(info[17][1:-1]) / 100,
             y=float(info[17][:-1]) / 100,
-            z=float(info[17][:-1]) / 100)
+            z=float(info[17][:-1]) / 100,
+        ),
     )
     return wheels_control
 
@@ -252,7 +253,7 @@ class MetricsParser(object):
             "map": sim_map,
             "date:": sim_date,
             "total_frames": sim_frames,
-            "duration": sim_duration
+            "duration": sim_duration,
         }
 
         actors_info = {}
@@ -280,15 +281,15 @@ class MetricsParser(object):
                 "frame": {
                     "elapsed_time": frame_time,
                     "delta_time": delta_time,
-                    "platform_time": None
+                    "platform_time": None,
                 },
                 "actors": {},
                 "events":{
                     "scene_lights": {},
                     "physics_control": {},
                     "traffic_light_state_time": {},
-                    "collisions": {}
-                }
+                    "collisions": {},
+                },
             }
 
             # Loop through all the other rows.

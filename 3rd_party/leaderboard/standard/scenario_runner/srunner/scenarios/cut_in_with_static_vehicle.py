@@ -14,14 +14,18 @@ import carla
 from agents.navigation.local_planner import RoadOption
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorDestroy,
-                                                                      BatchActorTransformSetter,
-                                                                      CutIn,
-                                                                      BasicAgentBehavior,
-                                                                      Idle)
+from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
+    ActorDestroy,
+    BatchActorTransformSetter,
+    CutIn,
+    BasicAgentBehavior,
+    Idle,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import CollisionTest
-from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (InTriggerDistanceToLocation,
-                                                                               InTimeToArrivalToLocation)
+from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
+    InTriggerDistanceToLocation,
+    InTimeToArrivalToLocation,
+)
 from srunner.scenarios.basic_scenario import BasicScenario
 from srunner.tools.background_manager import RemoveRoadLane, LeaveSpaceInFront, ReAddRoadLane, ChangeRoadBehavior
 
@@ -73,12 +77,14 @@ class StaticCutIn(BasicScenario):
         if self._direction not in ('left', 'right'):
             raise ValueError(f"'direction' must be either 'right' or 'left' but {self._direction} was given")
 
-        super().__init__("StaticCutIn",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "StaticCutIn",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
         """
@@ -104,7 +110,8 @@ class StaticCutIn(BasicScenario):
 
             # Spawn the actor
             blocker_actor = CarlaDataProvider.request_new_actor(
-                'vehicle.*', side_wp.transform, 'scenario', attribute_filter=self._attributes)
+                'vehicle.*', side_wp.transform, 'scenario', attribute_filter=self._attributes,
+            )
             if not blocker_actor:
                 for actor in self.other_actors:
                     actor.destroy()
@@ -148,7 +155,8 @@ class StaticCutIn(BasicScenario):
             raise ValueError("Couldn't find a proper position for the cut in vehicle")
 
         self._adversary_actor = CarlaDataProvider.request_new_actor(
-            'vehicle.*', side_wp.transform, 'scenario', attribute_filter=self._attributes)
+            'vehicle.*', side_wp.transform, 'scenario', attribute_filter=self._attributes,
+        )
         if not self._adversary_actor:
             for actor in self.other_actors:
                 actor.destroy()
@@ -159,8 +167,8 @@ class StaticCutIn(BasicScenario):
         self._side_transforms.append([self._adversary_actor, side_wp.transform])
         self.other_actors.append(self._adversary_actor)
 
-        # This starts the engine, to allow the adversary to instantly move 
-        self._adversary_actor.apply_control(carla.VehicleControl(throttle=1.0, brake=1.0)) 
+        # This starts the engine, to allow the adversary to instantly move
+        self._adversary_actor.apply_control(carla.VehicleControl(throttle=1.0, brake=1.0))
 
         # Move to the front
         next_wps = blocker_wp.next(self._vehicle_gap)
@@ -181,7 +189,8 @@ class StaticCutIn(BasicScenario):
 
             # Spawn the actor
             blocker_actor = CarlaDataProvider.request_new_actor(
-                'vehicle.*', side_wp.transform, 'scenario', attribute_filter=self._attributes)
+                'vehicle.*', side_wp.transform, 'scenario', attribute_filter=self._attributes,
+            )
             if not blocker_actor:
                 for actor in self.other_actors:
                     actor.destroy()
@@ -218,11 +227,18 @@ class StaticCutIn(BasicScenario):
 
         # Wait until ego is close to the adversary
         trigger_adversary = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart")
-        trigger_adversary.add_child(InTimeToArrivalToLocation(
-            self.ego_vehicles[0], self._reaction_time, collision_location))
-        trigger_adversary.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], collision_location, self._min_trigger_dist))
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart",
+        )
+        trigger_adversary.add_child(
+            InTimeToArrivalToLocation(
+            self.ego_vehicles[0], self._reaction_time, collision_location,
+            ),
+        )
+        trigger_adversary.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], collision_location, self._min_trigger_dist,
+            ),
+        )
 
         sequence.add_child(trigger_adversary)
         if self.route_mode:
@@ -232,14 +248,21 @@ class StaticCutIn(BasicScenario):
             sequence.add_child(RemoveRoadLane(self._side_wp))
 
         cut_in_behavior = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="CutIn")
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="CutIn",
+        )
         cut_in_direction = 'right' if self._direction == 'left' else 'left'
 
         cut_in_movement = py_trees.composites.Sequence()
-        cut_in_movement.add_child(CutIn(
-            self._adversary_actor, self.ego_vehicles[0], cut_in_direction, change_time=3, other_lane_time=2))
-        cut_in_movement.add_child(BasicAgentBehavior(
-            self._adversary_actor, plan=self._plan, target_speed=self._speed))
+        cut_in_movement.add_child(
+            CutIn(
+            self._adversary_actor, self.ego_vehicles[0], cut_in_direction, change_time=3, other_lane_time=2,
+            ),
+        )
+        cut_in_movement.add_child(
+            BasicAgentBehavior(
+            self._adversary_actor, plan=self._plan, target_speed=self._speed,
+            ),
+        )
 
         cut_in_behavior.add_child(cut_in_movement)
         cut_in_behavior.add_child(Idle(30))  # Timeout in case a collision happened

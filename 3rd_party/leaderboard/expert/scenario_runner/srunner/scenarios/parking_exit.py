@@ -16,9 +16,11 @@ import py_trees
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
     ActorDestroy, ActorTransformSetter, ChangeAutoPilot, ScenarioTimeout,
-    WaitForever)
+    WaitForever,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (
-    CollisionTest, ScenarioTimeoutTest)
+    CollisionTest, ScenarioTimeoutTest,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import \
     DriveDistance
 from srunner.scenarios.basic_scenario import BasicScenario
@@ -32,7 +34,7 @@ def convert_dict_to_location(actor_dict):
     location = carla.Location(
         x=float(actor_dict['x']),
         y=float(actor_dict['y']),
-        z=float(actor_dict['z'])
+        z=float(actor_dict['z']),
     )
     return location
 
@@ -57,8 +59,10 @@ class ParkingExit(BasicScenario):
     Note 2: Make sure there are enough space for spawning blocking vehicles.
     """
 
-    def __init__(self, world, ego_vehicles, config, debug_mode=False, criteria_enable=True,
-                 timeout=90):
+    def __init__(
+        self, world, ego_vehicles, config, debug_mode=False, criteria_enable=True,
+        timeout=90,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -66,7 +70,8 @@ class ParkingExit(BasicScenario):
         self._world = world
         self._map = CarlaDataProvider.get_map()
         self._tm = CarlaDataProvider.get_client().get_trafficmanager(
-            CarlaDataProvider.get_traffic_manager_port())
+            CarlaDataProvider.get_traffic_manager_port(),
+        )
         self.timeout = timeout
 
         self._bp_attributes = {'base_type': 'car', 'generation': 2}
@@ -94,14 +99,17 @@ class ParkingExit(BasicScenario):
 
         if self._parking_waypoint is None:
             raise Exception(
-                "Couldn't find parking point on the {} side".format(self._direction))
+                "Couldn't find parking point on the {} side".format(self._direction),
+            )
 
-        super().__init__("ParkingExit",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "ParkingExit",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
         """
@@ -110,14 +118,16 @@ class ParkingExit(BasicScenario):
 
         # Spawn the actor in front of the ego
         front_points = self._parking_waypoint.next(
-            self._front_vehicle_distance)
+            self._front_vehicle_distance,
+        )
         if not front_points:
             raise ValueError("Couldn't find viable position for the vehicle in front of the parking point")
 
         self.parking_slots.append(front_points[0].transform.location)
 
         actor_front = CarlaDataProvider.request_new_actor(
-            'vehicle.*', front_points[0].transform, rolename='scenario no lights', attribute_filter=self._bp_attributes)
+            'vehicle.*', front_points[0].transform, rolename='scenario no lights', attribute_filter=self._bp_attributes,
+        )
         if actor_front is None:
             raise ValueError("Couldn't spawn the vehicle in front of the parking point")
         actor_front.apply_control(carla.VehicleControl(hand_brake=True))
@@ -129,14 +139,16 @@ class ParkingExit(BasicScenario):
 
         # Spawn the actor behind the ego
         behind_points = self._parking_waypoint.previous(
-            self._behind_vehicle_distance)
+            self._behind_vehicle_distance,
+        )
         if not behind_points:
             raise ValueError("Couldn't find viable position for the vehicle behind the parking point")
 
         self.parking_slots.append(behind_points[0].transform.location)
 
         actor_behind = CarlaDataProvider.request_new_actor(
-            'vehicle.*', behind_points[0].transform, rolename='scenario no lights', attribute_filter=self._bp_attributes)
+            'vehicle.*', behind_points[0].transform, rolename='scenario no lights', attribute_filter=self._bp_attributes,
+        )
         if actor_behind is None:
             actor_front.destroy()
             raise ValueError("Couldn't spawn the vehicle behind the parking point")
@@ -154,7 +166,8 @@ class ParkingExit(BasicScenario):
 
         # Spawn the actor at the side of the ego
         actor_side = CarlaDataProvider.request_new_actor(
-            'vehicle.*', self._reference_waypoint.transform, attribute_filter=self._bp_attributes)
+            'vehicle.*', self._reference_waypoint.transform, attribute_filter=self._bp_attributes,
+        )
         if actor_side is None:
             raise ValueError("Couldn't spawn the vehicle at the side of the parking point")
         self.other_actors.append(actor_side)
@@ -176,9 +189,11 @@ class ParkingExit(BasicScenario):
         if self._direction == 'left':
             displacement_vector *= -1
 
-        new_location = wp.transform.location + carla.Location(x=displacement*displacement_vector.x,
-                                                              y=displacement*displacement_vector.y,
-                                                              z=displacement*displacement_vector.z)
+        new_location = wp.transform.location + carla.Location(
+            x=displacement*displacement_vector.x,
+            y=displacement*displacement_vector.y,
+            z=displacement*displacement_vector.z,
+        )
         new_location.z += 0.05  # Just in case, avoid collisions with the ground
         return new_location
 

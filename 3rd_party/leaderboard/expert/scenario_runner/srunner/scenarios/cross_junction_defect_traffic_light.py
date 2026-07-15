@@ -15,20 +15,27 @@ import carla
 import py_trees
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
-    ActorFlow, ScenarioTimeout, TrafficLightFreezer)
+    ActorFlow, ScenarioTimeout, TrafficLightFreezer,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (
-    CollisionTest, ScenarioTimeoutTest)
+    CollisionTest, ScenarioTimeoutTest,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
-    DriveDistance, WaitEndIntersection)
+    DriveDistance, WaitEndIntersection,
+)
 from srunner.scenarios.basic_scenario import BasicScenario
-from srunner.tools.background_manager import (AllowActorGeneration,
-                                              DisallowActorGeneration,
-                                              HandleJunctionScenario)
-from srunner.tools.scenario_helper import (filter_junction_wp_direction,
-                                           generate_target_waypoint,
-                                           get_closest_traffic_light,
-                                           get_junction_topology,
-                                           get_same_dir_lanes)
+from srunner.tools.background_manager import (
+    AllowActorGeneration,
+    DisallowActorGeneration,
+    HandleJunctionScenario,
+)
+from srunner.tools.scenario_helper import (
+    filter_junction_wp_direction,
+    generate_target_waypoint,
+    get_closest_traffic_light,
+    get_junction_topology,
+    get_same_dir_lanes,
+)
 
 
 def get_value_parameter(config, name, p_type, default):
@@ -41,15 +48,17 @@ def get_interval_parameter(config, name, p_type, default):
     if name in config.other_parameters:
         return [
             p_type(config.other_parameters[name]['from']),
-            p_type(config.other_parameters[name]['to'])
+            p_type(config.other_parameters[name]['to']),
         ]
     else:
         return default
 
 
 class CrossJunctionDefectTrafficLightBase(BasicScenario):
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80,
+    ):
         """
         Setup all relevant parameters and create scenario
         """
@@ -59,7 +68,7 @@ class CrossJunctionDefectTrafficLightBase(BasicScenario):
 
         # Make direction configurable - can be 'left', 'right', or 'both'
         self._direction = get_value_parameter(config, 'traffic_direction', str, 'right')
-        
+
         self._green_light_delay = 5  # Wait before the ego's lane traffic light turns green
         self._flow_tl_dict = {}
         self._init_tl_dict = {}
@@ -77,12 +86,14 @@ class CrossJunctionDefectTrafficLightBase(BasicScenario):
         # Storage for multiple traffic flows (left and/or right)
         self._traffic_flows = []
 
-        super().__init__("CrossJunctionDefectTrafficLightBase",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "CrossJunctionDefectTrafficLightBase",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _get_traffic_source_and_sink(self, direction):
         """
@@ -158,12 +169,12 @@ class CrossJunctionDefectTrafficLightBase(BasicScenario):
                 'direction': direction,
                 'source_wp': source_wp,
                 'sink_wp': sink_wp,
-                'junction': junction
+                'junction': junction,
             })
 
         # Use the first flow's junction as the main junction (they should be the same)
         self._junction = self._traffic_flows[0]['junction']
-        
+
         # For backward compatibility, set the first flow as main source/sink
         self._source_wp = self._traffic_flows[0]['source_wp']
         self._sink_wp = self._traffic_flows[0]['sink_wp']
@@ -194,8 +205,10 @@ class CrossJunctionDefectTrafficLight(CrossJunctionDefectTrafficLightBase):
     Signalized version of JunctionRightTurn with configurable traffic direction
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80,
+    ):
         super().__init__(world, ego_vehicles, config, randomize, debug_mode, criteria_enable, timeout)
 
     def _initialize_actors(self, config, add_scenario_type=True):
@@ -206,7 +219,7 @@ class CrossJunctionDefectTrafficLight(CrossJunctionDefectTrafficLightBase):
 
         tls = self._world.get_traffic_lights_in_junction(self._junction.id)
         ego_tl = get_closest_traffic_light(self._ego_wp, tls)
-        
+
         # Get traffic lights for all source waypoints
         source_tls = []
         for flow in self._traffic_flows:
@@ -235,13 +248,15 @@ class CrossJunctionDefectTrafficLight(CrossJunctionDefectTrafficLightBase):
                 memory_data[f"source_wp_{i}"] = flow['source_wp']
                 memory_data[f"sink_wp_{i}"] = flow['sink_wp']
                 memory_data[f"direction_{i}"] = flow['direction']
-            
-            CarlaDataProvider.active_scenarios.append(ActiveScenario(
-                type(self).__name__, 
-                scenario_id=id(self), 
-                trigger_location=config.trigger_points[0].location,
-                extra_meta=memory_data
-            ))
+
+            CarlaDataProvider.active_scenarios.append(
+                ActiveScenario(
+                    type(self).__name__,
+                    scenario_id=id(self),
+                    trigger_location=config.trigger_points[0].location,
+                    extra_meta=memory_data,
+                ),
+            )
 
     def _create_behavior(self):
         """
@@ -255,18 +270,20 @@ class CrossJunctionDefectTrafficLight(CrossJunctionDefectTrafficLightBase):
             remove_entries = []
             for flow in self._traffic_flows:
                 remove_entries.extend(get_same_dir_lanes(flow['source_wp']))
-            
-            sequence.add_child(HandleJunctionScenario(
-                clear_junction=True,
-                clear_ego_entry=True,
-                remove_entries=remove_entries,
-                remove_exits=[],
-                stop_entries=False,
-                extend_road_exit=self._sink_dist + 20
-            ))
+
+            sequence.add_child(
+                HandleJunctionScenario(
+                    clear_junction=True,
+                    clear_ego_entry=True,
+                    remove_entries=remove_entries,
+                    remove_exits=[],
+                    stop_entries=False,
+                    extend_road_exit=self._sink_dist + 20,
+                ),
+            )
 
         root = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
-        
+
         # End condition
         end_condition = py_trees.composites.Sequence()
         end_condition.add_child(WaitEndIntersection(self.ego_vehicles[0], debug=True))
@@ -274,19 +291,21 @@ class CrossJunctionDefectTrafficLight(CrossJunctionDefectTrafficLightBase):
         end_condition.add_child(DriveDistance(self.ego_vehicles[0], self._end_distance))
         end_condition.add_child(AllowActorGeneration())
         root.add_child(end_condition)
-        
+
         # Add actor flows for each configured direction
         for flow in self._traffic_flows:
-            root.add_child(ActorFlow(
-                flow['source_wp'], 
-                flow['sink_wp'], 
-                self._source_dist_interval, 
-                2, 
-                self._flow_speed, 
-                initial_actors=True, 
-                parent_scenario_type=type(self).__name__
-            ))
-        
+            root.add_child(
+                ActorFlow(
+                    flow['source_wp'],
+                    flow['sink_wp'],
+                    self._source_dist_interval,
+                    2,
+                    self._flow_speed,
+                    initial_actors=True,
+                    parent_scenario_type=type(self).__name__,
+                ),
+            )
+
         root.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
 
         # Traffic light behavior

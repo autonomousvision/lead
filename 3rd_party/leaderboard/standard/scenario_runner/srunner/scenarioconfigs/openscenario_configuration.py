@@ -113,14 +113,16 @@ class OpenScenarioConfiguration(ScenarioConfiguration):
         if list(catalogs) is None:
             return
 
-        catalog_types = ["Vehicle",
-                         "Controller",
-                         "Pedestrian",
-                         "MiscObject",
-                         "Environment",
-                         "Maneuver",
-                         "Trajectory",
-                         "Route"]
+        catalog_types = [
+            "Vehicle",
+            "Controller",
+            "Pedestrian",
+            "MiscObject",
+            "Environment",
+            "Maneuver",
+            "Trajectory",
+            "Route",
+        ]
         for catalog_type in catalog_types:
             catalog = catalogs.find(catalog_type + "Catalog")
             if catalog is None:
@@ -194,13 +196,16 @@ class OpenScenarioConfiguration(ScenarioConfiguration):
                     vertex_distance = 2.0  # in meters
                     wall_height = 1.0      # in meters
                     extra_width = 0.6      # in meters
-                    world = self.client.generate_opendrive_world(str(data),
-                                                                 carla.OpendriveGenerationParameters(
-                                                                 vertex_distance=vertex_distance,
-                                                                 wall_height=wall_height,
-                                                                 additional_width=extra_width,
-                                                                 smooth_junctions=True,
-                                                                 enable_mesh_visibility=True))
+                    world = self.client.generate_opendrive_world(
+                        str(data),
+                        carla.OpendriveGenerationParameters(
+                        vertex_distance=vertex_distance,
+                        wall_height=wall_height,
+                        additional_width=extra_width,
+                        smooth_junctions=True,
+                        enable_mesh_visibility=True,
+                        ),
+                    )
             else:
                 self.logger.warning(" Wrong map in use. Forcing reload of CARLA world")
                 self.client.load_world(self.town)
@@ -254,7 +259,8 @@ class OpenScenarioConfiguration(ScenarioConfiguration):
                         self._extract_misc_information(entry, rolename, entry, args)
                     else:
                         self.logger.debug(
-                            " A CatalogReference specifies a reference that is not an Entity. Skipping...")
+                            " A CatalogReference specifies a reference that is not an Entity. Skipping...",
+                        )
 
                 for vehicle in obj.iter("Vehicle"):
                     self._extract_vehicle_information(obj, rolename, vehicle, args)
@@ -303,7 +309,8 @@ class OpenScenarioConfiguration(ScenarioConfiguration):
 
         speed = self._get_actor_speed(rolename)
         new_actor = ActorConfigurationData(
-            model, None, rolename, speed, color=color, category=category, args=args)
+            model, None, rolename, speed, color=color, category=category, args=args,
+        )
 
         if ego_vehicle:
             self.ego_vehicles.append(new_actor)
@@ -357,19 +364,22 @@ class OpenScenarioConfiguration(ScenarioConfiguration):
                 if actor_found:
                     # pylint: disable=line-too-long
                     self.logger.warning(
-                        " Warning: The actor '%s' was already assigned an initial position. Overwriting pose!", actor_name)
+                        " Warning: The actor '%s' was already assigned an initial position. Overwriting pose!", actor_name,
+                    )
                     # pylint: enable=line-too-long
                 actor_found = True
                 for position in private_action.iter('Position'):
                     transform = OpenScenarioParser.convert_position_to_transform(
-                        position, actor_list=self.other_actors + self.ego_vehicles)
+                        position, actor_list=self.other_actors + self.ego_vehicles,
+                    )
                     if transform:
                         actor_transform = transform
 
         if not actor_found:
             # pylint: disable=line-too-long
             self.logger.warning(
-                " Warning: The actor '%s' was not assigned an initial position. Using (0,0,0)", actor_name)
+                " Warning: The actor '%s' was not assigned an initial position. Using (0,0,0)", actor_name,
+            )
             # pylint: enable=line-too-long
 
         return actor_transform
@@ -386,7 +396,8 @@ class OpenScenarioConfiguration(ScenarioConfiguration):
                 if actor_found:
                     # pylint: disable=line-too-long
                     self.logger.warning(
-                        " Warning: The actor '%s' was already assigned an initial speed. Overwriting inital speed!", actor_name)
+                        " Warning: The actor '%s' was already assigned an initial speed. Overwriting inital speed!", actor_name,
+                    )
                     # pylint: enable=line-too-long
                 actor_found = True
 
@@ -399,7 +410,8 @@ class OpenScenarioConfiguration(ScenarioConfiguration):
                                     actor_speed = speed
                                 else:
                                     raise AttributeError(
-                                        "Warning: Speed value of actor {} must be positive. Speed set to 0.".format(actor_name))  # pylint: disable=line-too-long
+                                        "Warning: Speed value of actor {} must be positive. Speed set to 0.".format(actor_name),
+                                    )  # pylint: disable=line-too-long
         return actor_speed
 
     def _validate_result(self):

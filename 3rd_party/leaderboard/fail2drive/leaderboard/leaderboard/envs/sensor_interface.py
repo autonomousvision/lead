@@ -175,20 +175,27 @@ class CallBack(object):
         self._data_provider.update_sensor(tag, points, radar_data.frame)
 
     def _parse_gnss_cb(self, gnss_data, tag):
-        array = np.array([gnss_data.latitude,
-                          gnss_data.longitude,
-                          gnss_data.altitude], dtype=np.float64)
+        array = np.array(
+            [
+                gnss_data.latitude,
+                gnss_data.longitude,
+                gnss_data.altitude,
+            ], dtype=np.float64,
+        )
         self._data_provider.update_sensor(tag, array, gnss_data.frame)
 
     def _parse_imu_cb(self, imu_data, tag):
-        array = np.array([imu_data.accelerometer.x,
-                          imu_data.accelerometer.y,
-                          imu_data.accelerometer.z,
-                          imu_data.gyroscope.x,
-                          imu_data.gyroscope.y,
-                          imu_data.gyroscope.z,
-                          imu_data.compass,
-                         ], dtype=np.float64)
+        array = np.array(
+            [
+                imu_data.accelerometer.x,
+                 imu_data.accelerometer.y,
+                 imu_data.accelerometer.z,
+                 imu_data.gyroscope.x,
+                 imu_data.gyroscope.y,
+                 imu_data.gyroscope.z,
+                 imu_data.compass,
+            ], dtype=np.float64,
+        )
         self._data_provider.update_sensor(tag, array, imu_data.frame)
 
     def _parse_pseudosensor(self, package, tag):
@@ -210,7 +217,7 @@ class SensorInterface(object):
 
         self._sensors_objects[tag] = sensor
 
-        if sensor_type == 'sensor.opendrive_map': 
+        if sensor_type == 'sensor.opendrive_map':
             self._opendrive_tag = tag
 
     def update_sensor(self, tag, data, frame):

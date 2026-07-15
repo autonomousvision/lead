@@ -13,16 +13,21 @@ import carla
 import py_trees
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
-    ScenarioTimeout, TrafficLightFreezer)
+    ScenarioTimeout, TrafficLightFreezer,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (
-    CollisionTest, ScenarioTimeoutTest)
+    CollisionTest, ScenarioTimeoutTest,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
-    DriveDistance, WaitEndIntersection)
+    DriveDistance, WaitEndIntersection,
+)
 from srunner.scenarios.basic_scenario import BasicScenario
-from srunner.tools.background_manager import (HandleJunctionScenario,
-                                              KeepFrontClear,
-                                              MakeRedLightLonger,
-                                              MakeTrafficLightRedOnce)
+from srunner.tools.background_manager import (
+    HandleJunctionScenario,
+    KeepFrontClear,
+    MakeRedLightLonger,
+    MakeTrafficLightRedOnce,
+)
 from srunner.tools.scenario_helper import get_closest_traffic_light
 
 
@@ -36,7 +41,7 @@ def get_interval_parameter(config, name, p_type, default):
     if name in config.other_parameters:
         return [
             p_type(config.other_parameters[name]['from']),
-            p_type(config.other_parameters[name]['to'])
+            p_type(config.other_parameters[name]['to']),
         ]
     else:
         return default
@@ -44,18 +49,22 @@ def get_interval_parameter(config, name, p_type, default):
 class RedLightWithoutLeadVehicle(BasicScenario):
     """Force Ego to hold at red light without lead vehicle making the scenario more challenging."""
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80, activate_scenario=True):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80, activate_scenario=True,
+    ):
         """
         Setup all relevant parameters and create scenario
         """
         self._scenario_timeout = 240
-        super().__init__("RedLightWithoutLeadVehicle",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "RedLightWithoutLeadVehicle",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
 
     def _initialize_actors(self, config, add_scenario_type=True):
@@ -74,8 +83,12 @@ class RedLightWithoutLeadVehicle(BasicScenario):
         end_condition.add_child(MakeTrafficLightRedOnce(CarlaDataProvider.get_world(), self.ego_vehicles[0]))
         end_condition.add_child(DriveDistance(self.ego_vehicles[0], 200))
         end_condition.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
-        end_condition.add_child(KeepFrontClear(self.ego_vehicles,
-                                               CarlaDataProvider.get_world()))
+        end_condition.add_child(
+            KeepFrontClear(
+                self.ego_vehicles,
+                CarlaDataProvider.get_world(),
+            ),
+        )
         sequence.add_child(MakeRedLightLonger(CarlaDataProvider.get_world()))
         sequence.add_child(end_condition)
         from srunner.tools.background_manager import ClearScenarioType
@@ -108,18 +121,22 @@ class T_Junction(BasicScenario):
     No spicial scenarios will be triggered
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80, activate_scenario=True):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80, activate_scenario=True,
+    ):
         """
         Setup all relevant parameters and create scenario
         """
         self._scenario_timeout = 240
-        super().__init__("T_Junction",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "T_Junction",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
 
     def _initialize_actors(self, config, add_scenario_type=True):
@@ -167,8 +184,10 @@ class VanillaJunctionTurn(BasicScenario):
     No spicial scenarios will be triggered
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80, activate_scenario=True):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80, activate_scenario=True,
+    ):
         """
         Setup all relevant parameters and create scenario
         """
@@ -183,12 +202,14 @@ class VanillaJunctionTurn(BasicScenario):
         self._init_tl_dict = {}
         self._end_distance = 10
 
-        super().__init__("VanillaJunctionTurn",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "VanillaJunctionTurn",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
         ego_location = config.trigger_points[0].location
@@ -233,8 +254,10 @@ class VanillaSignalizedTurnEncounterGreenLight(VanillaJunctionTurn):
 
     timeout = 80  # Timeout of scenario in seconds
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80, activate_scenario=True):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80, activate_scenario=True,
+    ):
         super().__init__(world, ego_vehicles, config, randomize, debug_mode, criteria_enable, timeout)
 
     def _initialize_actors(self, config):
@@ -283,8 +306,10 @@ class VanillaSignalizedTurnEncounterGreenLightLong(VanillaJunctionTurn):
 
     timeout = 80  # Timeout of scenario in seconds
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80, activate_scenario=True):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80, activate_scenario=True,
+    ):
         super().__init__(world, ego_vehicles, config, randomize, debug_mode, criteria_enable, timeout)
 
     def _initialize_actors(self, config):
@@ -333,8 +358,10 @@ class VanillaNonSignalizedTurn(VanillaJunctionTurn):
 
     timeout = 80  # Timeout of scenario in seconds
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80, activate_scenario=True):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80, activate_scenario=True,
+    ):
         super().__init__(world, ego_vehicles, config, randomize, debug_mode, criteria_enable, timeout)
 
     def _create_behavior(self):
@@ -361,8 +388,10 @@ class VanillaSignalizedTurnEncounterRedLight(VanillaJunctionTurn):
 
     timeout = 80  # Timeout of scenario in seconds
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80, activate_scenario=True):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80, activate_scenario=True,
+    ):
         self._green_light_delay = 5
         super().__init__(world, ego_vehicles, config, randomize, debug_mode, criteria_enable, timeout)
 
@@ -394,11 +423,13 @@ class VanillaSignalizedTurnEncounterRedLight(VanillaJunctionTurn):
         end_condition = py_trees.composites.Sequence()
         end_condition.add_child(WaitEndIntersection(self.ego_vehicles[0]))
         end_condition.add_child(DriveDistance(self.ego_vehicles[0], self._end_distance))
-        root.add_child(HandleJunctionScenario(
+        root.add_child(
+            HandleJunctionScenario(
                 clear_junction=False,
                 clear_ego_entry=True,
                 stop_entries=False,
-            ))
+            ),
+        )
         root.add_child(end_condition)
 
         tl_freezer_sequence = py_trees.composites.Sequence("Traffic Light Behavior")
@@ -417,8 +448,10 @@ class VanillaSignalizedTurnEncounterRedLightLong(VanillaJunctionTurn):
 
     timeout = 80  # Timeout of scenario in seconds
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80, activate_scenario=True):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80, activate_scenario=True,
+    ):
         self._green_light_delay = 5
         super().__init__(world, ego_vehicles, config, randomize, debug_mode, criteria_enable, timeout)
 
@@ -468,8 +501,10 @@ class VanillaNonSignalizedTurnEncounterStopsign(VanillaJunctionTurn):
 
     timeout = 80  # Timeout of scenario in seconds
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80, activate_scenario=True):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80, activate_scenario=True,
+    ):
         super().__init__(world, ego_vehicles, config, randomize, debug_mode, criteria_enable, timeout)
 
     def _create_behavior(self):
@@ -496,8 +531,10 @@ class VanillaNonSignalizedTurnEncounterStopsignLong(VanillaJunctionTurn):
 
     timeout = 80  # Timeout of scenario in seconds
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80, activate_scenario=True):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80, activate_scenario=True,
+    ):
         super().__init__(world, ego_vehicles, config, randomize, debug_mode, criteria_enable, timeout)
 
     def _create_behavior(self):

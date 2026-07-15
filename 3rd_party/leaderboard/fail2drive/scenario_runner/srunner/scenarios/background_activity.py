@@ -161,7 +161,7 @@ class Junction(object):
         self.exit_dict = OrderedDict()
         self.actor_dict = OrderedDict()
 
-        # Junction scenario variables 
+        # Junction scenario variables
         self.stop_non_route_entries = False
         self.clear_middle = False
         self.inactive_entry_keys = []
@@ -196,7 +196,7 @@ class BackgroundBehavior(AtomicBehavior):
         self._tm.global_percentage_speed_difference(0.0)
         self._rng = CarlaDataProvider.get_random_seed()
 
-        self._attribute_filter = {'base_type': 'car', 'special_type': '', 'has_lights': True, }
+        self._attribute_filter = {'base_type': 'car', 'special_type': '', 'has_lights': True}
 
         # Global variables
         self._ego_actor = ego_actor
@@ -522,30 +522,35 @@ class BackgroundBehavior(AtomicBehavior):
                 self._map.get_waypoint_xodr(1624, -5, 25.3).get_junction(),
                 self._map.get_waypoint_xodr(1655, -5, 8.3).get_junction(),
                 self._map.get_waypoint_xodr(1772, 3, 16.2).get_junction(),
-                self._map.get_waypoint_xodr(1206, -5, 5.9).get_junction()])
+                self._map.get_waypoint_xodr(1206, -5, 5.9).get_junction(),
+            ])
             fake_lane_keys.extend([
                 ['37*-4', '36*-4'], ['36*-4', '37*-4'],
                 ['37*-5', '36*-5'], ['36*-5', '37*-5'],
                 ['38*-4', '12*-4'], ['12*-4', '38*-4'],
-                ['38*-5', '12*-5'], ['12*-5', '38*-5']])
+                ['38*-5', '12*-5'], ['12*-5', '38*-5'],
+            ])
 
             # Gas station
             complex_junctions.append([
                 self._map.get_waypoint_xodr(1031, -1, 11.3).get_junction(),
                 self._map.get_waypoint_xodr(100, -1, 18.8).get_junction(),
-                self._map.get_waypoint_xodr(1959, -1, 22.7).get_junction()])
+                self._map.get_waypoint_xodr(1959, -1, 22.7).get_junction(),
+            ])
             fake_lane_keys.extend([
                 ['32*-2', '33*-2'], ['33*-2', '32*-2'],
                 ['32*-1', '33*-1'], ['33*-1', '32*-1'],
                 ['32*4', '33*4'], ['33*4', '32*4'],
-                ['32*5', '33*5'], ['33*5', '32*5']])
+                ['32*5', '33*5'], ['33*5', '32*5'],
+            ])
 
         elif 'Town04' in self._map.name:
             # Gas station
             complex_junctions.append([
                 self._map.get_waypoint_xodr(518, -1, 8.1).get_junction(),
                 self._map.get_waypoint_xodr(886, 1, 10.11).get_junction(),
-                self._map.get_waypoint_xodr(467, 1, 25.8).get_junction()])
+                self._map.get_waypoint_xodr(467, 1, 25.8).get_junction(),
+            ])
 
         self._fake_lane_pair_keys.extend(fake_lane_keys)
         return complex_junctions
@@ -851,7 +856,7 @@ class BackgroundBehavior(AtomicBehavior):
         actor_dict[actor] = {
             'state': JUNCTION_ENTRY if not exit_lane_key else JUNCTION_EXIT,
             'exit_lane_key': exit_lane_key,
-            'at_oppo_entry_lane': at_oppo_entry_lane
+            'at_oppo_entry_lane': at_oppo_entry_lane,
         }
 
     def _switch_to_junction_mode(self, junction):
@@ -872,8 +877,10 @@ class BackgroundBehavior(AtomicBehavior):
             source = self._road_dict[lane_key]
             source_key = get_lane_key(source.wp)
             if source_key in junction.route_entry_keys:
-                junction.entry_sources.append(Source(
-                    source.wp, source.actors, entry_lane_wp=source.wp, active=source.active)
+                junction.entry_sources.append(
+                    Source(
+                        source.wp, source.actors, entry_lane_wp=source.wp, active=source.active,
+                    ),
                 )
                 if source_key in junction.inactive_entry_keys:
                     for actor in source.actors:
@@ -907,7 +914,7 @@ class BackgroundBehavior(AtomicBehavior):
                 if get_lane_key(wp) in route_exit_keys:
                     # TODO: entry_lane_wp isn't really this one (for cases with road changes)
                     self._active_junctions[0].entry_sources.append(
-                        Source(wp, [], entry_lane_wp=wp, active=self._active_road_sources)
+                        Source(wp, [], entry_lane_wp=wp, active=self._active_road_sources),
                     )
 
         # Handle the actors
@@ -1047,7 +1054,7 @@ class BackgroundBehavior(AtomicBehavior):
             for lane_key in self._road_dict:
                 source = self._road_dict[lane_key]
 
-                # If no actors are found, let the last_location be ego's location 
+                # If no actors are found, let the last_location be ego's location
                 # to keep moving the source waypoint forward
                 if len(source.actors) == 0:
                     last_location = self._ego_wp.transform.location
@@ -1168,7 +1175,7 @@ class BackgroundBehavior(AtomicBehavior):
             actors = self._spawn_actors(spawn_wps)
 
             self._road_dict[get_lane_key(wp)] = Source(
-                prev_wp, actors, active=self._active_road_sources
+                prev_wp, actors, active=self._active_road_sources,
             )
 
     def _initialise_opposite_sources(self):
@@ -1176,7 +1183,7 @@ class BackgroundBehavior(AtomicBehavior):
         All opposite lanes have actor sources that will continually create vehicles,
         creating the sensation of permanent traffic. The actor spawning will be done later on
         (_update_opposite_sources). These sources are at a (somewhat) fixed distance
-        from the ego, but they never entering junctions. 
+        from the ego, but they never entering junctions.
         """
         self._opposite_route_index = None
         if not self._junctions:
@@ -1298,7 +1305,7 @@ class BackgroundBehavior(AtomicBehavior):
                 exiting_wps.insert(0, next_wp)
 
             junction.exit_dict[get_lane_key(wp)] = {
-                'actors': [], 'max_actors': max_actors, 'ref_wp': wp, 'max_distance': max_distance
+                'actors': [], 'max_actors': max_actors, 'ref_wp': wp, 'max_distance': max_distance,
             }
 
             exit_lane_key = get_lane_key(wp)
@@ -2140,12 +2147,12 @@ class BackgroundBehavior(AtomicBehavior):
 
         spawn_transform = carla.Transform(
             spawn_wp.transform.location + carla.Location(z=self._spawn_vertical_shift),
-            spawn_wp.transform.rotation
+            spawn_wp.transform.rotation,
         )
 
         actor = CarlaDataProvider.request_new_actor(
             'vehicle.*', spawn_transform, 'background', True,
-            attribute_filter={'base_type': 'car', 'has_lights': True}, tick=False
+            attribute_filter={'base_type': 'car', 'has_lights': True}, tick=False,
         )
 
         if not actor:
@@ -2161,13 +2168,16 @@ class BackgroundBehavior(AtomicBehavior):
             if ego_location.distance(wp.transform.location) < ego_dist:
                 continue
             spawn_transforms.append(
-                carla.Transform(wp.transform.location + carla.Location(z=self._spawn_vertical_shift),
-                                wp.transform.rotation)
+                carla.Transform(
+                    wp.transform.location + carla.Location(z=self._spawn_vertical_shift),
+                    wp.transform.rotation,
+                ),
             )
 
         actors = CarlaDataProvider.request_new_batch_actors(
             'vehicle.*', len(spawn_transforms), spawn_transforms, True, False, 'background',
-            attribute_filter=self._attribute_filter, tick=False)
+            attribute_filter=self._attribute_filter, tick=False,
+        )
 
         if not actors:
             return actors
@@ -2186,11 +2196,12 @@ class BackgroundBehavior(AtomicBehavior):
 
         new_transform = carla.Transform(
             source_transform.location + carla.Location(z=self._spawn_vertical_shift),
-            source_transform.rotation
+            source_transform.rotation,
         )
         actor = CarlaDataProvider.request_new_actor(
             'vehicle.*', new_transform, rolename='background',
-            autopilot=True, random_location=False, attribute_filter=self._attribute_filter, tick=False)
+            autopilot=True, random_location=False, attribute_filter=self._attribute_filter, tick=False,
+        )
 
         if not actor:
             return actor

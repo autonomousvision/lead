@@ -30,7 +30,7 @@ class ROSLogger(object):
 
     def __init__(self, name):
         self.name = name
-    
+
         self.logger = logging.getLogger(self.name)
         self.logger.setLevel(logging.INFO)
 
@@ -52,7 +52,7 @@ class ROSLogger(object):
 
     def fileno(self):
         return self.handler.stream.fileno()
-    
+
     def destroy(self):
         self.logger.removeHandler(self.handler)
 
@@ -77,7 +77,7 @@ class ROSLauncher(object):
             package,
             launch_file,
             " ".join(["{}:={}".format(k, v) for k, v in parameters.items()]),
-            "--wait" if wait and self.ros_version == 1 else ""
+            "--wait" if wait and self.ros_version == 1 else "",
         ]
         cmdline = " ".join(cmdline)
         self._process = pexpect.spawn(cmdline, encoding="utf-8", logfile=self._logger if self.debug else None)
@@ -112,11 +112,11 @@ class BridgeHelper(object):
         out_orientation = {"roll": roll, "pitch": -pitch, "yaw": -yaw}
         if to_quat:
             out_orientation = cls.rpy2quat(
-                out_orientation["roll"], out_orientation["pitch"], out_orientation["yaw"]
+                out_orientation["roll"], out_orientation["pitch"], out_orientation["yaw"],
             )
         return {
             "position": out_position,
-            "orientation": out_orientation
+            "orientation": out_orientation,
         }
 
     @staticmethod
@@ -148,15 +148,15 @@ class ROSBaseAgent(AutonomousAgent):
                 "synchronous_mode": True,
                 "passive": True,
                 "register_all_sensors": False,
-                "ego_vehicle_role_name": "\"''\""
+                "ego_vehicle_role_name": "\"''\"",
             },
-            wait=True
+            wait=True,
         )
 
         self._agent_process = ROSLauncher("agent", ros_version=ros_version, debug=debug)
         self._agent_process.run(
             **self.get_ros_entrypoint(),
-            wait=True
+            wait=True,
         )
 
         self._control_queue = queue.Queue(1)
@@ -181,7 +181,7 @@ class ROSBaseAgent(AutonomousAgent):
                 hand_brake=control_msg["hand_brake"],
                 reverse=control_msg["reverse"],
                 manual_gear_shift=control_msg["manual_gear_shift"],
-                gear=control_msg["gear"]
+                gear=control_msg["gear"],
             )
         else:
             control_timestamp = control_msg.header.stamp.sec + control_msg.header.stamp.nanosec * 1e-9
@@ -192,7 +192,7 @@ class ROSBaseAgent(AutonomousAgent):
                 hand_brake=control_msg.hand_brake,
                 reverse=control_msg.reverse,
                 manual_gear_shift=control_msg.manual_gear_shift,
-                gear=control_msg.gear
+                gear=control_msg.gear,
             )
 
         # Checks that the received control timestamp is not repeated.
@@ -200,7 +200,8 @@ class ROSBaseAgent(AutonomousAgent):
             print(
                 "\033[93mWARNING: A new vehicle command with a repeated timestamp has been received {} .\033[0m".format(control_timestamp),
                 "\033[93mThis vehicle command will be ignored.\033[0m",
-                sep=" ")
+                sep=" ",
+            )
             return
 
         # Checks that the received control timestamp is the expected one.
@@ -211,7 +212,8 @@ class ROSBaseAgent(AutonomousAgent):
             print(
                 "\033[93mWARNING: Expecting a vehicle command with timestamp {} but the timestamp received was {} .\033[0m".format(carla_timestamp, control_timestamp),
                 "\033[93mThis vehicle command will be ignored.\033[0m",
-                sep=" ")
+                sep=" ",
+            )
             return
 
         self._last_control_timestamp = control_timestamp
@@ -221,7 +223,8 @@ class ROSBaseAgent(AutonomousAgent):
             print(
                 "\033[93mWARNING: A new vehicle command has been received while the previous one has not been yet processed.\033[0m",
                 "\033[93mThis vehicle command will be ignored.\033[0m",
-                sep=" ")
+                sep=" ",
+            )
 
 
     def run_step(self, _, timestamp):
@@ -238,7 +241,8 @@ class ROSBaseAgent(AutonomousAgent):
         if abs(control_timestamp - carla_timestamp) > EPSILON:
             print(
                 "\033[93mWARNING: Expecting a vehicle command with timestamp {} but the timestamp received was {} .\033[0m".format(carla_timestamp, control_timestamp),
-                 sep=" ")
+                 sep=" ",
+            )
 
         return control
 

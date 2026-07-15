@@ -12,10 +12,12 @@ import py_trees
 import carla
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorDestroy,
-                                                                      WaitForever,
-                                                                      ActorTransformSetter,
-                                                                      ScenarioTimeout)
+from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
+    ActorDestroy,
+    WaitForever,
+    ActorTransformSetter,
+    ScenarioTimeout,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import CollisionTest, ScenarioTimeoutTest
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import DriveDistance
 from srunner.scenarios.basic_scenario import BasicScenario
@@ -30,7 +32,7 @@ def get_interval_parameter(config, name, p_type, default):
     if name in config.other_parameters:
         return [
             p_type(config.other_parameters[name]['from']),
-            p_type(config.other_parameters[name]['to'])
+            p_type(config.other_parameters[name]['to']),
         ]
     else:
         return default
@@ -109,12 +111,14 @@ class PedestrianCrowd(BasicScenario):
 
         self.spawn_point = lane
 
-        super().__init__("PedestrianCrowd",
-                          ego_vehicles,
-                          config,
-                          world,
-                          debug_mode,
-                          criteria_enable=criteria_enable)
+        super().__init__(
+            "PedestrianCrowd",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
         """

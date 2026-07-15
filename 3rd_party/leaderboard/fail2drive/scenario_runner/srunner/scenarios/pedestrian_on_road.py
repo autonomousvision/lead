@@ -2,13 +2,17 @@ import py_trees
 import carla
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorDestroy,
-                                                                      Idle, WaitForever,
-                                                                      ActorTransformSetter,
-                                                                      KeepVelocity)
+from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
+    ActorDestroy,
+    Idle, WaitForever,
+    ActorTransformSetter,
+    KeepVelocity,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import CollisionTest
-from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (DriveDistance,
-                                                                               WaitUntilInFront)
+from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
+    DriveDistance,
+    WaitUntilInFront,
+)
 from srunner.scenarios.basic_scenario import BasicScenario
 from srunner.tools.background_manager import LeaveSpaceInFront, ChangeRoadBehavior
 
@@ -24,8 +28,10 @@ class PedestriansOnRoad(BasicScenario):
     with three bicycles encroaching on some roads in front.
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=180):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=180,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -44,13 +50,15 @@ class PedestriansOnRoad(BasicScenario):
 
         self.spawn_transforms = []
 
-        super().__init__("PedestriansOnRoad",
-                         ego_vehicles,
-                         config,
-                         world,
-                         randomize,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "PedestriansOnRoad",
+            ego_vehicles,
+            config,
+            world,
+            randomize,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     # TODO: Pedestrian have an issue with large maps were setting them to dormant breaks them,
     # so all functions below are meant to patch it until the fix is done

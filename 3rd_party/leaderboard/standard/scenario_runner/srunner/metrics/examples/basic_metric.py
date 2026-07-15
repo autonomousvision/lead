@@ -39,4 +39,5 @@ class BasicMetric(object):
         """
         raise NotImplementedError(
             "This function should be re-implemented by all metrics"
-            "If this error becomes visible the class hierarchy is somehow broken")
+            "If this error becomes visible the class hierarchy is somehow broken",
+        )

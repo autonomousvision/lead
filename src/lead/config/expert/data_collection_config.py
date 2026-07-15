@@ -1,10 +1,8 @@
 """Data-collection configuration of the expert (datagen, py123d output, planning area)."""
 
-from collections import defaultdict
 from functools import cached_property
 
-from lead.common import weather
-from lead.config.node import ConfigNode
+from lead.config.node import ConfigNode, overridable_property
 
 
 class DataCollectionConfig(ConfigNode):
@@ -28,8 +26,45 @@ class DataCollectionConfig(ConfigNode):
     # --- Data saving configuration for LiDAR ---
     # How many steps to stack LiDAR point clouds
     lidar_stack_size: int = 5
-    # Frequency (in steps) at which data is saved during data collection
+    # Period (in simulator steps) of the anchor save ticks: the cameras render
+    # at this cadence and the driving meta — which anchors the training scene
+    # sampling — is stored on exactly those ticks (5 = 4 Hz at 20 fps).
     data_save_freq: int = 5
+
+    # --- Per-modality storage periods (in simulator steps) ---
+    # Every-tick state modalities; storage stays aligned to the anchor save
+    # ticks, so any period that divides ``data_save_freq`` is exact and other
+    # periods are re-phased at each anchor.
+    lidar_store_freq: int = 1
+    radar_store_freq: int = 1
+    box_detections_store_freq: int = 1
+
+    # Anchor-locked modalities can only be stored on save ticks: their period
+    # must be a multiple of ``data_save_freq``.
+    @overridable_property
+    def camera_store_freq(self) -> int:
+        """Storage period of the RGB cameras; defaults to every save tick."""
+        return self.data_save_freq
+
+    @overridable_property
+    def depth_store_freq(self) -> int:
+        """Storage period of the depth cameras; defaults to every save tick."""
+        return self.data_save_freq
+
+    @overridable_property
+    def instance_store_freq(self) -> int:
+        """Storage period of the instance segmentation; defaults to every save tick."""
+        return self.data_save_freq
+
+    @overridable_property
+    def traffic_light_store_freq(self) -> int:
+        """Storage period of the traffic-light states; defaults to every save tick."""
+        return self.data_save_freq
+
+    @property
+    def ego_history_length(self) -> int:
+        """Ticks of filtered ego pose history kept; must cover the radar window (2x stack)."""
+        return 4 * self.lidar_stack_size + 1
 
     # --- Planning Area ---
     # How many pixels make up 1 meter in BEV grids.
@@ -81,8 +116,6 @@ class DataCollectionConfig(ConfigNode):
     # Default bounding box size for construction cones.
     construction_cone_bb_size: list[float] = [0.1720348298549652, 0.1720348298549652]
 
-    # If true save instance segmentation images.
-    save_instance_segmentation: bool = False
     # If true run expert evaluation. This will minimize sensor production and
     # other overheads to maximize inference speed.
     eval_expert: bool = False
@@ -103,10 +136,82 @@ class DataCollectionConfig(ConfigNode):
     def weather_jpeg_compression_quality(self) -> dict[str, dict[int, float]]:
         """JPEG compression quality distribution per weather condition."""
 
-        # Use default high level compression for all datasets.
-        return defaultdict(lambda: {30: 1.0})
+        def normalize(d):
+            return {k: v / sum(d.values()) for k, v in d.items()}
 
-    @property
-    def weather_settings(self) -> dict[str, dict[str, float]]:
-        """Weather presets used for data-collection weather shuffling."""
-        return weather.WEATHER_SETTINGS
+        LOW_COMPRESSION = normalize({80: 0.30, 85: 0.5, 90: 0.2})
+        MILD_COMPRESSION = normalize({70: 0.15, 75: 0.25, 80: 0.4, 90: 0.15})
+        MEDIUM_COMPRESSION = normalize({70: 0.25, 75: 0.2, 80: 0.15, 90: 0.15})
+        HIGH_COMPRESION = normalize(
+            {60: 0.10, 65: 0.1, 70: 0.1, 75: 0.2, 80: 0.1, 90: 0.15},
+        )
+        VERY_HIGH_COMPRESION = normalize({55: 0.20, 65: 0.4, 75: 0.15, 90: 0.15})
+        EXTREME_COMPRESSION = normalize({30: 0.25, 40: 0.35, 50: 0.15, 90: 0.15})
+
+        return {
+            "ClearNight": MEDIUM_COMPRESSION,
+            "ClearNoon": EXTREME_COMPRESSION,
+            "ClearSunset": EXTREME_COMPRESSION,
+            "ClearSunrise": EXTREME_COMPRESSION,
+            # Cloudy weather
+            "CloudyNight": MILD_COMPRESSION,
+            "CloudyNoon": EXTREME_COMPRESSION,
+            "CloudySunset": EXTREME_COMPRESSION,
+            "CloudySunrise": EXTREME_COMPRESSION,
+            # Dust storm
+            "DustStorm": VERY_HIGH_COMPRESION,
+            # Hard rain
+            "HardRainNight": LOW_COMPRESSION,
+            "HardRainNoon": MEDIUM_COMPRESSION,
+            "HardRainSunset": MEDIUM_COMPRESSION,
+            "HardRainSunrise": MEDIUM_COMPRESSION,
+            # Mid rain
+            "MidRainyNight": LOW_COMPRESSION,
+            "MidRainyNoon": HIGH_COMPRESION,
+            "MidRainSunset": HIGH_COMPRESION,
+            "MidRainSunrise": HIGH_COMPRESION,
+            # Soft rain
+            "SoftRainNight": MILD_COMPRESSION,
+            "SoftRainNoon": VERY_HIGH_COMPRESION,
+            "SoftRainSunset": VERY_HIGH_COMPRESION,
+            "SoftRainSunrise": VERY_HIGH_COMPRESION,
+            # Wet cloudy
+            "WetCloudyNight": LOW_COMPRESSION,
+            "WetCloudyNoon": VERY_HIGH_COMPRESION,
+            "WetCloudySunset": VERY_HIGH_COMPRESION,
+            "WetCloudySunrise": VERY_HIGH_COMPRESION,
+            # Wet
+            "WetNight": MILD_COMPRESSION,
+            "WetNoon": VERY_HIGH_COMPRESION,
+            # Foggy cloudy
+            "FoggyCloudyNight": MEDIUM_COMPRESSION,
+            "FoggyCloudyNoon": MEDIUM_COMPRESSION,
+            "FoggyCloudySunset": MEDIUM_COMPRESSION,
+            "FoggyCloudySunrise": MEDIUM_COMPRESSION,
+            # Foggy Wet cloudy
+            "FoggyWetCloudyNight": MEDIUM_COMPRESSION,
+            "FoggyWetCloudyNoon": MEDIUM_COMPRESSION,
+            "FoggyWetCloudySunset": MEDIUM_COMPRESSION,
+            "FoggyWetCloudySunrise": MEDIUM_COMPRESSION,
+            # Foggy Wet
+            "FoggyWetNoon": MEDIUM_COMPRESSION,
+            # Foggy Soft Rain
+            "FoggySoftRainNight": MEDIUM_COMPRESSION,
+            "FoggySoftRainNoon": MEDIUM_COMPRESSION,
+            "FoggySoftRainSunset": MEDIUM_COMPRESSION,
+            "FoggySoftRainSunrise": MEDIUM_COMPRESSION,
+            # Foggy Hard Rain
+            "FoggyHardRainNight": LOW_COMPRESSION,
+            # Custom weather
+            "Custom0": HIGH_COMPRESION,
+            "Custom9": HIGH_COMPRESION,
+            "Custom10": LOW_COMPRESSION,
+            "Custom11": HIGH_COMPRESION,
+            "Custom12": HIGH_COMPRESION,
+            "Custom13": LOW_COMPRESSION,
+            "Custom14": HIGH_COMPRESION,
+            "Custom15": HIGH_COMPRESION,
+            "Custom19": LOW_COMPRESSION,
+            "Custom20": LOW_COMPRESSION,
+            "Custom21": LOW_COMPRESSION,
+        }

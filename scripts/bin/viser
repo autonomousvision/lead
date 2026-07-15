@@ -1,3 +1,10 @@
 #!/usr/bin/bash
 
-PY123D_DATA_ROOT=$(dotenv PY123D_DATA_ROOT) py123d-viser 'scene_filter.split_names=[normal_view,perturbated_view]'
+# Usage: viser-scene data/LEAD/logs/<split_name>/[<scenario_type>/]<log_name>
+
+DATA_ROOT=$(dotenv PY123D_DATA_ROOT)
+REL_PATH=$(realpath --relative-to="$DATA_ROOT/logs" "$1")
+LOG_NAME=$(basename "$REL_PATH")
+SPLIT_NAME=$(dirname "$REL_PATH")
+
+PY123D_DATA_ROOT=$DATA_ROOT py123d-viser "scene_filter.split_names=['$SPLIT_NAME']" "scene_filter.log_names=['$LOG_NAME']" 'scene_filter.shuffle=False' '+viser_config.lidar.visible=True' "+viser_config.lidar.ids=['LIDAR_TOP']"

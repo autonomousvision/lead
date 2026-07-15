@@ -31,7 +31,7 @@ def convert_dict_to_location(actor_dict):
     location = carla.Location(
         x=float(actor_dict['x']),
         y=float(actor_dict['y']),
-        z=float(actor_dict['z'])
+        z=float(actor_dict['z']),
     )
     return location
 
@@ -47,7 +47,7 @@ def get_interval_parameter(config, name, p_type, default):
     if name in config.other_parameters:
         return [
             p_type(config.other_parameters[name]['from']),
-            p_type(config.other_parameters[name]['to'])
+            p_type(config.other_parameters[name]['to']),
         ]
     else:
         return default
@@ -59,8 +59,10 @@ class CrossingBicycleFlow(BasicScenario):
     ambulances or firetrucks.
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=180):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=180,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -84,12 +86,14 @@ class CrossingBicycleFlow(BasicScenario):
         self._flow_speed = get_value_parameter(config, 'flow_speed', float, 10)
         self._source_dist_interval = get_interval_parameter(config, 'source_dist_interval', float, [20, 50])
 
-        super().__init__("CrossingBicycleFlow",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "CrossingBicycleFlow",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
 
@@ -161,7 +165,8 @@ class CrossingBicycleFlow(BasicScenario):
         """
 
         root = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE,
+        )
         root.add_child(BicycleFlow(self._plan, self._source_dist_interval, self._sink_distance, self._flow_speed, True))
         root.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
         root.add_child(WaitEndIntersection(self.ego_vehicles[0]))
@@ -178,14 +183,16 @@ class CrossingBicycleFlow(BasicScenario):
             return root
 
         sequence = py_trees.composites.Sequence()
-        sequence.add_child(HandleJunctionScenario(
-            clear_junction=True,
-            clear_ego_entry=True,
-            remove_entries=[],
-            remove_exits=[],
-            stop_entries=True,
-            extend_road_exit=0
-        ))
+        sequence.add_child(
+            HandleJunctionScenario(
+                clear_junction=True,
+                clear_ego_entry=True,
+                remove_entries=[],
+                remove_exits=[],
+                stop_entries=True,
+                extend_road_exit=0,
+            ),
+        )
         sequence.add_child(root)
         return sequence
 

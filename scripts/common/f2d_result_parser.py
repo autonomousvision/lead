@@ -7,8 +7,8 @@ import argparse
 import json
 import math
 import re
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, Optional
 
 import pandas as pd
 
@@ -73,7 +73,10 @@ CLASS_PAPER_ORDER = ["Visual-lon", "Visual-lat", "Behavior", "Robustness"]
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     # Required:
-    parser.add_argument("results_root", help="Method results root, e.g. /path/to/method_eval")
+    parser.add_argument(
+        "results_root",
+        help="Method results root, e.g. /path/to/method_eval",
+    )
     # Optional:
     parser.add_argument(
         "--method",
@@ -119,7 +122,7 @@ def iter_seed_dirs(results_root: Path) -> Iterable[Path]:
             yield path
 
 
-def resolve_result_dir(seed_dir: Path) -> Optional[Path]:
+def resolve_result_dir(seed_dir: Path) -> Path | None:
     for name in ("res", "results", "eval"):
         candidate = seed_dir / name
         if candidate.exists() and candidate.is_dir():
@@ -135,7 +138,7 @@ def resolve_result_dir(seed_dir: Path) -> Optional[Path]:
     return None
 
 
-def route_idx_from_filename(json_path: Path) -> Optional[int]:
+def route_idx_from_filename(json_path: Path) -> int | None:
     match = RESULT_FILE_REGEX.match(json_path.name)
     if not match:
         return None
@@ -165,7 +168,9 @@ def load_rows(
     for seed_dir in iter_seed_dirs(results_root):
         result_dir = resolve_result_dir(seed_dir)
         if result_dir is None:
-            warning = f"WARNING: seed {seed_dir.name} has no res/ or results/ directory."
+            warning = (
+                f"WARNING: seed {seed_dir.name} has no res/ or results/ directory."
+            )
             warnings.append(warning)
             strict_failure = True
             continue
@@ -274,11 +279,14 @@ def pct_change(new: float, old: float) -> float:
     return 100.0 * new / old - 100.0
 
 
-def build_summary_rows(table: pd.DataFrame, b2d_score: Optional[float]) -> list[dict]:
+def build_summary_rows(table: pd.DataFrame, b2d_score: float | None) -> list[dict]:
     rows: list[dict] = []
     for method in sorted(table["Method"].unique().tolist()):
         method_table = table[table["Method"] == method].set_index("Split")
-        if "Base" not in method_table.index or "Generalization" not in method_table.index:
+        if (
+            "Base" not in method_table.index
+            or "Generalization" not in method_table.index
+        ):
             continue
 
         base_ds = float(method_table.loc["Base", "DS"])
@@ -307,9 +315,9 @@ def build_scenario_hm_overview(rows: pd.DataFrame) -> list[dict]:
     if rows.empty:
         return []
 
-    scenario_scores = (
-        rows.groupby(["Method", "Split", "Scenario"], as_index=False)[["DS", "Success"]].mean()
-    )
+    scenario_scores = rows.groupby(["Method", "Split", "Scenario"], as_index=False)[
+        ["DS", "Success"]
+    ].mean()
     ordered_scenarios = SCENARIO_PAPER_ORDER
 
     overview: list[dict] = []
@@ -323,9 +331,13 @@ def build_scenario_hm_overview(rows: pd.DataFrame) -> list[dict]:
                 continue
 
             base_ds = float(split_scores.loc[("Base", scenario), "DS"])
-            base_success = 100.0 * float(split_scores.loc[("Base", scenario), "Success"])
+            base_success = 100.0 * float(
+                split_scores.loc[("Base", scenario), "Success"],
+            )
             gen_ds = float(split_scores.loc[("Generalization", scenario), "DS"])
-            gen_success = 100.0 * float(split_scores.loc[("Generalization", scenario), "Success"])
+            gen_success = 100.0 * float(
+                split_scores.loc[("Generalization", scenario), "Success"],
+            )
             base_hm = harmonic_mean(base_ds, base_success)
             gen_hm = harmonic_mean(gen_ds, gen_success)
 
@@ -360,8 +372,13 @@ def build_class_hm_overview(rows: pd.DataFrame) -> list[dict]:
             if class_rows.empty:
                 continue
 
-            class_scores = class_rows.groupby("Split", as_index=True)[["DS", "Success"]].mean()
-            if "Base" not in class_scores.index or "Generalization" not in class_scores.index:
+            class_scores = class_rows.groupby("Split", as_index=True)[
+                ["DS", "Success"]
+            ].mean()
+            if (
+                "Base" not in class_scores.index
+                or "Generalization" not in class_scores.index
+            ):
                 continue
 
             base_ds = float(class_scores.loc["Base", "DS"])
@@ -422,7 +439,7 @@ def print_hm_overview(
         print(" | ".join(values))
 
 
-def build_latex_row(table: pd.DataFrame, method: str, b2d_score: Optional[float]) -> str:
+def build_latex_row(table: pd.DataFrame, method: str, b2d_score: float | None) -> str:
     method_table = table[table["Method"] == method]
     if method_table.empty:
         raise ValueError(f"Method {method!r} was not found in the parsed results.")

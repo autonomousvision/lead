@@ -52,11 +52,15 @@ class AgentWrapper(object):
                 bp.set_attribute('image_size_x', str(sensor_spec['width']))
                 bp.set_attribute('image_size_y', str(sensor_spec['height']))
                 bp.set_attribute('fov', str(sensor_spec['fov']))
-                sensor_location = carla.Location(x=sensor_spec['x'], y=sensor_spec['y'],
-                                                 z=sensor_spec['z'])
-                sensor_rotation = carla.Rotation(pitch=sensor_spec['pitch'],
-                                                 roll=sensor_spec['roll'],
-                                                 yaw=sensor_spec['yaw'])
+                sensor_location = carla.Location(
+                    x=sensor_spec['x'], y=sensor_spec['y'],
+                    z=sensor_spec['z'],
+                )
+                sensor_rotation = carla.Rotation(
+                    pitch=sensor_spec['pitch'],
+                    roll=sensor_spec['roll'],
+                    yaw=sensor_spec['yaw'],
+                )
             elif sensor_spec['type'].startswith('sensor.lidar'):
                 bp.set_attribute('range', str(sensor_spec['range']))
                 bp.set_attribute('rotation_frequency', str(sensor_spec['rotation_frequency']))
@@ -64,14 +68,20 @@ class AgentWrapper(object):
                 bp.set_attribute('upper_fov', str(sensor_spec['upper_fov']))
                 bp.set_attribute('lower_fov', str(sensor_spec['lower_fov']))
                 bp.set_attribute('points_per_second', str(sensor_spec['points_per_second']))
-                sensor_location = carla.Location(x=sensor_spec['x'], y=sensor_spec['y'],
-                                                 z=sensor_spec['z'])
-                sensor_rotation = carla.Rotation(pitch=sensor_spec['pitch'],
-                                                 roll=sensor_spec['roll'],
-                                                 yaw=sensor_spec['yaw'])
+                sensor_location = carla.Location(
+                    x=sensor_spec['x'], y=sensor_spec['y'],
+                    z=sensor_spec['z'],
+                )
+                sensor_rotation = carla.Rotation(
+                    pitch=sensor_spec['pitch'],
+                    roll=sensor_spec['roll'],
+                    yaw=sensor_spec['yaw'],
+                )
             elif sensor_spec['type'].startswith('sensor.other.gnss'):
-                sensor_location = carla.Location(x=sensor_spec['x'], y=sensor_spec['y'],
-                                                 z=sensor_spec['z'])
+                sensor_location = carla.Location(
+                    x=sensor_spec['x'], y=sensor_spec['y'],
+                    z=sensor_spec['z'],
+                )
                 sensor_rotation = carla.Rotation()
 
             # create sensor

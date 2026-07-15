@@ -210,7 +210,7 @@ class RouteWeatherBehavior(py_trees.behaviour.Behaviour):
                         location + carla.Location(z=1),
                         str(new_perc),
                         color=carla.Color(50, 50, 50),
-                        life_time=100000
+                        life_time=100000,
                     )
                     debug_perc = new_perc
         self._route_weathers = self.get_route_weathers()

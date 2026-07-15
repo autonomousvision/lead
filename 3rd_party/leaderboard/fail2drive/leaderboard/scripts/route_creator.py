@@ -117,7 +117,7 @@ def save_data(filename, route_id, points):
     for route in root.iter("route"):
         if route.attrib['id'] != route_id:
             continue
-        
+
         found_id = True
 
         waypoints = route.find('waypoints')
@@ -163,11 +163,11 @@ def main():
 
     file_path = args.file[0]
     route_id = args.file[1] if len(args.file) > 1 else 0
-    
+
     # Get the client
     client = carla.Client(args.host, args.port)
     client.set_timeout(30.0)
-    
+
     # Load world
     tree = etree.parse(args.file[0])
     root = tree.getroot()
@@ -175,7 +175,7 @@ def main():
         if route.attrib['id'] != route_id:
             continue
         town = route.attrib['town']
-        
+
     client.load_world(town)
 
     # # Get the rest

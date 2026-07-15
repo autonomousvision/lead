@@ -4,10 +4,10 @@ import jaxtyping as jt
 import numpy as np
 import torch
 
-from lead.common.control.pid_controller import (
+from lead.common.pid import (
     LateralPIDController,
+    LongitudinalController,
     PIDController,
-    get_throttle,
 )
 from lead.config import LeadConfig
 
@@ -50,8 +50,8 @@ class WaypointTracker:
             throttle: Throttle command in [0, 1]
             brake: Brake command in [0, 1]
         """
-        waypoints = waypoints[0].data.cpu().float().numpy()
-        speed = velocity[0].data.cpu().float().numpy()
+        waypoints_np = waypoints[0].data.cpu().float().numpy()
+        speed = float(velocity[0].data.cpu().float().numpy())
 
         one_second = int(
             self.lead_config.expert.simulation.carla_fps
@@ -60,12 +60,17 @@ class WaypointTracker:
         half_second = one_second // 2
 
         desired_speed = (
-            np.linalg.norm(waypoints[half_second - 1] - waypoints[one_second - 1]) * 2.0
+            np.linalg.norm(
+                waypoints_np[half_second - 1] - waypoints_np[one_second - 1],
+            )
+            * 2.0
         )
-        delta_speed = np.clip(
-            desired_speed - speed,
-            0.0,
-            self.lead_config.evaluation.controller.wp_delta_clip,
+        delta_speed = float(
+            np.clip(
+                desired_speed - speed,
+                0.0,
+                self.lead_config.evaluation.controller.wp_delta_clip,
+            ),
         )
 
         brake = (
@@ -93,13 +98,13 @@ class WaypointTracker:
                 aim_distance = self.lead_config.evaluation.controller.aim_distance_fast
 
         # We follow the waypoint that is at least a certain distance away
-        aim_index = waypoints.shape[0] - 1
-        for index, predicted_waypoint in enumerate(waypoints):
+        aim_index = waypoints_np.shape[0] - 1
+        for index, predicted_waypoint in enumerate(waypoints_np):
             if np.linalg.norm(predicted_waypoint) >= aim_distance:
                 aim_index = index
                 break
 
-        aim = waypoints[aim_index]
+        aim = waypoints_np[aim_index]
         angle = np.degrees(np.arctan2(aim[1], aim[0])) / 90.0
         if speed < 0.01:
             # When we don't move we don't want the angle error to accumulate in the integral
@@ -121,9 +126,8 @@ class PathSpeedTracker:
 
     def __init__(self, lead_config: LeadConfig) -> None:
         self.lead_config = lead_config
-        self.lateral_controller = LateralPIDController(
-            lead_config.evaluation.controller,
-        )
+        self.lateral_controller = LateralPIDController(lead_config.expert)
+        self.longitudinal_controller = LongitudinalController(lead_config.expert)
 
     def step(
         self,
@@ -147,26 +151,29 @@ class PathSpeedTracker:
             throttle: Throttle command in [0, 1]
             brake: Brake command in [0, 1]
         """
-        pred_checkpoints = pred_checkpoints[0].data.cpu().float().numpy()
-        speed = float(speed[0].data.cpu().float().numpy())
-        pred_target_speed = float(pred_target_speed[0].data.cpu().float().numpy())
+        pred_checkpoints_np = pred_checkpoints[0].data.cpu().float().numpy()
+        speed_val = float(speed[0].data.cpu().float().numpy())
+        pred_target_speed_val = float(pred_target_speed[0].data.cpu().float().numpy())
 
         brake = bool(
-            pred_target_speed < 0.01
-            or (speed / pred_target_speed)
+            pred_target_speed_val < 0.01
+            or (speed_val / pred_target_speed_val)
             > self.lead_config.evaluation.controller.brake_ratio,
         )
-        steer = self.lateral_controller.step(
-            pred_checkpoints,
-            speed,
-            ego_vehicle_location,
-            ego_vehicle_rotation,
+        steer = round(
+            self.lateral_controller.step(
+                pred_checkpoints_np,
+                speed_val,
+                np.full(2, ego_vehicle_location),
+                ego_vehicle_rotation,
+                inference_mode=True,
+            ),
+            3,
         )
-        throttle, brake = get_throttle(
+        throttle, brake = self.longitudinal_controller.get_throttle_and_brake(
             brake,
-            pred_target_speed,
-            speed,
-            self.lead_config.expert,
+            pred_target_speed_val,
+            speed_val,
         )
 
         return steer, throttle, float(brake)

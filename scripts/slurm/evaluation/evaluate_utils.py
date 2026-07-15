@@ -62,22 +62,23 @@ def load_json_file(json_file):
 
 
 def get_max_num_attempts():
-    return read_dotenv_int(
-        f"MAX_NUM_ATTEMPTS_{os.getenv('EVALUATION_DATASET').upper()}",
-    )
+    eval_dataset = os.getenv("EVALUATION_DATASET")
+    assert eval_dataset is not None, "EVALUATION_DATASET is not set"
+    return read_dotenv_int(f"MAX_NUM_ATTEMPTS_{eval_dataset.upper()}")
 
 
 def get_max_parallel_jobs():
     if not is_on_slurm():
         return 1
-    return read_dotenv_int(
-        f"MAX_NUM_PARALLEL_JOBS_{os.getenv('EVALUATION_DATASET').upper()}",
-    )
+    eval_dataset = os.getenv("EVALUATION_DATASET")
+    assert eval_dataset is not None, "EVALUATION_DATASET is not set"
+    return read_dotenv_int(f"MAX_NUM_PARALLEL_JOBS_{eval_dataset.upper()}")
 
 
 def get_num_running_jobs(job_name, username=None):
     if username is None:
         username = os.getenv("USER")
+        assert username is not None, "USER is not set"
     # On local PC
     if not is_on_slurm():
         try:
@@ -194,6 +195,8 @@ def aggregate_metrics():
     """Aggregate metrics for all routes."""
     eval_output_dir = os.getenv("EVALUATION_OUTPUT_DIR")
     eval_dataset = os.getenv("EVALUATION_DATASET")
+    assert eval_output_dir is not None, "EVALUATION_OUTPUT_DIR is not set"
+    assert eval_dataset is not None, "EVALUATION_DATASET is not set"
     merge_route_json(eval_output_dir + "/eval")
     shutil.copyfile(
         eval_output_dir + "/eval/merged.json",

@@ -15,15 +15,20 @@ import py_trees
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
     ActorDestroy, ActorTransformSetter, Idle, OppositeActorFlow,
-    ScenarioTimeout, SwitchWrongDirectionTest, WaitForever)
+    ScenarioTimeout, SwitchWrongDirectionTest, WaitForever,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (
-    CollisionTest, ScenarioTimeoutTest)
+    CollisionTest, ScenarioTimeoutTest,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
-    InTriggerDistanceToLocation, WaitUntilInFrontPosition)
+    InTriggerDistanceToLocation, WaitUntilInFrontPosition,
+)
 from srunner.scenarios.basic_scenario import BasicScenario
-from srunner.tools.background_manager import (ChangeOppositeBehavior,
-                                              ReAddRoadLane, RemoveRoadLane,
-                                              SetMaxSpeed)
+from srunner.tools.background_manager import (
+    ChangeOppositeBehavior,
+    ReAddRoadLane, RemoveRoadLane,
+    SetMaxSpeed,
+)
 
 
 def get_value_parameter(config, name, p_type, default):
@@ -36,7 +41,7 @@ def get_interval_parameter(config, name, p_type, default):
     if name in config.other_parameters:
         return [
             p_type(config.other_parameters[name]['from']),
-            p_type(config.other_parameters[name]['to'])
+            p_type(config.other_parameters[name]['to']),
         ]
     else:
         return default
@@ -51,8 +56,10 @@ class ConstructionObstacle(BasicScenario):
     This is a single ego vehicle scenario
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False,
-                 criteria_enable=True, timeout=60):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False,
+        criteria_enable=True, timeout=60,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -103,24 +110,26 @@ class ConstructionObstacle(BasicScenario):
             from srunner.scenariomanager.carla_data_provider import \
                 ActiveScenario
             scenario_id = id(self)
-            CarlaDataProvider.active_scenarios.append(ActiveScenario(
-                type(self).__name__, 
-                first_actor=traffic_warning, 
-                last_actor=last_cone, 
-                metadata=self._direction, 
-                scenario_id=scenario_id, 
-                trigger_location=config.trigger_points[0].location,
-                extra_meta={
-                    "obstacles": self.other_actors,
-                    "first_actor": traffic_warning,
-                    "last_actor": last_cone,
-                    "direction": self._direction,
-                    "changed_route": False,
-                    "from_index": 1e9,
-                    "to_index": 1e9,
-                    "path_clear": False
-                }
-            ))
+            CarlaDataProvider.active_scenarios.append(
+                ActiveScenario(
+                    type(self).__name__,
+                    first_actor=traffic_warning,
+                    last_actor=last_cone,
+                    metadata=self._direction,
+                    scenario_id=scenario_id,
+                    trigger_location=config.trigger_points[0].location,
+                    extra_meta={
+                        "obstacles": self.other_actors,
+                        "first_actor": traffic_warning,
+                        "last_actor": last_cone,
+                        "direction": self._direction,
+                        "changed_route": False,
+                        "from_index": 1e9,
+                        "to_index": 1e9,
+                        "path_clear": False,
+                    },
+                ),
+            )
 
     def _move_waypoint_forward(self, wp, distance):
         dist = 0
@@ -182,11 +191,15 @@ class ConstructionObstacle(BasicScenario):
     def _create_construction_setup(self, start_transform, lane_width):
         """Create construction setup"""
 
-        _initial_offset = {'cones': {'yaw': 270, 'k': 0.85 * lane_width / 2.0},
-                           'warning_sign': {'yaw': 180, 'k': 5, 'z': 0},
-                           'debris': {'yaw': 0, 'k': 2, 'z': 1}}
-        _prop_names = {'warning_sign': 'static.prop.trafficwarning',
-                       'debris': 'static.prop.dirtdebris02'}
+        _initial_offset = {
+            'cones': {'yaw': 270, 'k': 0.85 * lane_width / 2.0},
+            'warning_sign': {'yaw': 180, 'k': 5, 'z': 0},
+            'debris': {'yaw': 0, 'k': 2, 'z': 1},
+        }
+        _prop_names = {
+            'warning_sign': 'static.prop.trafficwarning',
+            'debris': 'static.prop.dirtdebris02',
+        }
 
         _perp_angle = 90
         _setup = {'lengths': [4, 3], 'offsets': [2, 1]}
@@ -198,7 +211,8 @@ class ConstructionObstacle(BasicScenario):
                 continue
             transform = carla.Transform(
                 start_transform.location,
-                start_transform.rotation)
+                start_transform.rotation,
+            )
             transform.rotation.yaw += value['yaw']
             transform.location += value['k'] * \
                 transform.rotation.get_forward_vector()
@@ -208,7 +222,8 @@ class ConstructionObstacle(BasicScenario):
             spawn_transform = carla.Transform(transform.location, transform.rotation)
             spawn_transform.location.z -= 200
             static = CarlaDataProvider.request_new_actor(
-                _prop_names[key], spawn_transform)
+                _prop_names[key], spawn_transform,
+            )
             static.set_simulate_physics(False)
             self.other_actors.append(static)
 
@@ -217,7 +232,8 @@ class ConstructionObstacle(BasicScenario):
         # Cones
         side_transform = carla.Transform(
             start_transform.location,
-            start_transform.rotation)
+            start_transform.rotation,
+        )
         side_transform.rotation.yaw += _perp_angle
         offset_vec = _initial_offset['cones']['k'] * side_transform.rotation.get_forward_vector()
         if self._direction == 'right':
@@ -233,7 +249,8 @@ class ConstructionObstacle(BasicScenario):
                 forward_vector=side_transform.rotation.get_forward_vector(),
                 z_inc=_z_increment,
                 cone_length=_setup['lengths'][i],
-                cone_offset=_setup['offsets'][i])
+                cone_offset=_setup['offsets'][i],
+            )
             side_transform.location += side_transform.get_forward_vector() * \
                 _setup['lengths'][i] * _setup['offsets'][i]
             if i == 0 and self._direction == 'left':
@@ -259,8 +276,11 @@ class ConstructionObstacle(BasicScenario):
         end_condition.add_child(WaitUntilInFrontPosition(self.ego_vehicles[0], self._end_wp.transform, False))
 
         behavior = py_trees.composites.Sequence()
-        behavior.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], self._construction_wp.transform.location, self._trigger_distance))
+        behavior.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], self._construction_wp.transform.location, self._trigger_distance,
+            ),
+        )
         behavior.add_child(Idle(self._opposite_wait_duration))
         if self.route_mode:
             behavior.add_child(SetMaxSpeed(self._max_speed))
@@ -329,8 +349,11 @@ class ConstructionObstacleTwoWays(ConstructionObstacle):
         end_condition.add_child(WaitUntilInFrontPosition(self.ego_vehicles[0], self._end_wp.transform, False))
 
         behavior = py_trees.composites.Sequence()
-        behavior.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], self._construction_wp.transform.location, self._trigger_distance))
+        behavior.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], self._construction_wp.transform.location, self._trigger_distance,
+            ),
+        )
         behavior.add_child(Idle(self._opposite_wait_duration))
         if self.route_mode:
             behavior.add_child(SwitchWrongDirectionTest(False))
@@ -363,21 +386,23 @@ class ConstructionObstacleTwoWays(ConstructionObstacle):
             from srunner.scenariomanager.carla_data_provider import \
                 ActiveScenario
             scenario_id = id(self)
-            CarlaDataProvider.active_scenarios.append(ActiveScenario(
-                type(self).__name__, 
-                first_actor=self.traffic_warning, 
-                last_actor=self.last_cone, 
-                metadata=self._direction, 
-                scenario_id=scenario_id, 
-                trigger_location=config.trigger_points[0].location,
-                extra_meta={
-                    "obstacles": self.other_actors,
-                    "first_actor": self.traffic_warning,
-                    "last_actor": self.last_cone,
-                    "direction": self._direction,
-                    "changed_route": False,
-                    "from_index": 1e9,
-                    "to_index": 1e9,
-                    "path_clear": False
-                }
-            ))
+            CarlaDataProvider.active_scenarios.append(
+                ActiveScenario(
+                    type(self).__name__,
+                    first_actor=self.traffic_warning,
+                    last_actor=self.last_cone,
+                    metadata=self._direction,
+                    scenario_id=scenario_id,
+                    trigger_location=config.trigger_points[0].location,
+                    extra_meta={
+                        "obstacles": self.other_actors,
+                        "first_actor": self.traffic_warning,
+                        "last_actor": self.last_cone,
+                        "direction": self._direction,
+                        "changed_route": False,
+                        "from_index": 1e9,
+                        "to_index": 1e9,
+                        "path_clear": False,
+                    },
+                ),
+            )

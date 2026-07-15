@@ -63,7 +63,8 @@ class ResultOutputProvider(object):
         # Create the title
         output = "\n"
         output += "\033[1m========= Results of {} (repetition {}) ------ {} \033[1m=========\033[0m\n".format(
-            self._data.scenario_tree.name, self._data.repetition_number, self._global_result)
+            self._data.scenario_tree.name, self._data.repetition_number, self._global_result,
+        )
         output += "\n"
 
         # Simulation part
@@ -99,7 +100,7 @@ class ResultOutputProvider(object):
                 criteria_data[name] = {
                     'result': criterion.test_status,
                     'actual_value': criterion.actual_value,
-                    'units': criterion.units
+                    'units': criterion.units,
                 }
 
         for criterion_name in criteria_data:

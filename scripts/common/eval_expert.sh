@@ -38,7 +38,7 @@ python -u 3rd_party/leaderboard/expert/leaderboard/leaderboard/leaderboard_evalu
     --repetitions=1 \
     --track=MAP \
     --checkpoint=${CHECKPOINT_ENDPOINT} \
-    --agent=src/lead/lead/expert.py \
+    --agent=src/lead/expert/expert_agent.py \
     --agent-config=$ROUTES \
     --debug=0 \
     --resume=1 \

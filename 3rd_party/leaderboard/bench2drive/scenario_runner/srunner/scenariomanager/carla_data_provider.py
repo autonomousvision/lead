@@ -79,12 +79,14 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         with CarlaDataProvider._lock:
             if actor in CarlaDataProvider._actor_velocity_map:
                 raise KeyError(
-                    "Vehicle '{}' already registered. Cannot register twice!".format(actor.id))
+                    "Vehicle '{}' already registered. Cannot register twice!".format(actor.id),
+                )
             else:
                 CarlaDataProvider._actor_velocity_map[actor] = 0.0
             if actor in CarlaDataProvider._actor_location_map:
                 raise KeyError(
-                    "Vehicle '{}' already registered. Cannot register twice!".format(actor.id))
+                    "Vehicle '{}' already registered. Cannot register twice!".format(actor.id),
+                )
             elif transform:
                 CarlaDataProvider._actor_location_map[actor] = transform.location
             else:
@@ -92,7 +94,8 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
 
             if actor in CarlaDataProvider._actor_transform_map:
                 raise KeyError(
-                    "Vehicle '{}' already registered. Cannot register twice!".format(actor.id))
+                    "Vehicle '{}' already registered. Cannot register twice!".format(actor.id),
+                )
             else:
                 CarlaDataProvider._actor_transform_map[actor] = transform
 
@@ -311,7 +314,8 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
                 CarlaDataProvider._traffic_light_map[traffic_light] = traffic_light.get_transform()
             else:
                 raise KeyError(
-                    "Traffic light '{}' already registered. Cannot register twice!".format(traffic_light.id))
+                    "Traffic light '{}' already registered. Cannot register twice!".format(traffic_light.id),
+                )
 
     @staticmethod
     def annotate_trafficlight_in_group(traffic_light):
@@ -391,11 +395,13 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
                 prev_green_time = light.get_green_time()
                 prev_red_time = light.get_red_time()
                 prev_yellow_time = light.get_yellow_time()
-                reset_params.append({'light': light,
-                                     'state': prev_state,
-                                     'green_time': prev_green_time,
-                                     'red_time': prev_red_time,
-                                     'yellow_time': prev_yellow_time})
+                reset_params.append({
+                    'light': light,
+                    'state': prev_state,
+                    'green_time': prev_green_time,
+                    'red_time': prev_red_time,
+                    'yellow_time': prev_yellow_time,
+                })
 
                 light.set_state(states[state])
                 if freeze:
@@ -523,7 +529,9 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
             if not blueprint.has_attribute('color'):
                 print(
                     "WARNING: Cannot set Color ({}) for actor {} due to missing blueprint attribute".format(
-                        color, blueprint.id))
+                        color, blueprint.id,
+                    ),
+                )
             else:
                 default_color_rgba = blueprint.get_attribute('color').as_color()
                 default_color = '({}, {}, {})'.format(default_color_rgba.r, default_color_rgba.g, default_color_rgba.b)
@@ -531,8 +539,11 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
                     blueprint.set_attribute('color', color)
                 except ValueError:
                     # Color can't be set for this vehicle
-                    print("WARNING: Color ({}) cannot be set for actor {}. Using instead: ({})".format(
-                        color, blueprint.id, default_color))
+                    print(
+                        "WARNING: Color ({}) cannot be set for actor {}. Using instead: ({})".format(
+                        color, blueprint.id, default_color,
+                        ),
+                    )
                     blueprint.set_attribute('color', default_color)
         else:
             if blueprint.has_attribute('color') and rolename != 'hero':
@@ -582,9 +593,11 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         return actors
 
     @staticmethod
-    def request_new_actor(model, spawn_point, rolename='scenario', autopilot=False,
-                          random_location=False, color=None, actor_category="car",
-                          attribute_filter=None, tick=True):
+    def request_new_actor(
+        model, spawn_point, rolename='scenario', autopilot=False,
+        random_location=False, color=None, actor_category="car",
+        attribute_filter=None, tick=True,
+    ):
         """
         This method tries to create a new actor, returning it if successful (None otherwise).
         """
@@ -657,7 +670,8 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
 
             # Get the blueprint
             blueprint = CarlaDataProvider.create_blueprint(
-                actor.model, actor.rolename, actor.color, actor.category, attribute_filter)
+                actor.model, actor.rolename, actor.color, actor.category, attribute_filter,
+            )
 
             # Get the spawn point
             transform = actor.transform
@@ -708,9 +722,11 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         return actors
 
     @staticmethod
-    def request_new_batch_actors(model, amount, spawn_points, autopilot=False,
-                                 random_location=False, rolename='scenario',
-                                 attribute_filter=None, tick=True):
+    def request_new_batch_actors(
+        model, amount, spawn_points, autopilot=False,
+        random_location=False, rolename='scenario',
+        attribute_filter=None, tick=True,
+    ):
         """
         Simplified version of "request_new_actors". This method also create several actors in batch.
 
@@ -748,8 +764,11 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
                     break
 
             if spawn_point:
-                batch.append(SpawnActor(blueprint, spawn_point).then(
-                    SetAutopilot(FutureActor, autopilot, CarlaDataProvider._traffic_manager_port)))
+                batch.append(
+                    SpawnActor(blueprint, spawn_point).then(
+                    SetAutopilot(FutureActor, autopilot, CarlaDataProvider._traffic_manager_port),
+                    ),
+                )
 
         actors = CarlaDataProvider.handle_actor_batch(batch, tick)
         for actor, command in zip(actors, batch):

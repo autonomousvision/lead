@@ -23,7 +23,7 @@ table {
 }
 
 table thead {
-  background: #ffffff; 
+  background: #ffffff;
   border-bottom: 1px solid #444444;
 }
 
@@ -53,7 +53,7 @@ table tbody td{
 /* Hide the images by default */
 .townslide {
   display: none;
-  text-align: center; 
+  text-align: center;
 
 }
 
@@ -129,4 +129,3 @@ table tbody td{
 .active, .dot:hover {
   background-color: #717171;
 }
-

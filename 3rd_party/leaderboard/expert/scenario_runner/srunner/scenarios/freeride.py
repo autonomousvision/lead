@@ -23,19 +23,23 @@ class FreeRide(BasicScenario):
     Implementation of a simple free ride scenario that consits only of the ego vehicle
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=10000000):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=10000000,
+    ):
         """
         Setup all relevant parameters and create scenario
         """
         # Timeout of scenario in seconds
         self.timeout = timeout
-        super(FreeRide, self).__init__("FreeRide",
-                                       ego_vehicles,
-                                       config,
-                                       world,
-                                       debug_mode,
-                                       criteria_enable=criteria_enable)
+        super(FreeRide, self).__init__(
+            "FreeRide",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config, add_scenario_type=True):
         """

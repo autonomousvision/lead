@@ -132,7 +132,9 @@ for k, v in sorted(scenario_stats.items()):
         f"Running: {v['running']:>2}, Crashed: {v['crashed']:>2}, "
         f"Success rate: {success_rate:>5.1f}%",
     )
-print(f"Finished routes (regardless of success/failure): {dataset_finished}/{dataset_attempted} attempted")
+print(
+    f"Finished routes (regardless of success/failure): {dataset_finished}/{dataset_attempted} attempted",
+)
 print(f"  Success: {dataset_success}")
 print(f"  Failed: {dataset_finished - dataset_success}")
 print(f"  Still running: {dataset_running}")

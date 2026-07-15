@@ -36,9 +36,11 @@ def prettify_json(args):
     output = ""
 
     if progress:
-        output += '* {}% ({}/{}) routes completed\n'.format(100.0*progress[0]/float(progress[1]),
-                                                            progress[0],
-                                                            progress[1])
+        output += '* {}% ({}/{}) routes completed\n'.format(
+            100.0*progress[0]/float(progress[1]),
+            progress[0],
+            progress[1],
+        )
     if sensors:
         output += '* The agent used the following sensors: {}\n\n'.format(', '.join(sensors))
 
@@ -62,11 +64,17 @@ def prettify_json(args):
         for route in records_table:
             route_completed_kms = 0.01 * route['scores']['Route completion'] * route['meta']['Route length'] / 1000.0
             metrics_route = [[key, '{:.3f}'.format(values), ''] for key, values in route['scores'].items()]
-            infractions_route = [[key, '{:.3f} ({} occurrences)'.format(len(values)/route_completed_kms, len(values)),
-                                 '\n'.join(values)] for key, values in route['infractions'].items()]
+            infractions_route = [
+                [
+                    key, '{:.3f} ({} occurrences)'.format(len(values)/route_completed_kms, len(values)),
+                    '\n'.join(values),
+                ] for key, values in route['infractions'].items()
+            ]
 
-            times = [['Game duration', '{:.3f}'.format(route['meta']['Game duration']), 'seconds'],
-                     ['System duration', '{:.3f}'.format(route['meta']['System duration']), 'seconds']]
+            times = [
+                ['Game duration', '{:.3f}'.format(route['meta']['Game duration']), 'seconds'],
+                ['System duration', '{:.3f}'.format(route['meta']['System duration']), 'seconds'],
+            ]
 
             route_completed_length = [ ['distance driven', '{:.3f}'.format(route_completed_kms), 'Km']]
 
@@ -99,8 +107,10 @@ def main():
     # general parameters
     parser = argparse.ArgumentParser(description=description, formatter_class=RawTextHelpFormatter)
     parser.add_argument('-f', '--file', help='JSON file containing the results of the leaderboard', required=True)
-    parser.add_argument('--format', default='fancy_grid',
-                        help='Format in which the table will be printed, e.g.: fancy_grid, latex, github, html, jira')
+    parser.add_argument(
+        '--format', default='fancy_grid',
+        help='Format in which the table will be printed, e.g.: fancy_grid, latex, github, html, jira',
+    )
     parser.add_argument('-o', '--output', help='Output file to print the results into')
     arguments = parser.parse_args()
 

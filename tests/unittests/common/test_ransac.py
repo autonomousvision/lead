@@ -40,7 +40,7 @@ class TestRemoveGround:
 
     def test_remove_ground_basic(self, sample_point_cloud, mock_config):
         """Test basic ground removal functionality."""
-        ground_mask = remove_ground(sample_point_cloud, mock_config, parallel=False)
+        ground_mask = remove_ground(sample_point_cloud, mock_config)
 
         # Check that mask has correct shape
         assert ground_mask.shape == (len(sample_point_cloud),)
@@ -49,10 +49,9 @@ class TestRemoveGround:
         # Should detect some ground points
         assert np.sum(ground_mask) > 0
 
-    def test_remove_ground_parallel(self, sample_point_cloud, mock_config):
-        """Test that parallel processing produces consistent results."""
-        mask_serial = remove_ground(sample_point_cloud, mock_config, parallel=False)
-        mask_parallel = remove_ground(sample_point_cloud, mock_config, parallel=True)
+    def test_remove_ground_deterministic(self, sample_point_cloud, mock_config):
+        """Test that repeated runs on the same cloud agree, despite the parallel centers."""
+        first = remove_ground(sample_point_cloud, mock_config)
+        second = remove_ground(sample_point_cloud, mock_config)
 
-        # Both should have the same shape
-        assert mask_serial.shape == mask_parallel.shape
+        assert np.array_equal(first, second)

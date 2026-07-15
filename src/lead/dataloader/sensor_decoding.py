@@ -1,0 +1,137 @@
+"""Convert 123D point-cloud sensors between 123D's IMU frame and the CARLA ego frame.
+
+Recorders write sweeps in the IMU frame; TransFuser featurization consumes the CARLA ego frame.
+"""
+
+import jaxtyping as jt
+import numpy as np
+import numpy.typing as npt
+from py123d.datatypes import Lidar
+from py123d.datatypes.sensors.lidar import LidarMetadata
+from py123d.datatypes.sensors.radar import Radar
+
+from lead.config import LeadConfig
+from lead.dataloader import log_format
+from lead.dataloader.log_format import RADIAL_VELOCITY_FEATURE
+
+
+def lidar_sweep_from_carla_ego_frame(
+    points: jt.Float[npt.NDArray, "n 3"],
+    config: LeadConfig,
+) -> jt.Float[npt.NDArray, "n 3"]:
+    """Convert a CARLA-ego-frame lidar sweep into the 123D IMU frame.
+
+    The transform ``LidarRecorder.record`` applies before storing a sweep, and
+    the exact inverse of :func:`lidar_sweep_to_carla_ego_frame`.
+
+    Args:
+        points: Raw sweep of shape (N, 3) in the CARLA ego frame.
+        config: Root config tree with the LiDAR mounting position.
+
+    Returns:
+        The sweep in the 123D IMU frame.
+    """
+    ego_metadata = log_format.get_carla_lincoln_mkz_2020_metadata()
+    converted = points.astype(np.float64).copy()
+    converted[:, 1] = -converted[:, 1]
+    converted[:, 0] += ego_metadata.rear_axle_to_center_longitudinal
+    converted[:, 2] += (
+        config.expert.sensor_rig.lidar_pos_1[-1] / 2
+        - ego_metadata.rear_axle_to_center_vertical
+    )
+    return converted
+
+
+def radar_from_carla_ego_frame(
+    points: jt.Float[npt.NDArray, "n 3"],
+) -> jt.Float[npt.NDArray, "n 3"]:
+    """Convert CARLA-ego-frame radar returns into the 123D IMU frame.
+
+    The transform ``RadarRecorder.record`` applies before storing the returns.
+
+    Args:
+        points: Radar returns of shape (N, 3) in the CARLA ego frame.
+
+    Returns:
+        The returns in the 123D IMU frame.
+    """
+    ego_metadata = log_format.get_carla_lincoln_mkz_2020_metadata()
+    converted = points.astype(np.float64).copy()
+    converted[:, 1] = -converted[:, 1]
+    converted[:, 0] += ego_metadata.rear_axle_to_center_longitudinal
+    return converted
+
+
+def lidar_sweep_to_carla_ego_frame(
+    lidar: Lidar,
+) -> jt.Float[npt.NDArray, "n 3"]:
+    """Convert a 123D lidar sweep back into the CARLA ego frame.
+
+    Exact inverse of ``LidarRecorder.record``: undo the rear-axle shift, the
+    Y-axis flip, and the vertical adjustment; the mounting height comes from
+    the sweep's own calibration.
+
+    Args:
+        lidar: 123D lidar modality holding one raw sweep.
+
+    Returns:
+        Point cloud of shape (N, 3) in the CARLA ego frame.
+    """
+    ego_metadata = log_format.get_carla_lincoln_mkz_2020_metadata()
+    assert isinstance(lidar.metadata, LidarMetadata)
+    points = lidar.point_cloud_3d.astype(np.float64).copy()
+    points[:, 0] -= ego_metadata.rear_axle_to_center_longitudinal
+    points[:, 1] = -points[:, 1]
+    points[:, 2] -= (
+        lidar.metadata.lidar_to_imu_se3.z / 2
+        - ego_metadata.rear_axle_to_center_vertical
+    )
+    return points
+
+
+def split_radar_by_sensor(
+    radar: Radar,
+) -> list[jt.Float16[npt.NDArray, "n 4"]]:
+    """Split merged returns into per-sensor CARLA-frame clouds, in LEAD radar order.
+
+    Args:
+        radar: 123D radar modality of the merged stream, with the per-point
+            sensor ids.
+
+    Returns:
+        One [x, y, z, radial_velocity] cloud per LEAD radar index (1..n).
+    """
+    points = radar_to_carla_ego_frame(radar)
+    ids = radar.ids
+    assert ids is not None
+    return [
+        points[ids == int(radar_id.value)]
+        for _, radar_id in sorted(log_format.RADAR_ID_MAPPING.items())
+    ]
+
+
+def radar_to_carla_ego_frame(
+    radar: Radar,
+) -> jt.Float16[npt.NDArray, "n 4"]:
+    """Convert a 123D radar back into the CARLA ego-frame layout.
+
+    Exact inverse of ``RadarRecorder.record``.
+
+    Args:
+        radar: 123D radar modality with the radial-velocity feature.
+
+    Returns:
+        Point cloud of shape (N, 4) with [x, y, z, radial_velocity] in the
+        CARLA ego frame.
+    """
+    assert radar.point_cloud_features is not None
+    ego_metadata = log_format.get_carla_lincoln_mkz_2020_metadata()
+    points = radar.point_cloud_3d.astype(np.float32).copy()
+    points[:, 0] -= ego_metadata.rear_axle_to_center_longitudinal
+    points[:, 1] = -points[:, 1]
+    velocity = radar.point_cloud_features[RADIAL_VELOCITY_FEATURE]
+    combined = np.concatenate(
+        [points, velocity[:, None].astype(np.float32)],
+        axis=1,
+    )
+    return combined.astype(np.float16)

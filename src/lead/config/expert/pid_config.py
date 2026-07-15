@@ -38,16 +38,6 @@ class ExpertPidConfig(ConfigNode):
     lateral_pid_window_size: int = 6
 
     @overridable_property
-    def lateral_pid_default_lookahead(self) -> float:
-        """The default lookahead distance for the lateral PID controller (route points)."""
-        return 2.4 * self._ppm
-
-    @overridable_property
-    def lateral_pid_speed_threshold(self) -> float:
-        """The speed threshold (in km/h) for switching between the default and variable lookahead distance."""
-        return 2.3150102938235136 * self._ppm
-
-    @overridable_property
     def lateral_pid_minimum_lookahead_distance(self) -> float:
         """The minimum allowed lookahead distance for the lateral PID controller (route points)."""
         return 2.4 * self._ppm
@@ -57,16 +47,6 @@ class ExpertPidConfig(ConfigNode):
         """The maximum allowed lookahead distance for the lateral PID controller (route points)."""
         return 10.5 * self._ppm
 
-    # Longitudinal control parameters for ego vehicle dynamics.
-    longitudinal_params: tuple[float, ...] = (
-        1.1990342347353184,
-        -0.8057602384167799,
-        1.710818710950062,
-        0.921890257450335,
-        1.556497522998393,
-        -0.7013479734904027,
-        1.031266635497984,
-    )
     # Linear regression parameters for longitudinal control as numpy array
     longitudinal_linear_regression_params: jt.Float[npt.NDArray, "7"] = np.array(
         [

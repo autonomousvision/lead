@@ -49,21 +49,5 @@ class ControllerConfig(ConfigNode):
     brake_speed: float = 0.4
     # Ratio of speed to desired speed at which brake is triggered
     brake_ratio: float = 1.1
-    # Lateral PID controller proportional gain
-    lateral_k_p: float = 3.118357247806046
-    # Lateral PID controller derivative gain
-    lateral_k_d: float = 1.3782508892109167
-    # Lateral PID controller integral gain
-    lateral_k_i: float = 0.6406067986034124
-    # Speed scaling factor for lateral control
-    lateral_speed_scale: float = 0.9755321901954155
-    # Speed offset for lateral control
-    lateral_speed_offset: float = 1.9152884533402488
-    # Default lookahead distance for lateral control
-    lateral_default_lookahead: float = 24
-    # Speed threshold for lateral control behavior switching
-    lateral_speed_threshold: float = 23.150102938235136
-    # Lateral PID controller buffer size
-    lateral_n: int = 6
     # If true use tuned aim distance for navigation
     tuned_aim_distance: bool = False

@@ -110,7 +110,8 @@ class SimpleVehicleControl(BasicControl):
             bp.set_attribute('hit_radius', '1')
             bp.set_attribute('only_dynamics', 'True')
             self._obstacle_sensor = CarlaDataProvider.get_world().spawn_actor(
-                bp, carla.Transform(carla.Location(x=self._actor.bounding_box.extent.x, z=1.0)), attach_to=self._actor)
+                bp, carla.Transform(carla.Location(x=self._actor.bounding_box.extent.x, z=1.0)), attach_to=self._actor,
+            )
             self._obstacle_sensor.listen(lambda event: self._on_obstacle(event))  # pylint: disable=unnecessary-lambda
 
         if args and 'consider_trafficlights' in args and strtobool(args['consider_trafficlights']):
@@ -194,8 +195,10 @@ class SimpleVehicleControl(BasicControl):
                     break
 
             # Remove all waypoints that are too close to the vehicle
-            while (self._generated_waypoint_list and
-                   self._generated_waypoint_list[0].location.distance(self._actor.get_location()) < 0.5):
+            while (
+                self._generated_waypoint_list and
+                self._generated_waypoint_list[0].location.distance(self._actor.get_location()) < 0.5
+            ):
                 self._generated_waypoint_list = self._generated_waypoint_list[1:]
 
             direction_norm = self._set_new_velocity(self._offset_waypoint(self._generated_waypoint_list[0]))
@@ -233,8 +236,10 @@ class SimpleVehicleControl(BasicControl):
             offset_location = transform.location
         else:
             right_vector = transform.get_right_vector()
-            offset_location = transform.location + carla.Location(x=self._offset*right_vector.x,
-                                                                  y=self._offset*right_vector.y)
+            offset_location = transform.location + carla.Location(
+                x=self._offset*right_vector.x,
+                y=self._offset*right_vector.y,
+            )
 
         return offset_location
 
@@ -272,7 +277,8 @@ class SimpleVehicleControl(BasicControl):
                 distance = max(self._obstacle_distance, 0)
                 if distance > 0:
                     current_speed_other = math.sqrt(
-                        self._obstacle_actor.get_velocity().x**2 + self._obstacle_actor.get_velocity().y**2)
+                        self._obstacle_actor.get_velocity().x**2 + self._obstacle_actor.get_velocity().y**2,
+                    )
                     if current_speed_other < current_speed:
                         acceleration = -0.5 * (current_speed - current_speed_other)**2 / distance
                         target_speed = max(acceleration * (current_time - self._last_update) + current_speed, 0)
@@ -280,8 +286,10 @@ class SimpleVehicleControl(BasicControl):
                     target_speed = 0
 
         if self._consider_traffic_lights:
-            if (self._actor.is_at_traffic_light() and
-                    self._actor.get_traffic_light_state() == carla.TrafficLightState.Red):
+            if (
+                self._actor.is_at_traffic_light() and
+                self._actor.get_traffic_light_state() == carla.TrafficLightState.Red
+            ):
                 target_speed = 0
 
         if target_speed < current_speed:
@@ -291,8 +299,12 @@ class SimpleVehicleControl(BasicControl):
                 light_state |= carla.VehicleLightState.Brake
                 self._actor.set_light_state(carla.VehicleLightState(light_state))
             if self._max_deceleration is not None:
-                target_speed = max(target_speed, current_speed - (current_time -
-                                                                  self._last_update) * self._max_deceleration)
+                target_speed = max(
+                    target_speed, current_speed - (
+                        current_time -
+                        self._last_update
+                    ) * self._max_deceleration,
+                )
         else:
             if self._brake_lights_active:
                 self._brake_lights_active = False
@@ -300,8 +312,12 @@ class SimpleVehicleControl(BasicControl):
                 light_state &= ~carla.VehicleLightState.Brake
                 self._actor.set_light_state(carla.VehicleLightState(light_state))
             if self._max_acceleration is not None:
-                tmp_speed = min(target_speed, current_speed + (current_time -
-                                                               self._last_update) * self._max_acceleration)
+                tmp_speed = min(
+                    target_speed, current_speed + (
+                        current_time -
+                        self._last_update
+                    ) * self._max_acceleration,
+                )
                 # If the tmp_speed is < 0.5 the vehicle may not properly accelerate.
                 # Therefore, we bump the speed to 0.5 m/s if target_speed allows.
                 target_speed = max(tmp_speed, min(0.5, target_speed))

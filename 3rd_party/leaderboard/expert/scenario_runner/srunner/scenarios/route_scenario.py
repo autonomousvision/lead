@@ -29,14 +29,16 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import ScenarioTriggerer, Idle
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import WaitForBlackboardVariable
-from srunner.scenariomanager.scenarioatomics.atomic_criteria import (CollisionTest,
-                                                                     InRouteTest,
-                                                                     RouteCompletionTest,
-                                                                     OutsideRouteLanesTest,
-                                                                     RunningRedLightTest,
-                                                                     RunningStopTest,
-                                                                     ActorBlockedTest,
-                                                                     MinimumSpeedRouteTest)
+from srunner.scenariomanager.scenarioatomics.atomic_criteria import (
+    CollisionTest,
+    InRouteTest,
+    RouteCompletionTest,
+    OutsideRouteLanesTest,
+    RunningRedLightTest,
+    RunningStopTest,
+    ActorBlockedTest,
+    MinimumSpeedRouteTest,
+)
 
 from srunner.scenarios.basic_scenario import BasicScenario
 from srunner.scenarios.background_activity import BackgroundBehavior
@@ -74,11 +76,11 @@ class RouteScenario(BasicScenario):
             self._draw_waypoints(world, self.route, vertical_shift=0.1, size=0.1, persistency=self.timeout, downsample=5)
 
         self._build_scenarios(
-            world, ego_vehicle, sampled_scenario_definitions, timeout=self.timeout, debug=debug_mode > 0
+            world, ego_vehicle, sampled_scenario_definitions, timeout=self.timeout, debug=debug_mode > 0,
         )
 
         super(RouteScenario, self).__init__(
-            config.name, [ego_vehicle], config, world, debug_mode > 1, False, criteria_enable
+            config.name, [ego_vehicle], config, world, debug_mode > 1, False, criteria_enable,
         )
 
     def _get_route(self, config):
@@ -122,9 +124,11 @@ class RouteScenario(BasicScenario):
         elevate_transform = self.route[0][0]
         elevate_transform.location.z += 0.5
 
-        ego_vehicle = CarlaDataProvider.request_new_actor('vehicle.lincoln.mkz_2017',
-                                                          elevate_transform,
-                                                          rolename='hero')
+        ego_vehicle = CarlaDataProvider.request_new_actor(
+            'vehicle.lincoln.mkz_2017',
+            elevate_transform,
+            rolename='hero',
+        )
 
         return ego_vehicle
 
@@ -167,10 +171,14 @@ class RouteScenario(BasicScenario):
 
             world.debug.draw_point(wp, size=0.1, color=color, life_time=persistency)
 
-        world.debug.draw_point(waypoints[0][0].location + carla.Location(z=vertical_shift), size=2*size,
-                               color=carla.Color(0, 0, 128), life_time=persistency)
-        world.debug.draw_point(waypoints[-1][0].location + carla.Location(z=vertical_shift), size=2*size,
-                               color=carla.Color(128, 128, 128), life_time=persistency)
+        world.debug.draw_point(
+            waypoints[0][0].location + carla.Location(z=vertical_shift), size=2*size,
+            color=carla.Color(0, 0, 128), life_time=persistency,
+        )
+        world.debug.draw_point(
+            waypoints[-1][0].location + carla.Location(z=vertical_shift), size=2*size,
+            color=carla.Color(128, 128, 128), life_time=persistency,
+        )
 
     def _scenario_sampling(self, potential_scenarios, random_seed=0):
         """Sample the scenarios that are going to happen for this route."""
@@ -220,8 +228,10 @@ class RouteScenario(BasicScenario):
                 scenario_loc = scenario_config.trigger_points[0].location
                 debug_loc = tmap.get_waypoint(scenario_loc).transform.location + carla.Location(z=0.2)
                 world.debug.draw_point(debug_loc, size=0.2, color=carla.Color(128, 0, 0), life_time=timeout)
-                world.debug.draw_string(debug_loc, str(scenario_config.name), draw_shadow=False,
-                                        color=carla.Color(0, 0, 128), life_time=timeout, persistent_lines=True)
+                world.debug.draw_string(
+                    debug_loc, str(scenario_config.name), draw_shadow=False,
+                    color=carla.Color(0, 0, 128), life_time=timeout, persistent_lines=True,
+                )
 
         for scenario_number, scenario_config in enumerate(scenario_definitions):
             scenario_config.ego_vehicles = [ego_data]
@@ -267,8 +277,10 @@ class RouteScenario(BasicScenario):
         """
         scenario_trigger_distance = DIST_THRESHOLD  # Max trigger distance between route and scenario
 
-        behavior = py_trees.composites.Parallel(name="Route Behavior",
-                                                policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL)
+        behavior = py_trees.composites.Parallel(
+            name="Route Behavior",
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL,
+        )
 
         scenario_behaviors = []
         blackboard_list = []
@@ -276,12 +288,15 @@ class RouteScenario(BasicScenario):
         for scenario in self.list_scenarios:
             if scenario.behavior_tree is not None:
                 scenario_behaviors.append(scenario.behavior_tree)
-                blackboard_list.append([scenario.config.route_var_name,
-                                        scenario.config.trigger_points[0].location])
+                blackboard_list.append([
+                    scenario.config.route_var_name,
+                    scenario.config.trigger_points[0].location,
+                ])
 
         # Add the behavior that manages the scenario trigger conditions
         scenario_triggerer = ScenarioTriggerer(
-            self.ego_vehicles[0], self.route, blackboard_list, scenario_trigger_distance)
+            self.ego_vehicles[0], self.route, blackboard_list, scenario_trigger_distance,
+        )
         behavior.add_child(scenario_triggerer)  # Tick the ScenarioTriggerer before the scenarios
 
         # Add the Background Activity
@@ -297,8 +312,10 @@ class RouteScenario(BasicScenario):
         Create the criteria tree. It starts with some route criteria (which are always active),
         and adds the scenario specific ones, which will only be active during their scenario
         """
-        criteria = py_trees.composites.Parallel(name="Criteria",
-                                                policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+        criteria = py_trees.composites.Parallel(
+            name="Criteria",
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE,
+        )
 
         # End condition
         criteria.add_child(RouteCompletionTest(self.ego_vehicles[0], route=self.route))
@@ -311,10 +328,15 @@ class RouteScenario(BasicScenario):
         criteria.add_child(MinimumSpeedRouteTest(self.ego_vehicles[0], route=self.route, checkpoints=4, name="MinSpeedTest"))
 
         # These stop the route early to save computational time
-        criteria.add_child(InRouteTest(
-            self.ego_vehicles[0], route=self.route, offroad_max=30, terminate_on_failure=True))
-        criteria.add_child(ActorBlockedTest(
-            self.ego_vehicles[0], min_speed=0.1, max_time=180.0, terminate_on_failure=True, name="AgentBlockedTest")
+        criteria.add_child(
+            InRouteTest(
+            self.ego_vehicles[0], route=self.route, offroad_max=30, terminate_on_failure=True,
+            ),
+        )
+        criteria.add_child(
+            ActorBlockedTest(
+                self.ego_vehicles[0], min_speed=0.1, max_time=180.0, terminate_on_failure=True, name="AgentBlockedTest",
+            ),
         )
 
         for scenario in self.list_scenarios:
@@ -323,7 +345,7 @@ class RouteScenario(BasicScenario):
                 continue  # No need to create anything
 
             criteria.add_child(
-                self._create_criterion_tree(scenario, scenario_criteria)
+                self._create_criterion_tree(scenario, scenario_criteria),
             )
 
         return criteria
@@ -369,8 +391,10 @@ class RouteScenario(BasicScenario):
         criteria_tree = py_trees.composites.Sequence(name=scenario_name)
         criteria_tree.add_child(WaitForBlackboardVariable(var_name, True, False, name=check_name))
 
-        scenario_criteria = py_trees.composites.Parallel(name=scenario_name,
-                                                policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+        scenario_criteria = py_trees.composites.Parallel(
+            name=scenario_name,
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE,
+        )
         for criterion in criteria:
             scenario_criteria.add_child(criterion)
         scenario_criteria.add_child(WaitForBlackboardVariable(var_name, False, None, name=check_name))

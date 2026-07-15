@@ -47,19 +47,31 @@ class DummyAgent(AutonomousAgent):
         """
 
         sensors = [
-            {'type': 'sensor.camera.rgb', 'x': 0.7, 'y': 0.0, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
-             'width': 800, 'height': 600, 'fov': 100, 'id': 'Center'},
-            {'type': 'sensor.camera.rgb', 'x': 0.7, 'y': -0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': -45.0,
-             'width': 800, 'height': 600, 'fov': 100, 'id': 'Left'},
-            {'type': 'sensor.camera.rgb', 'x': 0.7, 'y': 0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 45.0,
-             'width': 800, 'height': 600, 'fov': 100, 'id': 'Right'},
-            {'type': 'sensor.lidar.ray_cast', 'x': 0.7, 'y': -0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0,
-             'yaw': -45.0, 'id': 'LIDAR'},
-            {'type': 'sensor.other.radar', 'x': 0.7, 'y': -0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0,
-             'yaw': -45.0, 'fov': 30, 'id': 'RADAR', 'horizontal_fov' : 30.0, 'vertical_fov' : 30.0},
+            {
+                'type': 'sensor.camera.rgb', 'x': 0.7, 'y': 0.0, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
+                'width': 800, 'height': 600, 'fov': 100, 'id': 'Center',
+            },
+            {
+                'type': 'sensor.camera.rgb', 'x': 0.7, 'y': -0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': -45.0,
+                'width': 800, 'height': 600, 'fov': 100, 'id': 'Left',
+            },
+            {
+                'type': 'sensor.camera.rgb', 'x': 0.7, 'y': 0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 45.0,
+                'width': 800, 'height': 600, 'fov': 100, 'id': 'Right',
+            },
+            {
+                'type': 'sensor.lidar.ray_cast', 'x': 0.7, 'y': -0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0,
+                'yaw': -45.0, 'id': 'LIDAR',
+            },
+            {
+                'type': 'sensor.other.radar', 'x': 0.7, 'y': -0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0,
+                'yaw': -45.0, 'fov': 30, 'id': 'RADAR', 'horizontal_fov' : 30.0, 'vertical_fov' : 30.0,
+            },
             {'type': 'sensor.other.gnss', 'x': 0.7, 'y': -0.4, 'z': 1.60, 'id': 'GPS'},
-            {'type': 'sensor.other.imu', 'x': 0.7, 'y': -0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0,
-             'yaw': -45.0, 'id': 'IMU'},
+            {
+                'type': 'sensor.other.imu', 'x': 0.7, 'y': -0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0,
+                'yaw': -45.0, 'id': 'IMU',
+            },
             {'type': 'sensor.opendrive_map', 'reading_frequency': 1, 'id': 'OpenDRIVE'},
         ]
 

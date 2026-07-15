@@ -14,8 +14,10 @@ from shapely.geometry import Polygon
 
 from agents.navigation.local_planner import LocalPlanner, RoadOption
 from agents.navigation.global_route_planner import GlobalRoutePlanner
-from agents.tools.misc import (get_speed, is_within_distance,
-                               get_trafficlight_trigger_location)
+from agents.tools.misc import (
+    get_speed, is_within_distance,
+    get_trafficlight_trigger_location,
+)
 
 from agents.tools.hints import ObstacleDetectionResult, TrafficLightDetectionResult
 
@@ -180,7 +182,7 @@ class BasicAgent:
         self._local_planner.set_global_plan(
             plan,
             stop_waypoint_creation=stop_waypoint_creation,
-            clean_queue=clean_queue
+            clean_queue=clean_queue,
         )
 
     def trace_route(self, start_waypoint, end_waypoint):
@@ -256,7 +258,7 @@ class BasicAgent:
             lane_change_time * speed,
             False,
             1,
-            self._sampling_resolution
+            self._sampling_resolution,
         )
         if not path:
             print("WARNING: Ignoring the lane change as no path was found")
@@ -376,7 +378,8 @@ class BasicAgent:
         # Get the transform of the front of the ego
         ego_front_transform = ego_transform
         ego_front_transform.location += carla.Location(
-            self._vehicle.bounding_box.extent.x * ego_transform.get_forward_vector())
+            self._vehicle.bounding_box.extent.x * ego_transform.get_forward_vector(),
+        )
 
         opposite_invasion = abs(self._offset) + self._vehicle.bounding_box.extent.y > ego_wpt.lane_width / 2
         use_bbs = self._use_bbs_detection or opposite_invasion or ego_wpt.is_junction
@@ -429,9 +432,11 @@ class BasicAgent:
         return ObstacleDetectionResult(False, None, -1)
 
     @staticmethod
-    def _generate_lane_change_path(waypoint, direction='left', distance_same_lane=10,
-                                distance_other_lane=25, lane_change_distance=25,
-                                check=True, lane_changes=1, step_distance=2):
+    def _generate_lane_change_path(
+        waypoint, direction='left', distance_same_lane=10,
+        distance_other_lane=25, lane_change_distance=25,
+        check=True, lane_changes=1, step_distance=2,
+    ):
         # type: (carla.Waypoint, str, float, float, float, bool, int, float) -> list[tuple[carla.Waypoint, RoadOption]]
         """
         This methods generates a path that results in a lane change.

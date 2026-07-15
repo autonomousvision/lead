@@ -96,23 +96,30 @@ class CallBack(object):
         """
         parses gnss sensors
         """
-        array = np.array([gnss_data.latitude,
-                          gnss_data.longitude,
-                          gnss_data.altitude], dtype=np.float64)
+        array = np.array(
+            [
+                gnss_data.latitude,
+                gnss_data.longitude,
+                gnss_data.altitude,
+            ], dtype=np.float64,
+        )
         self._data_provider.update_sensor(tag, array, gnss_data.frame)
 
     def _parse_imu_cb(self, imu_data, tag):
         """
         parses IMU sensors
         """
-        array = np.array([imu_data.accelerometer.x,
-                          imu_data.accelerometer.y,
-                          imu_data.accelerometer.z,
-                          imu_data.gyroscope.x,
-                          imu_data.gyroscope.y,
-                          imu_data.gyroscope.z,
-                          imu_data.compass,
-                          ], dtype=np.float64)
+        array = np.array(
+            [
+                imu_data.accelerometer.x,
+                imu_data.accelerometer.y,
+                imu_data.accelerometer.z,
+                imu_data.gyroscope.x,
+                imu_data.gyroscope.y,
+                imu_data.gyroscope.z,
+                imu_data.compass,
+            ], dtype=np.float64,
+        )
         self._data_provider.update_sensor(tag, array, imu_data.frame)
 
 

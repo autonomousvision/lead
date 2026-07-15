@@ -16,15 +16,19 @@ import carla
 from math import floor
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorDestroy,
-                                                                      KeepVelocity,
-                                                                      Idle,
-                                                                      ActorTransformSetter,
-                                                                      MovePedestrianWithEgo)
+from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
+    ActorDestroy,
+    KeepVelocity,
+    Idle,
+    ActorTransformSetter,
+    MovePedestrianWithEgo,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import CollisionTest
-from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (InTriggerDistanceToLocation,
-                                                                               InTimeToArrivalToLocation,
-                                                                               DriveDistance)
+from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
+    InTriggerDistanceToLocation,
+    InTimeToArrivalToLocation,
+    DriveDistance,
+)
 from srunner.scenarios.basic_scenario import BasicScenario
 from srunner.tools.scenario_helper import get_location_in_distance_from_wp
 
@@ -49,8 +53,10 @@ class StationaryObjectCrossing(BasicScenario):
     This is a single ego vehicle scenario
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=60):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=60,
+    ):
         """
         Setup all relevant parameters and create scenario
         """
@@ -64,12 +70,14 @@ class StationaryObjectCrossing(BasicScenario):
         # Timeout of scenario in seconds
         self.timeout = timeout
 
-        super(StationaryObjectCrossing, self).__init__("Stationaryobjectcrossing",
-                                                       ego_vehicles,
-                                                       config,
-                                                       world,
-                                                       debug_mode,
-                                                       criteria_enable=criteria_enable)
+        super(StationaryObjectCrossing, self).__init__(
+            "Stationaryobjectcrossing",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
         """
@@ -84,7 +92,8 @@ class StationaryObjectCrossing(BasicScenario):
         orientation_yaw = waypoint.transform.rotation.yaw + offset['orientation']
         offset_location = carla.Location(
             offset['k'] * lane_width * math.cos(math.radians(position_yaw)),
-            offset['k'] * lane_width * math.sin(math.radians(position_yaw)))
+            offset['k'] * lane_width * math.sin(math.radians(position_yaw)),
+        )
         location += offset_location
         location.z += offset['z']
         self.transform = carla.Transform(location, carla.Rotation(yaw=orientation_yaw))
@@ -97,7 +106,8 @@ class StationaryObjectCrossing(BasicScenario):
         Only behavior here is to wait
         """
         lane_width = self.ego_vehicles[0].get_world().get_map().get_waypoint(
-            self.ego_vehicles[0].get_location()).lane_width
+            self.ego_vehicles[0].get_location(),
+        ).lane_width
         lane_width = lane_width + (1.25 * lane_width)
 
         # leaf nodes
@@ -108,7 +118,8 @@ class StationaryObjectCrossing(BasicScenario):
         # non leaf nodes
         root = py_trees.composites.Parallel(
             name="StaticObstacle",
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE,
+        )
         scenario_sequence = py_trees.composites.Sequence()
 
         # building tree
@@ -183,12 +194,14 @@ class DynamicObjectCrossing(BasicScenario):
         if self._direction not in ('left', 'right'):
             raise ValueError(f"'direction' must be either 'right' or 'left' but {self._direction} was given")
 
-        super(DynamicObjectCrossing, self).__init__("DynamicObjectCrossing",
-                                                    ego_vehicles,
-                                                    config,
-                                                    world,
-                                                    debug_mode,
-                                                    criteria_enable=criteria_enable)
+        super(DynamicObjectCrossing, self).__init__(
+            "DynamicObjectCrossing",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _get_sidewalk_transform(self, waypoint, offset):
         """
@@ -248,7 +261,8 @@ class DynamicObjectCrossing(BasicScenario):
             offset = {"yaw": 0 if 'vehicle' in self._blocker_model else 90, "z": 0.0, "k": 1.5}
             self._blocker_transform = self._get_sidewalk_transform(sidewalk_waypoint, offset)
             blocker = CarlaDataProvider.request_new_actor(
-                self._blocker_model, self._blocker_transform, rolename="scenario no lights")
+                self._blocker_model, self._blocker_transform, rolename="scenario no lights",
+            )
             if not blocker:
                 self._number_of_attempts -= 1
                 move_dist = self._retry_dist
@@ -307,11 +321,18 @@ class DynamicObjectCrossing(BasicScenario):
 
         # Wait until ego is close to the adversary
         trigger_adversary = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart")
-        trigger_adversary.add_child(InTimeToArrivalToLocation(
-            self.ego_vehicles[0], self._reaction_time, collision_location))
-        trigger_adversary.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], collision_location, self._min_trigger_dist))
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart",
+        )
+        trigger_adversary.add_child(
+            InTimeToArrivalToLocation(
+            self.ego_vehicles[0], self._reaction_time, collision_location,
+            ),
+        )
+        trigger_adversary.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], collision_location, self._min_trigger_dist,
+            ),
+        )
         sequence.add_child(trigger_adversary)
 
         # Move the adversary
@@ -319,9 +340,12 @@ class DynamicObjectCrossing(BasicScenario):
         move_duration = move_distance / self._adversary_speed
         if self.route_mode:
             sequence.add_child(LeaveCrossingSpace(self._collision_wp))
-        sequence.add_child(KeepVelocity(
+        sequence.add_child(
+            KeepVelocity(
             self.other_actors[0], self._adversary_speed,
-            duration=move_duration, distance=move_distance, name="AdversaryCrossing"))
+            duration=move_duration, distance=move_distance, name="AdversaryCrossing",
+            ),
+        )
 
         # Remove everything
         sequence.add_child(ActorDestroy(self.other_actors[0], name="DestroyAdversary"))
@@ -368,7 +392,8 @@ class DynamicObjectCrossing(BasicScenario):
             return trigger_tree
 
         parallel = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="ScenarioTrigger")
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="ScenarioTrigger",
+        )
 
         parallel.add_child(MovePedestrianWithEgo(self.ego_vehicles[0], self.other_actors[0], 100))
 
@@ -416,12 +441,14 @@ class ParkingCrossingPedestrian(BasicScenario):
         self._reaction_time = 2.15
         self._reaction_time += 0.1 * floor(self._crossing_angle / 5)
 
-        super().__init__("ParkingCrossingPedestrian",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "ParkingCrossingPedestrian",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _get_blocker_transform(self, waypoint):
         """Processes the driving wp to get a waypoint at the side that looks at the road"""
@@ -471,7 +498,8 @@ class ParkingCrossingPedestrian(BasicScenario):
         self._blocker_transform = self._get_blocker_transform(blocker_wp)
         self.parking_slots.append(self._blocker_transform.location)
         blocker = CarlaDataProvider.request_new_actor(
-            'vehicle.*', self._blocker_transform, attribute_filter=self._bp_attributes)
+            'vehicle.*', self._blocker_transform, attribute_filter=self._bp_attributes,
+        )
         if blocker is None:
             raise ValueError("Couldn't spawn the adversary")
         self.other_actors.append(blocker)
@@ -493,7 +521,7 @@ class ParkingCrossingPedestrian(BasicScenario):
 
         walker.set_location(self._walker_transform.location + carla.Location(z=-200))
         walker = self._replace_walker(walker)
- 
+
         self.other_actors.append(walker)
 
         self._collision_wp = walker_wp
@@ -515,20 +543,30 @@ class ParkingCrossingPedestrian(BasicScenario):
 
         # Wait until ego is close to the adversary
         trigger_adversary = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart")
-        trigger_adversary.add_child(InTimeToArrivalToLocation(
-            self.ego_vehicles[0], self._reaction_time, collision_location))
-        trigger_adversary.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], collision_location, self._min_trigger_dist))
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart",
+        )
+        trigger_adversary.add_child(
+            InTimeToArrivalToLocation(
+            self.ego_vehicles[0], self._reaction_time, collision_location,
+            ),
+        )
+        trigger_adversary.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], collision_location, self._min_trigger_dist,
+            ),
+        )
         sequence.add_child(trigger_adversary)
 
         # Move the adversary
         distance = 8.0  # Scenario is meant to be used at a one lane - one direction road
         duration = distance / self._adversary_speed
 
-        sequence.add_child(KeepVelocity(
+        sequence.add_child(
+            KeepVelocity(
             self.other_actors[1], self._adversary_speed,
-            duration=duration, distance=distance, name="AdversaryCrossing"))
+            duration=duration, distance=distance, name="AdversaryCrossing",
+            ),
+        )
 
         # Remove everything
         sequence.add_child(ActorDestroy(self.other_actors[1], name="DestroyAdversary"))
@@ -575,7 +613,8 @@ class ParkingCrossingPedestrian(BasicScenario):
             return trigger_tree
 
         parallel = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="ScenarioTrigger")
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="ScenarioTrigger",
+        )
 
         parallel.add_child(MovePedestrianWithEgo(self.ego_vehicles[0], self.other_actors[1], 100))
 

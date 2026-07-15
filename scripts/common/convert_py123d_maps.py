@@ -1,7 +1,6 @@
-"""Convert all bundled CARLA OpenDRIVE maps to 123D Arrow maps ahead of data collection.
+"""Convert all bundled CARLA OpenDRIVE maps to 123D Arrow maps.
 
-Run once before launching a job array so no expert job pays the per-town
-conversion (~4 min) or races another job converting the same town.
+Run once before launching a job array.
 """
 
 import argparse
@@ -11,7 +10,7 @@ from py123d.common.runtime.dataset_paths import get_dataset_paths
 from py123d.datatypes import MapMetadata
 from py123d.parser.opendrive.opendrive_map_parser import iter_xodr_map_objects
 
-from lead.lead.data_collection.py123d_logging import CARLA_MAPS_DIR
+from lead.expert.logs_writing.py123d_logging import CARLA_MAPS_DIR
 
 
 def main() -> None:
@@ -24,6 +23,8 @@ def main() -> None:
     args = parser.parse_args()
 
     dataset_paths = get_dataset_paths()
+    assert dataset_paths.py123d_maps_root is not None, "PY123D_DATA_ROOT is not set"
+    assert dataset_paths.py123d_logs_root is not None, "PY123D_DATA_ROOT is not set"
     map_writer = ArrowMapWriter(
         force_map_conversion=False,
         maps_root=dataset_paths.py123d_maps_root,

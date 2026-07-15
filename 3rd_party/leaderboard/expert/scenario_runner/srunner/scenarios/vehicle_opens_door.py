@@ -17,17 +17,22 @@ import py_trees
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
     ActorDestroy, Idle, OpenVehicleDoor, OppositeActorFlow, ScenarioTimeout,
-    SwitchWrongDirectionTest)
+    SwitchWrongDirectionTest,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (
-    CollisionTest, ScenarioTimeoutTest)
+    CollisionTest, ScenarioTimeoutTest,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
     DriveDistance, InTimeToArrivalToLocation, InTriggerDistanceToLocation,
-    WaitUntilInFrontPosition)
+    WaitUntilInFrontPosition,
+)
 from srunner.scenarios.basic_scenario import BasicScenario
-from srunner.tools.background_manager import (ChangeOppositeBehavior,
-                                              LeaveSpaceInFront,
-                                              StartBackVehicles,
-                                              StopBackVehicles)
+from srunner.tools.background_manager import (
+    ChangeOppositeBehavior,
+    LeaveSpaceInFront,
+    StartBackVehicles,
+    StopBackVehicles,
+)
 
 
 def get_value_parameter(config, name, p_type, default):
@@ -41,7 +46,7 @@ def get_interval_parameter(config, name, p_type, default):
     if name in config.other_parameters:
         return [
             p_type(config.other_parameters[name]['from']),
-            p_type(config.other_parameters[name]['to'])
+            p_type(config.other_parameters[name]['to']),
         ]
     else:
         return default
@@ -52,8 +57,10 @@ class VehicleOpensDoorTwoWays(BasicScenario):
     This class holds everything required for a scenario in which another vehicle parked at the side lane
     opens the door, forcing the ego to lane change, invading the opposite lane
     """
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=90):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=90,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -90,9 +97,11 @@ class VehicleOpensDoorTwoWays(BasicScenario):
         if self._direction == 'right':
             displacement_vector *= -1
 
-        new_location = wp.transform.location + carla.Location(x=displacement*displacement_vector.x,
-                                                              y=displacement*displacement_vector.y,
-                                                              z=displacement*displacement_vector.z)
+        new_location = wp.transform.location + carla.Location(
+            x=displacement*displacement_vector.x,
+            y=displacement*displacement_vector.y,
+            z=displacement*displacement_vector.z,
+        )
         new_location.z += 0.05  # Just in case, avoid collisions with the ground
         return new_location
 
@@ -131,7 +140,8 @@ class VehicleOpensDoorTwoWays(BasicScenario):
         self.parking_slots.append(self._parked_wp.transform.location)
 
         self._parked_actor = CarlaDataProvider.request_new_actor(
-            "*vehicle.*", self._parked_wp.transform, attribute_filter={'has_dynamic_doors': True, 'base_type': 'car'})
+            "*vehicle.*", self._parked_wp.transform, attribute_filter={'has_dynamic_doors': True, 'base_type': 'car'},
+        )
         if not self._parked_actor:
             raise ValueError("Couldn't spawn the parked vehicle")
         self.other_actors.append(self._parked_actor)
@@ -147,24 +157,26 @@ class VehicleOpensDoorTwoWays(BasicScenario):
         if add_scenario_type:
             from srunner.scenariomanager.carla_data_provider import \
                 ActiveScenario
-            CarlaDataProvider.active_scenarios.append(ActiveScenario(
-                type(self).__name__, 
-                first_actor=self._parked_actor, 
-                metadata=self._direction, 
-                scenario_id=id(self), 
-                trigger_location=config.trigger_points[0].location,
-                extra_meta={
-                    "obstacles": [self._parked_actor],
-                    "vehicle_door_side": ["left" if self._direction == 'right' else "right"],
-                    "first_actor": self._parked_actor,
-                    "last_actor": None,
-                    "direction": self._direction,
-                    "changed_route": False,
-                    "from_index": 1e9,
-                    "to_index": 1e9,
-                    "path_clear": False
-                }
-            ))
+            CarlaDataProvider.active_scenarios.append(
+                ActiveScenario(
+                    type(self).__name__,
+                    first_actor=self._parked_actor,
+                    metadata=self._direction,
+                    scenario_id=id(self),
+                    trigger_location=config.trigger_points[0].location,
+                    extra_meta={
+                        "obstacles": [self._parked_actor],
+                        "vehicle_door_side": ["left" if self._direction == 'right' else "right"],
+                        "first_actor": self._parked_actor,
+                        "last_actor": None,
+                        "direction": self._direction,
+                        "changed_route": False,
+                        "from_index": 1e9,
+                        "to_index": 1e9,
+                        "path_clear": False,
+                    },
+                ),
+            )
 
 
     def _create_behavior(self):
@@ -190,11 +202,18 @@ class VehicleOpensDoorTwoWays(BasicScenario):
         # Wait until ego is close to the adversary
         collision_location = self._front_wp.transform.location
         trigger_adversary = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerOpenDoor")
-        trigger_adversary.add_child(InTimeToArrivalToLocation(
-            self.ego_vehicles[0], self._reaction_time, collision_location))
-        trigger_adversary.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], collision_location, self._min_trigger_dist))
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerOpenDoor",
+        )
+        trigger_adversary.add_child(
+            InTimeToArrivalToLocation(
+            self.ego_vehicles[0], self._reaction_time, collision_location,
+            ),
+        )
+        trigger_adversary.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], collision_location, self._min_trigger_dist,
+            ),
+        )
         behavior.add_child(trigger_adversary)
 
         door = carla.VehicleDoor.FR if self._direction == 'left' else carla.VehicleDoor.FL

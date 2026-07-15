@@ -117,7 +117,7 @@ def save_data(filename, route_id, points):
     for route in root.iter("route"):
         if route.attrib['id'] != route_id:
             continue
-        
+
         found_id = True
 
         waypoints = route.find('waypoints')

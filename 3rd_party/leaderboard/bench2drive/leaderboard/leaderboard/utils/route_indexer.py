@@ -91,7 +91,6 @@ class RouteIndexer():
 
         if entry_status == "Crashed":
             self.index = max(0, resume_index - 1)  # Something went wrong, repeat the last route
-        else: 
+        else:
             self.index = max(0, resume_index)
         return True
-

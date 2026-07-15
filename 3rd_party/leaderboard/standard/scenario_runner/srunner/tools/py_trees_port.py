@@ -64,7 +64,8 @@ class Decorator(py_trees.behaviour.Behaviour):
         new_status = self.update()
         if new_status not in list(py_trees.common.Status):
             self.logger.error(
-                "A behaviour returned an invalid status, setting to INVALID [%s][%s]" % (new_status, self.name))
+                "A behaviour returned an invalid status, setting to INVALID [%s][%s]" % (new_status, self.name),
+            )
             new_status = py_trees.common.Status.INVALID
         if new_status != py_trees.common.Status.RUNNING:
             self.stop(new_status)
@@ -118,12 +119,12 @@ def oneshot_behavior(variable_name, behaviour, name=None):
         name=variable_name + " Done?",
         variable_name=variable_name,
         expected_value=True,
-        clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE
+        clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE,
     )
     set_flag = py_trees.blackboard.SetBlackboardVariable(
         name="Mark Done",
         variable_name=variable_name,
-        variable_value=True
+        variable_value=True,
     )
     # If it's a sequence, don't double-nest it in a redundant manner
     if isinstance(behaviour, py_trees.composites.Sequence):

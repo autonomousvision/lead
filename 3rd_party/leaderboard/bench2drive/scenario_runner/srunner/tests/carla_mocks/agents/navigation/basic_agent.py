@@ -139,7 +139,7 @@ class BasicAgent(object):
         self._local_planner.set_global_plan(
             plan,
             stop_waypoint_creation=stop_waypoint_creation,
-            clean_queue=clean_queue
+            clean_queue=clean_queue,
         )
 
     def trace_route(self, start_waypoint, end_waypoint):

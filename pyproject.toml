@@ -4,7 +4,7 @@ requires = [ "setuptools==81" ]
 
 [project]
 name = "lead"
-version = "1.0.0"
+version = "1.1.0"
 description = "LEAD: Minimizing Learner-Expert Asymmetry in End-to-End Driving"
 readme = "README.md"
 license-files = [ "LICENSE" ]
@@ -14,59 +14,26 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.10",
 ]
+# Reading the 123D logs: neither the simulator nor a training stack is needed.
 dependencies = [
   "beartype==0.21",
-  "carla==0.9.16",
-  "dictor==0.1.12",
-  "diskcache==5.4",
-  "easydict==1.13",
-  "ephem==4.1.5",
-  "filterpy==1.4.5",
-  "flask==3.1.1",
-  "gym==0.17.2",
-  "gymnasium==1.2.3",
-  "h5py==3.7",
-  "imgaug==0.4",
   "jaxtyping==0.3.2",
-  "jsonpickle==3.0.3",
   "laspy==2.5.4",
-  "lightning==2.5.5",
-  "lxml==5.1",
-  "matplotlib==3.10.3",
-  "networkx==3.4.2",
-  "numba==0.61.2",
   "numpy==1.26",
   "omegaconf==2.3",
-  "open3d>=0.19",
   "opencv-python==4.6.0.66",
-  "pexpect==4.9",
-  "pillow==10.2",
-  "psutil==5.9.8",
-  "py-trees==0.8.3",
   "py123d @ git+https://github.com/kesai-labs/py123d@dev_v0.7.0",
-  "pyqt5",
-  "requests==2.32.5",
   "scipy==1.14.1",
-  "setuptools==81",
   "shapely==2.0.4",
-  "simple-watchdog-timer>=0.1.1",
-  "six==1.16",
-  "tabulate==0.9",
-  "tensorboard==2.20",
-  "timm==1.0.19",
-  "torch==2.5",
-  "torchaudio==2.5",
-  "torchmetrics==0.11",
-  "torchvision==0.20",
-  "tqdm==4.66.1",
-  "transformers==4.46.3",
-  "transforms3d==0.4.1",
-  "ujson==5.9",
-  "wandb==0.26",
 ]
+optional-dependencies.all = [
+  "lead[sim,train]",
+]
+# Working on LEAD itself: everything, plus the lint and test tooling.
 optional-dependencies.dev = [
   "basedpyright==1.39.9",
   "jupyter>=1.1.1",
+  "lead[sim,train]",
   "nbconvert==7.16.6",
   "nbformat==5.10.4",
   "nbstripout==0.8.2",
@@ -77,6 +44,52 @@ optional-dependencies.dev = [
   "ruff==0.12.4",
   "xmlformatter>=0.2.8",
   "xmlschema==1.0.18",
+]
+# Driving CARLA: the expert collecting logs and the closed-loop evaluation.
+optional-dependencies.sim = [
+  "carla==0.9.16",
+  "dictor==0.1.12",
+  "diskcache==5.4",
+  "easydict==1.13",
+  "ephem==4.1.5",
+  "filterpy==1.4.5",
+  "flask==3.1.1",
+  "gym==0.17.2",
+  "gymnasium==1.2.3",
+  "lxml==5.1",
+  "matplotlib==3.10.3",
+  "networkx==3.4.2",
+  "numba==0.61.2",
+  "open3d>=0.19",
+  "pexpect==4.9",
+  "pillow==10.2",
+  "psutil==5.9.8",
+  "py-trees==0.8.3",
+  "pyqt5",
+  "requests==2.32.5",
+  "setuptools==81",
+  "simple-watchdog-timer>=0.1.1",
+  "six==1.16",
+  "tabulate==0.9",
+  "transforms3d==0.4.1",
+  "ujson==5.9",
+]
+# Training a policy on the logs.
+optional-dependencies.train = [
+  "h5py==3.7",
+  "imgaug==0.4",
+  "jsonpickle==3.0.3",
+  "lightning==2.5.5",
+  "matplotlib==3.10.3",
+  "tensorboard==2.20",
+  "timm==1.0.19",
+  "torch==2.5",
+  "torchaudio==2.5",
+  "torchmetrics==0.11",
+  "torchvision==0.20",
+  "tqdm==4.66.1",
+  "transformers==4.46.3",
+  "wandb==0.26",
 ]
 urls.Homepage = "https://ln2697.github.io/lead"
 urls.Repository = "https://github.com/kesai-labs/lead"
@@ -99,9 +112,9 @@ index = [ { name = "pytorch-cu124", url = "https://download.pytorch.org/whl/cu12
 [tool.ruff]
 line-length = 88
 # Only check these directories
-include = [ "src/**/*.py", "tests/**/*.py" ]
+include = [ "scripts/**/*.py", "src/**/*.py", "tests/**/*.py" ]
 # Ignore specific directories/files
-exclude = [ "3rd_party", "scripts" ]
+exclude = [ "3rd_party" ]
 format.quote-style = "double"
 lint.select = [ "B", "E", "F", "I", "UP" ]
 lint.ignore = [ "E501", "E722", "F722" ]
@@ -109,11 +122,12 @@ lint.ignore = [ "E501", "E722", "F722" ]
 [tool.basedpyright]
 # Static type checking is rolled out per package; widen as code gets annotated.
 include = [
-  "src/lead/config",
-  "src/lead/training/dataloader",
-  "src/lead/policy/transfuser/dataloader",
-  "src/lead/policy/transfuser/visualization",
+  "src/lead",
+  "scripts",
 ]
+# expert/ drives CARLA through mixins that share state via a composed final
+# class, which pyright cannot see through; roll in once that's restructured.
+exclude = [ "src/lead/expert" ]
 typeCheckingMode = "basic"
 pythonVersion = "3.10"
 # src-layout: resolve `lead.*` imports from src/ (editable-install hooks are
@@ -123,8 +137,19 @@ extraPaths = [ "src" ]
 reportMissingTypeStubs = false
 # cv2 4.6, imgaug and the py123d map objects ship incomplete type stubs; keep
 # attribute checks advisory in the legacy-style transfuser dataloader and the
-# cv2-heavy visualization package.
+# cv2-heavy visualization and recording packages.
 executionEnvironments = [
   { root = "src/lead/policy/transfuser/dataloader", extraPaths = [ "src" ], reportAttributeAccessIssue = "hint" },
   { root = "src/lead/policy/transfuser/visualization", extraPaths = [ "src" ], reportAttributeAccessIssue = "hint" },
+  { root = "src/lead/evaluation/recorder", extraPaths = [ "src" ], reportAttributeAccessIssue = "hint" },
+  { root = "src/lead/evaluation/agents", extraPaths = [ "src" ], reportAttributeAccessIssue = "hint", reportMissingImports = "hint" },
+  { root = "src/lead/common", extraPaths = [ "src" ], reportMissingImports = "hint" },
+  # pandas has no bundled/installed type stubs; groupby/agg chains resolve to
+  # bogus ndarray types without pandas-stubs.
+  { root = "scripts/common/f2d_result_parser.py", extraPaths = [ "src" ], reportAttributeAccessIssue = "hint", reportArgumentType = "hint", reportReturnType = "hint", reportIndexIssue = "hint" },
+  { root = "src", extraPaths = [ "src" ] },
 ]
+
+[tool.vulture]
+# `objtype` is the fixed second parameter of the descriptor protocol's __get__.
+ignore_names = [ "objtype" ]

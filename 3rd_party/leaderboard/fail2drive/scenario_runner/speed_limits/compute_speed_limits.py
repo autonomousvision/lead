@@ -155,7 +155,7 @@ def compute_speed_limit_map(carla_port, map_name):
 
 for map_name in sorted([
     'Town07', 'Town06', 'Town04', 'Town02', 'Town10HD', 'Town03', 'Town05', 'Town01', 'Town15', 'Town11', 'Town13',
-    'Town12'
+    'Town12',
 ]):
   print(f'Compute {map_name}')
   compute_speed_limit_map(2000, map_name)

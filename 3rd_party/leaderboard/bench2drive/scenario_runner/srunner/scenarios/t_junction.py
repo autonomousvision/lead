@@ -8,11 +8,13 @@ from srunner.scenariomanager.scenarioatomics.atomic_behaviors import ActorFlow, 
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import WaitEndIntersection, DriveDistance
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import CollisionTest, ScenarioTimeoutTest
 from srunner.scenarios.basic_scenario import BasicScenario
-from srunner.tools.scenario_helper import (generate_target_waypoint,
-                                           get_junction_topology,
-                                           filter_junction_wp_direction,
-                                           get_same_dir_lanes,
-                                           get_closest_traffic_light)
+from srunner.tools.scenario_helper import (
+    generate_target_waypoint,
+    get_junction_topology,
+    filter_junction_wp_direction,
+    get_same_dir_lanes,
+    get_closest_traffic_light,
+)
 
 from srunner.tools.background_manager import HandleJunctionScenario, ChangeOppositeBehavior
 
@@ -23,19 +25,23 @@ class T_Junction(BasicScenario):
     No spicial scenarios will be triggered
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80, activate_scenario=True):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80, activate_scenario=True,
+    ):
         """
         Setup all relevant parameters and create scenario
         """
         pass
         self._scenario_timeout = 240
-        super().__init__("T_Junction",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "T_Junction",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
         pass

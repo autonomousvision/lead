@@ -10,11 +10,10 @@ from typing import Any, cast
 import yaml
 from omegaconf import OmegaConf
 
-from lead.common import runtime
-from lead.config.agent.agent_config import AgentConfig
 from lead.config.evaluation.evaluation_config import EvaluationConfig
 from lead.config.expert.expert_config import ExpertConfig
 from lead.config.node import ConfigNode, child_node
+from lead.config.policy.policy_config import PolicyConfig
 from lead.config.training.training_config import TrainingConfig
 
 LOG = logging.getLogger(__name__)
@@ -24,25 +23,18 @@ LOG = logging.getLogger(__name__)
 # ``LEAD_CONFIG="debug_mode=true expert.config_profile=default"``.
 ENV_KEY = "LEAD_CONFIG"
 
-# Config sections selectable via yaml profiles in ``src/lead/config_profiles/<section>/``.
-PROFILE_SECTIONS = ("expert", "agent")
+# Config sections selectable via yaml profiles in ``src/lead/config/profiles/<section>/``.
+PROFILE_SECTIONS = ("expert", "policy")
 
-CONFIG_PROFILES_ROOT = Path(__file__).resolve().parent.parent / "config_profiles"
+CONFIG_PROFILES_ROOT = Path(__file__).resolve().parent / "profiles"
 
 
 class LeadConfig(ConfigNode):
     """Root of the config tree, the single config object passed around.
 
-    Sections:
-        - :attr:`expert` — the expert and the data it collects
-        - :attr:`agent` — the learned agent (model architecture)
-        - :attr:`training` — one training run
-        - :attr:`evaluation` — one evaluation run (inference driving, outputs)
-
     Override sources (highest priority first): CLI dotlist, ``LEAD_CONFIG``
     environment dotlist, loaded config file, yaml config profile, class
-    default. Keys are fully qualified dotted paths; unknown keys and values
-    that fail coercion raise immediately.
+    default.
     """
 
     # If true, run code in debug mode with settings that allow for
@@ -50,14 +42,9 @@ class LeadConfig(ConfigNode):
     debug_mode: bool = False
 
     expert = child_node(ExpertConfig)
-    agent = child_node(AgentConfig)
+    policy = child_node(PolicyConfig)
     training = child_node(TrainingConfig)
     evaluation = child_node(EvaluationConfig)
-
-    @property
-    def is_on_tcml(self) -> bool:
-        """Check if running on Training Center for Machine Learning of Tübingen."""
-        return runtime.is_on_tcml()
 
 
 # --- Config profiles ---
@@ -65,7 +52,7 @@ def available_config_profiles(section: str) -> list[str]:
     """Names of the yaml profiles available for a config section.
 
     Args:
-        section: Profile directory name, e.g. ``"expert"`` or ``"agent"``.
+        section: Profile directory name, e.g. ``"expert"`` or ``"policy"``.
 
     Returns:
         Sorted profile names (yaml file stems).
@@ -78,7 +65,7 @@ def load_config_profile(section: str, name: str) -> dict[str, Any]:
     """Load a yaml config profile as a nested override dict.
 
     Args:
-        section: Profile directory name, e.g. ``"expert"`` or ``"agent"``.
+        section: Profile directory name, e.g. ``"expert"`` or ``"policy"``.
         name: Profile name (yaml file stem).
 
     Returns:

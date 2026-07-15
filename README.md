@@ -1,33 +1,26 @@
-# LEAD
+<h1>LEAD: Minimizing Learner-Expert Asymmetry in End-to-End Driving</h1>
 
-**Minimizing Learner-Expert Asymmetry in End-to-End Driving.**
+LEAD is an end-to-end driving stack for the CARLA Leaderboard 2.0, covering the data generation pipeline, a TransFuser-style driving policy, and popular driving benchmarks like Bench2Drive and Fail2Drive. The repository builds on py123d and focuses only on CARLA research; the [CVPR 2026 branch](https://github.com/kesai-labs/lead/tree/cvpr2026) holds the paper version.
 
-LEAD is an end-to-end driving stack for the CARLA Leaderboard 2.0: a privileged expert that
-collects data, a TransFuser-style policy that learns from it, and a batteries-included
-harness to evaluate that policy on the standard CARLA benchmarks (Bench2Drive, Longest6,
-Town13, Fail2Drive).
+**Latest update `v1.1.0`** (2026.07.15):
 
-`main` is a full rewrite of the CVPR 2026 codebase, built on
-[py123d](https://github.com/kesai-labs/py123d) in place of the old bespoke data layer — same
-driving performance, substantially less code, and much faster data collection, loading, and
-training. It is CARLA-only by design, and it is where ongoing development happens.
+- Added [basic documentation](https://github.com/kesai-labs/lead/docs/index.md).
+- Introduce abstraction for training and evaluation.
+- Bugs fixes and verification pipeline.
 
-**To reproduce the paper, use the `cvpr2026` branch**, which is frozen at the submitted state
-and still has everything the paper needs — including what `main` has since dropped.
+<details>
+<summary>Older changelog entries</summary>
+
+| Version | Date       | Content                                                                                                                                       |
+| :------ | :--------- | :-------------------------------------------------------------------------------------------------------------------------------------------- |
+| v1.0.0  | 2026.07.12 | <ul><li>Integrated py123d as first-class data format.</li><li>Modernised code base.</li><li>Expert run time increased by up to 10x.</li></ul> |
+
+</details>
 
 > \[!WARNING\]
-> **Repo is under active development.** Interfaces, configs, and checkpoints may change
-> without notice, and it has not yet been validated end-to-end at the paper's numbers.
+> Repo is under active development. Interfaces may change without notice.
 
-<div align="center">
-
-| Date         | Content                                                                            |
-| :----------- | :--------------------------------------------------------------------------------- |
-| **26.xx.xx** | Deep clean: streamlined the codebase down to the core CARLA Leaderboard 2.0 stack. |
-
-</div>
-
-## 1. Quick Start
+## Setup for development
 
 Clone the repository:
 
@@ -50,180 +43,90 @@ micromamba activate lead
 micromamba install -c conda-forge ffmpeg parallel tree gcc zip unzip git-lfs uv rclone -y
 
 # Install project
-UV_PROJECT_ENVIRONMENT=$CONDA_PREFIX uv sync --extra dev
+UV_PROJECT_ENVIRONMENT=$CONDA_PREFIX uv sync --extra dev --reinstall-package lead
 
 # Reload environment to add shell scripts to PATH
 micromamba deactivate && micromamba activate lead
 ```
 
-After this, edit `.env` yourself and continue with setting up CARLA
+After this, edit `.env` yourself if needed. After that, install CARLA:
 
 ```bash
 # Download and setup CARLA 0.9.16
 bash scripts/common/setup_carla.sh
 ```
 
-Run tests and lints
+Run tests and lints:
 
 ```bash
 pre-commit install
 
-pytest tests/unittests
+# Unit tests with dynamic type checking enabled
+LEAD_RUNTIME_TYPE_CHECKING=true pytest tests/unittests
 
+# Run pre-commit with static type checking
 pre-commit run --all-files
 ```
 
-## 2. Configuration
+See [setup](docs/setup.md) for more details.
 
-Everything is one config tree (`src/lead/config/`), overridable from three places, highest
-priority last: **profile** → **`LEAD_CONFIG`** → **CLI dotlist**.
+## Data collection
 
-```bash
-# Env var (this is what the shell/Slurm scripts use)
-export LEAD_CONFIG="agent.transfuser.image_architecture=regnety_032 training.experiment.seed=1"
-```
-
-Profiles (`src/lead/config_profiles/`) are named deltas on the defaults — pick one with
-`expert.config_profile=leaderboard2_3cameras` or `agent.config_profile=transfuser`. See
-[src/lead/config_profiles/README.md](src/lead/config_profiles/README.md).
-
-Machine-local settings (CARLA path, dataset root, Slurm partition, parallelism) live in `.env`,
-copied from [.env.example](.env.example). It is re-read on every access, so edits apply to
-already-running jobs.
-
-## 3. Data collection
-
-The expert drives the data routes and writes a py123d dataset to `PY123D_DATA_ROOT` (`.env`).
-
-**Single route**, for debugging the expert — starts CARLA yourself first (`start_carla`):
+The expert drives CARLA and writes a py123d dataset:
 
 ```bash
-python -m lead --expert --routes src/lead/routes/data_routes/lead/noScenarios/short_route.xml
+python -m lead --expert --routes lead/src/lead/routes/data_routes/lead/Accident/route_001761.xml
 ```
 
-**Full dataset**, on Slurm. This submits one job per route file in
-`src/lead/routes/data_routes/`, retries failures up to `MAX_NUM_ATTEMPTS_COLLECT_DATA`, and
-keeps `MAX_NUM_PARALLEL_JOBS_COLLECT_DATA` jobs in flight (both in `.env`):
+See [data collection](docs/data_generation.md) for details.
+
+The logs are ordinary py123d logs, so py123d can read them directly:
+
+```python
+from py123d.api.scene.arrow.arrow_scene_builder import ArrowSceneBuilder
+from py123d.api.scene.scene_filter import SceneFilter
+from py123d.common.execution.thread_pool_executor import ThreadPoolExecutor
+
+scenes = ArrowSceneBuilder(
+    logs_root="/path/to/lead-data/logs",
+    maps_root="/path/to/lead-data/maps",
+).get_scenes(SceneFilter(future_num_iterations=8), ThreadPoolExecutor())
+
+scene = scenes[0]
+ego = scene.get_ego_state_se3_at_iteration(0)  # py123d.datatypes.EgoStateSE3
+```
+
+See [data access](docs/data_access.md) for further documentation on how to read the data.
+
+## Training
 
 ```bash
-python scripts/slurm/data_collection/collect_data.py
-
-# progress
-python scripts/slurm/data_collection/print_collect_data_progress.py
+bash scripts/common/pretrain.sh   # perception pre-training
+bash scripts/common/posttrain.sh  # planning post-training
 ```
 
-Pass `--route_folder` to collect a subset instead.
+See [training](docs/training.md) for details.
 
-Afterwards, prune routes the expert failed:
+## Evaluation
 
 ```bash
-python scripts/slurm/data_quality/delete_failed_routes_py123d.py
+python -m lead --checkpoint <ckpt> --routes src/lead/routes/benchmark_routes/bench2drive/1711.xml
 ```
 
-## 4. Training
+See [evaluation](docs/eval.md) for more information on benchmarking.
 
-Two stages: **pretrain** the perception backbone, then **posttrain** with the planning decoder.
-Both read the collected py123d dataset and are configured entirely through `LEAD_CONFIG`.
-Training is Lightning; DDP across all visible GPUs is handled for you.
+## Other resources
 
-**Locally**, single node:
+- [Extended documentation](docs/index.md).
+- [Py123D documentation](https://kesai.eu/py123d/)
 
-```bash
-bash scripts/common/pretrain.sh    # → outputs/local_training/pretrain
-bash scripts/common/posttrain.sh   # → outputs/local_training/posttrain
-```
-
-`posttrain.sh` loads `pretrain/model_0030.pth` and sets
-`agent.transfuser.use_planning_decoder=true`. Edit the `LEAD_CONFIG` line at the top of either
-script to change the run.
-
-**On Slurm**, write an experiment script under `scripts/slurm/experiments/<experiment>/` and run
-it — it resubmits itself as a batch job, so no `sbatch` needed:
-
-```bash
-bash scripts/slurm/experiments/001_example/000_pretrain1_0.sh
-```
-
-```bash
-#!/usr/bin/bash
-#SBATCH --gres=gpu:4
-#SBATCH --time=3-00:00:00
-
-source scripts/slurm/slurm_experiment_init.sh
-
-export LEAD_CONFIG="$LEAD_CONFIG agent.transfuser.image_architecture=regnety_032"
-
-train                              # or: posttrain <ckpt>; train
-```
-
-The trailing `_0` in the filename is the seed. Outputs, checkpoints (`model_XXXX.pth`), and the
-run's `config.json` land in `outputs/training/<experiment>/<script>/<date>/`, mirrored to W&B.
-`resume <last_output_dir>` continues an interrupted run in place.
-
-## 5. Evaluation
-
-A checkpoint directory is what you point evaluation at: it must contain `model_0030.pth` and
-`config.json` (i.e. a training output dir).
-
-**Single route**, locally, with CARLA already running:
-
-```bash
-python -m lead \
-    --checkpoint outputs/checkpoints/tfv6_resnet34 \
-    --routes src/lead/routes/benchmark_routes/Town13/0.xml
-
-# Bench2Drive and Fail2Drive use their own leaderboard forks
-python -m lead --checkpoint <ckpt> --routes src/lead/routes/benchmark_routes/bench2drive/23687.xml --bench2drive
-python -m lead --checkpoint <ckpt> --routes src/lead/routes/benchmark_routes/fail2drive/0.xml --fail2drive
-```
-
-Results go to `outputs/local_evaluation/<route_id>/`. There are also ready-made single-route
-scripts with all env vars pinned: `scripts/common/eval_{bench2drive,longest6,town13,fail2drive,expert}.sh`.
-
-**Full benchmark**, on Slurm — same experiment-script pattern as training, one job per route:
-
-```bash
-#!/usr/bin/bash
-source scripts/slurm/slurm_experiment_init.sh
-
-export CHECKPOINT_DIR=outputs/training/001_example/010_postrain32_0/251025_182327
-
-evaluate_bench2drive     # or evaluate_longest6 / evaluate_town13 / evaluate_fail2drive
-```
-
-Benchmarks and their route sets:
-
-| Benchmark     | Routes                                         | Notes                                                      |
-| :------------ | :--------------------------------------------- | :--------------------------------------------------------- |
-| `bench2drive` | `src/lead/routes/benchmark_routes/bench2drive` | Short scenario routes                                      |
-| `longest6`    | `src/lead/routes/benchmark_routes/longest6`    | Medium routes                                              |
-| `Town13`      | `src/lead/routes/benchmark_routes/Town13`      | Long routes, official Leaderboard 2.0 validation town      |
-| `fail2drive`  | `src/lead/routes/benchmark_routes/fail2drive`  | Needs the separate `3rd_party/CARLA/fail2drive_0915` build |
-
-Aggregate the per-route JSONs into driving score / infractions:
-
-```bash
-python scripts/common/result_parser.py \
-    --xml src/lead/routes/benchmark_routes/Town13.xml \
-    --results outputs/evaluation/<experiment>/<script>/<date>
-
-# fail2drive has its own parser
-python scripts/common/f2d_result_parser.py --results <dir>
-```
-
-To inspect *why* a route failed, the webapp renders infractions with the recorded sensor data —
-see [src/lead/webapp/README.md](src/lead/webapp/README.md).
-
-## 6. Layout
+## Citations
 
 ```
-src/lead/lead/          expert (perception, planning, dynamics, recorders)
-src/lead/policy/        the learned policy (TransFuser)
-src/lead/training/      Lightning training loop, dataloaders
-src/lead/evaluation/    leaderboard agent wrapping the policy for inference
-src/lead/config/        config tree; config_profiles/ holds named deltas
-src/lead/routes/        data_routes/ (collection) and benchmark_routes/ (evaluation)
-scripts/common/         single-machine scripts
-scripts/slurm/          cluster drivers: collection, training, evaluation, experiments
-3rd_party/              CARLA + the leaderboard/scenario_runner forks
+@inproceedings{Nguyen2026CVPR,
+	author = {Long Nguyen and Micha Fauth and Bernhard Jaeger and Daniel Dauner and Maximilian Igl and Andreas Geiger and Kashyap Chitta},
+	title = {LEAD: Minimizing Learner-Expert Asymmetry in End-to-End Driving},
+	booktitle = {Conference on Computer Vision and Pattern Recognition (CVPR)},
+	year = {2026},
+}
 ```

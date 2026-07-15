@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Any
 
-from lead.common.logging_config import setup_logging
+from lead.common.logging import setup_logging
 from lead.config import EvaluationConfig
 
 setup_logging()
@@ -12,7 +12,7 @@ LOG = logging.getLogger(__name__)
 class InfractionRecorder:
     """Track and persist scenario infractions during a driving rollout.
 
-    This class mirrors scenario_runner behavior for discrete and continuous
+    This class matches scenario_runner behavior for discrete and continuous
     infractions while providing a consistent JSON artifact for downstream
     analysis.
     """

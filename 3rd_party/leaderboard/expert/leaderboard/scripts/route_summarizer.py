@@ -119,7 +119,7 @@ def main():
             round(route_distance, 1),
             print_scenarios,
             sum([x for x in route_scenarios.values()]),
-            round(dist_scenarios, 1)
+            round(dist_scenarios, 1),
         ]]
 
         # Get the total amounts
@@ -143,7 +143,7 @@ def main():
         round(total_distance, 1),
         print_total_scenarios,
         total_num_scenarios,
-        round(total_distance / total_num_scenarios, 1)
+        round(total_distance / total_num_scenarios, 1),
     ]]
 
     output = tabulate(statistics, tablefmt='fancy_grid')

@@ -54,15 +54,17 @@ class NpcAgent(AutonomousAgent):
         """
 
         sensors = [
-            {'type': 'sensor.camera.rgb', 'x': 0.7, 'y': -0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
-             'width': 300, 'height': 200, 'fov': 100, 'id': 'Left'},
+            {
+                'type': 'sensor.camera.rgb', 'x': 0.7, 'y': -0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
+                'width': 300, 'height': 200, 'fov': 100, 'id': 'Left',
+            },
         ]
 
         return sensors
 
     def run_step(self, input_data, timestamp):
         """
-        Execute one step of navigation. 
+        Execute one step of navigation.
         """
         if not self._agent:
 

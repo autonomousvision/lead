@@ -152,7 +152,7 @@ class Actor:
 		"""
 		Sets the actor's angular velocity vector. This is applied before the physics step so the resulting angular velocity will be affected by external forces such as friction.
 
-		:param angular_velocity: (Vector3D) 
+		:param angular_velocity: (Vector3D)
 		"""
 		...
 
@@ -160,7 +160,7 @@ class Actor:
 		"""
 		Teleports the actor to a given location.
 
-		:param location: (Location) 
+		:param location: (Location)
 		"""
 		...
 
@@ -168,7 +168,7 @@ class Actor:
 		"""
 		Enables or disables the simulation of physics on this actor.
 
-		:param enabled: (bool) 
+		:param enabled: (bool)
 		"""
 		...
 
@@ -176,7 +176,7 @@ class Actor:
 		"""
 		Teleports the actor to a given transform (location and rotation).
 
-		:param transform: (Transform) 
+		:param transform: (Transform)
 		"""
 		...
 
@@ -184,7 +184,7 @@ class Actor:
 		"""
 		Sets the actor's velocity vector. This is applied before the physics step so the resulting angular velocity will be affected by external forces such as friction.
 
-		:param velocity: (Vector3D) 
+		:param velocity: (Vector3D)
 		"""
 		...
 
@@ -198,7 +198,7 @@ class Actor:
 		"""
 		Enables or disables gravity for the actor. __Default__ is True.
 
-		:param enabled: (bool) 
+		:param enabled: (bool)
 		"""
 		...
 
@@ -278,7 +278,7 @@ class Vehicle(Actor):
 		"""
 		Applies a control object on the next tick, containing driving parameters such as throttle, steering or gear shifting.
 
-		:param control: (VehicleControl) 
+		:param control: (VehicleControl)
 		"""
 		...
 
@@ -286,7 +286,7 @@ class Vehicle(Actor):
 		"""
 		Applies an Ackermann control object on the next tick.
 
-		:param control: (VehicleAckermannControl) 
+		:param control: (VehicleAckermannControl)
 		"""
 		...
 
@@ -296,7 +296,7 @@ class Vehicle(Actor):
 
 		**warning**: This method does call the simulator.
 
-		:param settings: (AckermannControllerSettings) 
+		:param settings: (AckermannControllerSettings)
 		"""
 		...
 
@@ -314,7 +314,7 @@ class Vehicle(Actor):
 		"""
 		Applies a physics control object in the next tick containing the parameters that define the vehicle as a corporeal body. E.g.: moment of inertia, mass, drag coefficient and many more.
 
-		:param physics_control: (VehiclePhysicsControl) 
+		:param physics_control: (VehiclePhysicsControl)
 		"""
 		...
 
@@ -388,7 +388,7 @@ class Vehicle(Actor):
 		"""
 		Enables or disables the usage of CarSim vs terrain file specified in the `.simfile`. By default this option is disabled and CarSim uses unreal engine methods to process the geometry of the scene.
 
-		:param enabled: (bool) 
+		:param enabled: (bool)
 		"""
 		...
 
@@ -418,7 +418,7 @@ class Vehicle(Actor):
 		"""
 		Registers or deletes the vehicle from a Traffic Manager's list. When __True__, the Traffic Manager passed as parameter will move the vehicle around. The autopilot takes place client-side.
 
-		:param enabled: (bool) 
+		:param enabled: (bool)
 
 		:param port: (np.uint16) The port of the TM-Server where the vehicle is to be registered or unlisted. If __None__ is passed, it will consider a TM at default port `8000`.
 		"""
@@ -428,7 +428,7 @@ class Vehicle(Actor):
 		"""
 		Sets the light state of a vehicle using a flag that represents the lights that are on and off.
 
-		:param light_state: (VehicleLightState) 
+		:param light_state: (VehicleLightState)
 		"""
 		...
 
@@ -444,9 +444,9 @@ class Vehicle(Actor):
 
 		**warning**: Does not affect the physics of the vehicle.
 
-		:param wheel_location: (VehicleWheelLocation) 
+		:param wheel_location: (VehicleWheelLocation)
 
-		:param angle_in_deg: (float) 
+		:param angle_in_deg: (float)
 		"""
 		...
 
@@ -456,7 +456,7 @@ class Vehicle(Actor):
 
 		*note*: Returns the angle based on the physics of the wheel, not the visual angle.
 
-		:param wheel_location: (VehicleWheelLocation) 
+		:param wheel_location: (VehicleWheelLocation)
 
 		:return: float
 		"""
@@ -474,7 +474,7 @@ class Vehicle(Actor):
 		"""
 		Enables or disables the telemetry on this vehicle. This shows information about the vehicles current state and forces applied to it in the spectator window. Only information for one vehicle can be shown so that, if you enable a second one, the previous will be automatically disabled.
 
-		:param enabled: (bool) 
+		:param enabled: (bool)
 		"""
 		...
 
@@ -505,7 +505,7 @@ class Walker(Actor):
 		"""
 		On the next tick, the control will move the walker in a certain direction with a certain speed. Jumps can be commanded too.
 
-		:param control: (WalkerControl) 
+		:param control: (WalkerControl)
 		"""
 		...
 
@@ -535,7 +535,7 @@ class Walker(Actor):
   - name: bone name
   - relative: transform based on the bone parent
 
-		:param bones: (WalkerBoneControlIn) 
+		:param bones: (WalkerBoneControlIn)
 		"""
 		...
 
@@ -546,7 +546,7 @@ class Walker(Actor):
   - 1: will show only the custom pose (set by the user with set_bones())
   - any other: will interpolate all the bone positions between animation and the custom pose
 
-		:param blend_value: (float) 
+		:param blend_value: (float)
 		"""
 		...
 
@@ -585,7 +585,7 @@ class WalkerAIController(Actor):
 		"""
 		Sets the destination that the pedestrian will reach.
 
-		:param destination: (Location) 
+		:param destination: (Location)
 		"""
 		...
 
@@ -652,7 +652,7 @@ class TrafficLightState:
 class TrafficLight(TrafficSign):
 	"""
 	A traffic light actor, considered a specific type of traffic sign. As traffic lights will mostly appear at junctions, they belong to a group which contains the different traffic lights in it. Inside the group, traffic lights are differenciated by their pole index.
-     
+
   Within a group the state of traffic lights is changed in a cyclic pattern: one index is chosen and it spends a few seconds in green, yellow and eventually red. The rest of the traffic lights remain frozen in red this whole time, meaning that there is a gap in the last seconds of the cycle where all the traffic lights are red. However, the state of a traffic light can be changed manually.
 	"""
 
@@ -663,7 +663,7 @@ class TrafficLight(TrafficSign):
 		"""
 		Stops all the traffic lights in the scene at their current state.
 
-		:param freeze: (bool) 
+		:param freeze: (bool)
 		"""
 		...
 
@@ -745,7 +745,7 @@ class TrafficLight(TrafficSign):
 		"""
 		Sets a given state to a traffic light actor.
 
-		:param state: (TrafficLightState) 
+		:param state: (TrafficLightState)
 		"""
 		...
 
@@ -761,7 +761,7 @@ class TrafficLight(TrafficSign):
 		"""
 		Sets a given time for the red state to be active.
 
-		:param red_time: (float) 
+		:param red_time: (float)
 		"""
 		...
 
@@ -769,7 +769,7 @@ class TrafficLight(TrafficSign):
 		"""
 		Sets a given time for the yellow light to be active.
 
-		:param yellow_time: (float) 
+		:param yellow_time: (float)
 		"""
 		...
 
@@ -929,13 +929,13 @@ class Color:
 		"""
 		Initializes a color, black by default.
 
-		:param r: (int) 
+		:param r: (int)
 
-		:param g: (int) 
+		:param g: (int)
 
-		:param b: (int) 
+		:param b: (int)
 
-		:param a: (int) 
+		:param a: (int)
 		"""
 		...
 
@@ -943,7 +943,7 @@ class Color:
 		"""
 
 
-		:param other: (Color) 
+		:param other: (Color)
 		"""
 		...
 
@@ -951,7 +951,7 @@ class Color:
 		"""
 
 
-		:param other: (Color) 
+		:param other: (Color)
 		"""
 		...
 
@@ -984,13 +984,13 @@ class FloatColor:
 		"""
 		Initializes a color, black by default.
 
-		:param r: (float) 
+		:param r: (float)
 
-		:param g: (float) 
+		:param g: (float)
 
-		:param b: (float) 
+		:param b: (float)
 
-		:param a: (float) 
+		:param a: (float)
 		"""
 		...
 
@@ -998,7 +998,7 @@ class FloatColor:
 		"""
 
 
-		:param other: (FloatColor) 
+		:param other: (FloatColor)
 		"""
 		...
 
@@ -1006,7 +1006,7 @@ class FloatColor:
 		"""
 
 
-		:param other: (FloatColor) 
+		:param other: (FloatColor)
 		"""
 		...
 
@@ -1027,9 +1027,9 @@ class OpticalFlowPixel:
 		"""
 		Initializes the Optical Flow Pixel. Zero by default.
 
-		:param x: (float) 
+		:param x: (float)
 
-		:param y: (float) 
+		:param y: (float)
 		"""
 		...
 
@@ -1037,7 +1037,7 @@ class OpticalFlowPixel:
 		"""
 
 
-		:param other: (OpticalFlowPixel) 
+		:param other: (OpticalFlowPixel)
 		"""
 		...
 
@@ -1045,7 +1045,7 @@ class OpticalFlowPixel:
 		"""
 
 
-		:param other: (OpticalFlowPixel) 
+		:param other: (OpticalFlowPixel)
 		"""
 		...
 
@@ -1132,7 +1132,7 @@ class ActorAttribute:
 		"""
 		Returns true if this actor's attribute and `other` are the same.
 
-		:param other: (str) 
+		:param other: (str)
 
 		:return: bool
 		"""
@@ -1142,7 +1142,7 @@ class ActorAttribute:
 		"""
 		Returns true if this actor's attribute and `other` are different.
 
-		:param other: (str) 
+		:param other: (str)
 
 		:return: bool
 		"""
@@ -1193,7 +1193,7 @@ class ActorBlueprint:
 		"""
 		Returns True if any of the tags listed for this blueprint matches `wildcard_pattern`. Matching follows [fnmatch](https://docs.python.org/2/library/fnmatch.html) standard.
 
-		:param wildcard_pattern: (str) 
+		:param wildcard_pattern: (str)
 
 		:return: bool
 		"""
@@ -1203,7 +1203,7 @@ class ActorBlueprint:
 		"""
 		Returns the actor's attribute with `id` as identifier if existing.
 
-		:param id: (str) 
+		:param id: (str)
 
 		:return: carla.ActorAttribute
 		"""
@@ -1250,7 +1250,7 @@ class BlueprintLibrary:
 		"""
 		Filters a list of blueprints matching the `wildcard_pattern` against the id and tags of every blueprint contained in this library and returns the result as a new one. Matching follows [fnmatch](https://docs.python.org/2/library/fnmatch.html) standard.
 
-		:param wildcard_pattern: (str) 
+		:param wildcard_pattern: (str)
 
 		:return: carla.BlueprintLibrary
 		"""
@@ -1260,9 +1260,9 @@ class BlueprintLibrary:
 		"""
 		Filters a list of blueprints with a given attribute matching the `value` against every blueprint contained in this library and returns the result as a new one. Matching follows [fnmatch](https://docs.python.org/2/library/fnmatch.html) standard.
 
-		:param name: (str) 
+		:param name: (str)
 
-		:param value: (str) 
+		:param value: (str)
 
 		:return: carla.BlueprintLibrary
 		"""
@@ -1272,7 +1272,7 @@ class BlueprintLibrary:
 		"""
 		Returns the blueprint corresponding to that identifier.
 
-		:param id: (str) 
+		:param id: (str)
 
 		:return: carla.ActorBlueprint
 		"""
@@ -1282,7 +1282,7 @@ class BlueprintLibrary:
 		"""
 		Returns the blueprint stored in `pos` position inside the data structure containing them.
 
-		:param pos: (int) 
+		:param pos: (int)
 
 		:return: carla.ActorBlueprint
 		"""
@@ -1809,7 +1809,7 @@ Default is __False__. The traffic manager will not change the vehicle light stat
 		"""
 		If __True__, vehicles in large maps will respawn near the hero vehicle when they become dormant. Otherwise, they will stay dormant until they are within `actor_active_distance` of the hero vehicle again.
 
-		:param mode_switch: (bool) 
+		:param mode_switch: (bool)
 		"""
 		...
 
@@ -1968,13 +1968,13 @@ class VehicleControl:
 
 		:param brake: (float) Scalar value between [0.0,1.0]
 
-		:param hand_brake: (bool) 
+		:param hand_brake: (bool)
 
-		:param reverse: (bool) 
+		:param reverse: (bool)
 
-		:param manual_gear_shift: (bool) 
+		:param manual_gear_shift: (bool)
 
-		:param gear: (int) 
+		:param gear: (int)
 		"""
 		...
 
@@ -1982,7 +1982,7 @@ class VehicleControl:
 		"""
 
 
-		:param other: (VehicleControl) 
+		:param other: (VehicleControl)
 		"""
 		...
 
@@ -1990,7 +1990,7 @@ class VehicleControl:
 		"""
 
 
-		:param other: (VehicleControl) 
+		:param other: (VehicleControl)
 		"""
 		...
 
@@ -2026,15 +2026,15 @@ class VehicleAckermannControl:
 		"""
 
 
-		:param steer: (float) 
+		:param steer: (float)
 
-		:param steer_speed: (float) 
+		:param steer_speed: (float)
 
-		:param speed: (float) 
+		:param speed: (float)
 
-		:param acceleration: (float) 
+		:param acceleration: (float)
 
-		:param jerk: (float) 
+		:param jerk: (float)
 		"""
 		...
 
@@ -2042,7 +2042,7 @@ class VehicleAckermannControl:
 		"""
 
 
-		:param other: (AckermannVehicleControl) 
+		:param other: (AckermannVehicleControl)
 		"""
 		...
 
@@ -2050,7 +2050,7 @@ class VehicleAckermannControl:
 		"""
 
 
-		:param other: (AckermannVehicleControl) 
+		:param other: (AckermannVehicleControl)
 		"""
 		...
 
@@ -2089,17 +2089,17 @@ class AckermannControllerSettings:
 		"""
 
 
-		:param speed_kp: (float) 
+		:param speed_kp: (float)
 
-		:param speed_ki: (float) 
+		:param speed_ki: (float)
 
-		:param speed_kd: (float) 
+		:param speed_kd: (float)
 
-		:param accel_kp: (float) 
+		:param accel_kp: (float)
 
-		:param accel_ki: (float) 
+		:param accel_ki: (float)
 
-		:param accel_kd: (float) 
+		:param accel_kd: (float)
 		"""
 		...
 
@@ -2107,7 +2107,7 @@ class AckermannControllerSettings:
 		"""
 
 
-		:param other: (AckermannControllerSettings) 
+		:param other: (AckermannControllerSettings)
 		"""
 		...
 
@@ -2115,7 +2115,7 @@ class AckermannControllerSettings:
 		"""
 
 
-		:param other: (AckermannControllerSettings) 
+		:param other: (AckermannControllerSettings)
 		"""
 		...
 
@@ -2130,7 +2130,7 @@ class AckermannControllerSettings:
 class WalkerControl:
 	"""
 	This class defines specific directions that can be commanded to a carla.Walker to control it via script.
-  
+
   AI control can be settled for walkers, but the control used to do so is carla.WalkerAIController.
 	"""
 
@@ -2147,11 +2147,11 @@ class WalkerControl:
 		"""
 
 
-		:param direction: (Vector3D) 
+		:param direction: (Vector3D)
 
-		:param speed: (float) 
+		:param speed: (float)
 
-		:param jump: (bool) 
+		:param jump: (bool)
 		"""
 		...
 
@@ -2159,7 +2159,7 @@ class WalkerControl:
 		"""
 		Compares every variable with `other` and returns True if these are all the same.
 
-		:param other: (WalkerControl) 
+		:param other: (WalkerControl)
 		"""
 		...
 
@@ -2167,7 +2167,7 @@ class WalkerControl:
 		"""
 		Compares every variable with `other` and returns True if any of these differ.
 
-		:param other: (WalkerControl) 
+		:param other: (WalkerControl)
 		"""
 		...
 
@@ -2213,7 +2213,7 @@ class WalkerBoneControlIn:
 		"""
 		Initializes an object containing moves to be applied on tick. These are listed with the name of the bone and the transform that will be applied to it.
 
-		:param list(name,transform): (tuple) 
+		:param list(name,transform): (tuple)
 		"""
 		...
 
@@ -2243,11 +2243,11 @@ class GearPhysicsControl:
 		"""
 
 
-		:param ratio: (float) 
+		:param ratio: (float)
 
-		:param down_ratio: (float) 
+		:param down_ratio: (float)
 
-		:param up_ratio: (float) 
+		:param up_ratio: (float)
 		"""
 		...
 
@@ -2255,7 +2255,7 @@ class GearPhysicsControl:
 		"""
 
 
-		:param other: (GearPhysicsControl) 
+		:param other: (GearPhysicsControl)
 		"""
 		...
 
@@ -2263,7 +2263,7 @@ class GearPhysicsControl:
 		"""
 
 
-		:param other: (GearPhysicsControl) 
+		:param other: (GearPhysicsControl)
 		"""
 		...
 
@@ -2335,39 +2335,39 @@ class VehiclePhysicsControl:
 		"""
 		VehiclePhysicsControl constructor
 
-		:param torque_curve: (list[Vector2D]) 
+		:param torque_curve: (list[Vector2D])
 
-		:param max_rpm: (float) 
+		:param max_rpm: (float)
 
-		:param moi: (float) 
+		:param moi: (float)
 
-		:param damping_rate_full_throttle: (float) 
+		:param damping_rate_full_throttle: (float)
 
-		:param damping_rate_zero_throttle_clutch_engaged: (float) 
+		:param damping_rate_zero_throttle_clutch_engaged: (float)
 
-		:param damping_rate_zero_throttle_clutch_disengaged: (float) 
+		:param damping_rate_zero_throttle_clutch_disengaged: (float)
 
-		:param use_gear_autobox: (bool) 
+		:param use_gear_autobox: (bool)
 
-		:param gear_switch_time: (float) 
+		:param gear_switch_time: (float)
 
-		:param clutch_strength: (float) 
+		:param clutch_strength: (float)
 
-		:param final_ratio: (float) 
+		:param final_ratio: (float)
 
-		:param forward_gears: (list[GearPhysicsControl]) 
+		:param forward_gears: (list[GearPhysicsControl])
 
-		:param drag_coefficient: (float) 
+		:param drag_coefficient: (float)
 
-		:param center_of_mass: (Vector3D) 
+		:param center_of_mass: (Vector3D)
 
-		:param steering_curve: (Vector2D) 
+		:param steering_curve: (Vector2D)
 
-		:param wheels: (list[WheelPhysicsControl]) 
+		:param wheels: (list[WheelPhysicsControl])
 
-		:param use_sweep_wheel_collision: (bool) 
+		:param use_sweep_wheel_collision: (bool)
 
-		:param mass: (float) 
+		:param mass: (float)
 		"""
 		...
 
@@ -2375,7 +2375,7 @@ class VehiclePhysicsControl:
 		"""
 
 
-		:param other: (VehiclePhysicsControl) 
+		:param other: (VehiclePhysicsControl)
 		"""
 		...
 
@@ -2383,7 +2383,7 @@ class VehiclePhysicsControl:
 		"""
 
 
-		:param other: (VehiclePhysicsControl) 
+		:param other: (VehiclePhysicsControl)
 		"""
 		...
 
@@ -2434,19 +2434,19 @@ class WheelPhysicsControl:
 		"""
 
 
-		:param tire_friction: (float) 
+		:param tire_friction: (float)
 
-		:param damping_rate: (float) 
+		:param damping_rate: (float)
 
-		:param max_steer_angle: (float) 
+		:param max_steer_angle: (float)
 
-		:param radius: (float) 
+		:param radius: (float)
 
-		:param max_brake_torque: (float) 
+		:param max_brake_torque: (float)
 
-		:param max_handbrake_torque: (float) 
+		:param max_handbrake_torque: (float)
 
-		:param position: (Vector3D) 
+		:param position: (Vector3D)
 		"""
 		...
 
@@ -2454,7 +2454,7 @@ class WheelPhysicsControl:
 		"""
 
 
-		:param other: (WheelPhysicsControl) 
+		:param other: (WheelPhysicsControl)
 		"""
 		...
 
@@ -2462,7 +2462,7 @@ class WheelPhysicsControl:
 		"""
 
 
-		:param other: (WheelPhysicsControl) 
+		:param other: (WheelPhysicsControl)
 		"""
 		...
 
@@ -2496,9 +2496,9 @@ class Vector2D:
 		"""
 
 
-		:param x: (float) 
+		:param x: (float)
 
-		:param y: (float) 
+		:param y: (float)
 		"""
 		...
 
@@ -2530,7 +2530,7 @@ class Vector2D:
 		"""
 
 
-		:param other: (Vector2D) 
+		:param other: (Vector2D)
 		"""
 		...
 
@@ -2538,7 +2538,7 @@ class Vector2D:
 		"""
 
 
-		:param other: (Vector2D) 
+		:param other: (Vector2D)
 		"""
 		...
 
@@ -2546,7 +2546,7 @@ class Vector2D:
 		"""
 
 
-		:param other: (Vector2D) 
+		:param other: (Vector2D)
 		"""
 		...
 
@@ -2554,7 +2554,7 @@ class Vector2D:
 		"""
 
 
-		:param other: (Vector2D) 
+		:param other: (Vector2D)
 		"""
 		...
 
@@ -2562,7 +2562,7 @@ class Vector2D:
 		"""
 		Returns __True__ if values for every axis are equal.
 
-		:param other: (Vector2D) 
+		:param other: (Vector2D)
 
 		:return: bool
 		"""
@@ -2572,7 +2572,7 @@ class Vector2D:
 		"""
 		Returns __True__ if the value for any axis is different.
 
-		:param bool: (Vector2D) 
+		:param bool: (Vector2D)
 
 		:return: bool
 		"""
@@ -2606,11 +2606,11 @@ class Vector3D:
 		"""
 
 
-		:param x: (float) 
+		:param x: (float)
 
-		:param y: (float) 
+		:param y: (float)
 
-		:param z: (float) 
+		:param z: (float)
 		"""
 		...
 
@@ -2642,7 +2642,7 @@ class Vector3D:
 		"""
 		Computes the cross product between two vectors.
 
-		:param vector: (Vector3D) 
+		:param vector: (Vector3D)
 
 		:return: carla.Vector3D
 		"""
@@ -2652,7 +2652,7 @@ class Vector3D:
 		"""
 		Computes the dot product between two vectors.
 
-		:param vector: (Vector3D) 
+		:param vector: (Vector3D)
 
 		:return: float
 		"""
@@ -2662,7 +2662,7 @@ class Vector3D:
 		"""
 		Computes the distance between two vectors.
 
-		:param vector: (Vector3D) 
+		:param vector: (Vector3D)
 
 		:return: float
 		"""
@@ -2672,7 +2672,7 @@ class Vector3D:
 		"""
 		Computes the squared distance between two vectors.
 
-		:param vector: (Vector3D) 
+		:param vector: (Vector3D)
 
 		:return: float
 		"""
@@ -2682,7 +2682,7 @@ class Vector3D:
 		"""
 		Computes the 2-dimensional dot product between two vectors.
 
-		:param vector: (Vector3D) 
+		:param vector: (Vector3D)
 
 		:return: float
 		"""
@@ -2692,7 +2692,7 @@ class Vector3D:
 		"""
 		Computes the 2-dimensional distance between two vectors.
 
-		:param vector: (Vector3D) 
+		:param vector: (Vector3D)
 
 		:return: float
 		"""
@@ -2702,7 +2702,7 @@ class Vector3D:
 		"""
 		Computes the 2-dimensional squared distance between two vectors.
 
-		:param vector: (Vector3D) 
+		:param vector: (Vector3D)
 
 		:return: float
 		"""
@@ -2712,7 +2712,7 @@ class Vector3D:
 		"""
 		Computes the angle between a pair of 3D vectors in radians.
 
-		:param vector: (Vector3D) 
+		:param vector: (Vector3D)
 
 		:return: float
 		"""
@@ -2722,7 +2722,7 @@ class Vector3D:
 		"""
 
 
-		:param other: (Vector3D) 
+		:param other: (Vector3D)
 		"""
 		...
 
@@ -2730,7 +2730,7 @@ class Vector3D:
 		"""
 
 
-		:param other: (Vector3D) 
+		:param other: (Vector3D)
 		"""
 		...
 
@@ -2738,7 +2738,7 @@ class Vector3D:
 		"""
 
 
-		:param other: (Vector3D) 
+		:param other: (Vector3D)
 		"""
 		...
 
@@ -2746,7 +2746,7 @@ class Vector3D:
 		"""
 
 
-		:param other: (Vector3D) 
+		:param other: (Vector3D)
 		"""
 		...
 
@@ -2754,7 +2754,7 @@ class Vector3D:
 		"""
 		Returns __True__ if values for every axis are equal.
 
-		:param other: (Vector3D) 
+		:param other: (Vector3D)
 
 		:return: bool
 		"""
@@ -2764,7 +2764,7 @@ class Vector3D:
 		"""
 		Returns __True__ if the value for any axis is different.
 
-		:param other: (Vector3D) 
+		:param other: (Vector3D)
 
 		:return: bool
 		"""
@@ -2806,11 +2806,11 @@ class Location(Vector3D):
 		"""
 
 
-		:param x: (float) 
+		:param x: (float)
 
-		:param y: (float) 
+		:param y: (float)
 
-		:param z: (float) 
+		:param z: (float)
 		"""
 		...
 
@@ -2828,7 +2828,7 @@ class Location(Vector3D):
 		"""
 		Returns __True__ if both locations are the same point in space.
 
-		:param other: (Location) 
+		:param other: (Location)
 
 		:return: bool
 		"""
@@ -2838,7 +2838,7 @@ class Location(Vector3D):
 		"""
 		Returns __True__ if both locations are different points in space.
 
-		:param other: (Location) 
+		:param other: (Location)
 
 		:return: bool
 		"""
@@ -2864,7 +2864,7 @@ class Location(Vector3D):
 
 class Rotation:
 	"""
-	Class that represents a 3D rotation and therefore, an orientation in space. CARLA uses the Unreal Engine coordinates system. This is a Z-up left-handed system.  
+	Class that represents a 3D rotation and therefore, an orientation in space. CARLA uses the Unreal Engine coordinates system. This is a Z-up left-handed system.
 The constructor method follows a specific order of declaration: `(pitch, yaw, roll)`, which corresponds to `(Y-rotation,Z-rotation,X-rotation)`.   ![UE4_Rotation](https://d26ilriwvtzlb.cloudfront.net/8/83/BRMC_9.jpg) *Unreal Engine's coordinates system*
 	"""
 
@@ -2919,7 +2919,7 @@ The constructor method follows a specific order of declaration: `(pitch, yaw, ro
 		"""
 		Returns __True__ if both rotations represent the same orientation for every axis.
 
-		:param other: (Rotation) 
+		:param other: (Rotation)
 
 		:return: bool
 		"""
@@ -2929,7 +2929,7 @@ The constructor method follows a specific order of declaration: `(pitch, yaw, ro
 		"""
 		Returns __True__ if both rotations represent the same orientation for every axis.
 
-		:param other: (Rotation) 
+		:param other: (Rotation)
 
 		:return: bool
 		"""
@@ -2958,9 +2958,9 @@ class Transform:
 		"""
 
 
-		:param location: (Location) 
+		:param location: (Location)
 
-		:param rotation: (Rotation) 
+		:param rotation: (Rotation)
 		"""
 		...
 
@@ -3024,7 +3024,7 @@ class Transform:
 		"""
 		Returns __True__ if both location and rotation are equal for this and `other`.
 
-		:param other: (Transform) 
+		:param other: (Transform)
 
 		:return: bool
 		"""
@@ -3034,7 +3034,7 @@ class Transform:
 		"""
 		Returns __True__ if any location and rotation are not equal for this and `other`.
 
-		:param other: (Transform) 
+		:param other: (Transform)
 
 		:return: bool
 		"""
@@ -3109,7 +3109,7 @@ class BoundingBox:
 		"""
 		Returns true if both location and extent are equal for this and `other`.
 
-		:param other: (BoundingBox) 
+		:param other: (BoundingBox)
 
 		:return: bool
 		"""
@@ -3119,7 +3119,7 @@ class BoundingBox:
 		"""
 		Returns true if either location or extent are different for this and `other`.
 
-		:param other: (BoundingBox) 
+		:param other: (BoundingBox)
 
 		:return: bool
 		"""
@@ -3153,11 +3153,11 @@ class GeoLocation:
 		"""
 
 
-		:param latitude: (float) 
+		:param latitude: (float)
 
-		:param longitude: (float) 
+		:param longitude: (float)
 
-		:param altitude: (float) 
+		:param altitude: (float)
 		"""
 		...
 
@@ -3165,7 +3165,7 @@ class GeoLocation:
 		"""
 
 
-		:param other: (GeoLocation) 
+		:param other: (GeoLocation)
 		"""
 		...
 
@@ -3173,7 +3173,7 @@ class GeoLocation:
 		"""
 
 
-		:param other: (GeoLocation) 
+		:param other: (GeoLocation)
 		"""
 		...
 
@@ -3194,7 +3194,7 @@ import command
 
 class LightGroup:
 	"""
-	This class categorizes the lights on scene into different groups. These groups available are provided as a enum values that can be used as flags.  
+	This class categorizes the lights on scene into different groups. These groups available are provided as a enum values that can be used as flags.
 
 __Note.__ So far, though there is a `vehicle` group, vehicle lights are not available as carla.Light objects. These have to be managed using carla.Vehicle and carla.VehicleLightState.
 	"""
@@ -3292,7 +3292,7 @@ Lights are automatically turned on when the simulator enters night mode (sun alt
 		"""
 		Changes the color of the light to `color`.
 
-		:param color: (Color) 
+		:param color: (Color)
 		"""
 		...
 
@@ -3300,7 +3300,7 @@ Lights are automatically turned on when the simulator enters night mode (sun alt
 		"""
 		Changes the intensity of the light to `intensity`.
 
-		:param intensity: (float) 
+		:param intensity: (float)
 		"""
 		...
 
@@ -3308,7 +3308,7 @@ Lights are automatically turned on when the simulator enters night mode (sun alt
 		"""
 		Changes the light to the group `light_group`.
 
-		:param light_group: (LightGroup) 
+		:param light_group: (LightGroup)
 		"""
 		...
 
@@ -3316,7 +3316,7 @@ Lights are automatically turned on when the simulator enters night mode (sun alt
 		"""
 		Changes the state of the light to `light_state`. This may change attributes, group and turn the light on/off all at once.
 
-		:param light_state: (LightState) 
+		:param light_state: (LightState)
 		"""
 		...
 
@@ -3324,7 +3324,7 @@ Lights are automatically turned on when the simulator enters night mode (sun alt
 
 class LightManager:
 	"""
-	This class handles the lights in the scene. Its main use is to get and set the state of groups or lists of lights in one call. An instance of this class can be retrieved by the carla.World.get_lightmanager().  
+	This class handles the lights in the scene. Its main use is to get and set the state of groups or lists of lights in one call. An instance of this class can be retrieved by the carla.World.get_lightmanager().
 
 __Note.__ So far, though there is a `vehicle` group, vehicle lights are not available as carla.Light objects. These have to be managed using carla.Vehicle and carla.VehicleLightState.
 	"""
@@ -3742,7 +3742,7 @@ class Map:
 		"""
 		Converts a given `location`, a point in the simulation, to a carla.GeoLocation, which represents world coordinates. The geographical location of the map is defined inside OpenDRIVE within the tag <georeference>.
 
-		:param location: (Location) 
+		:param location: (Location)
 
 		:return: carla.GeoLocation
 		"""
@@ -4733,7 +4733,7 @@ class Image(SensorData):
 		"""
 		Converts the image following the `color_converter` pattern.
 
-		:param color_converter: (ColorConverter) 
+		:param color_converter: (ColorConverter)
 		"""
 		...
 
@@ -4751,7 +4751,7 @@ class Image(SensorData):
 		"""
 
 
-		:param pos: (int) 
+		:param pos: (int)
 		"""
 		...
 
@@ -4771,9 +4771,9 @@ class Image(SensorData):
 		"""
 
 
-		:param pos: (int) 
+		:param pos: (int)
 
-		:param color: (Color) 
+		:param color: (Color)
 		"""
 		...
 
@@ -4814,7 +4814,7 @@ class OpticalFlowImage(SensorData):
 		"""
 
 
-		:param pos: (int) 
+		:param pos: (int)
 		"""
 		...
 
@@ -4834,9 +4834,9 @@ class OpticalFlowImage(SensorData):
 		"""
 
 
-		:param pos: (int) 
+		:param pos: (int)
 
-		:param color: (Color) 
+		:param color: (Color)
 		"""
 		...
 
@@ -4866,7 +4866,7 @@ class LidarMeasurement(SensorData):
 		"""
 		Saves the point cloud to disk as a .ply file describing data from 3D scanners. The files generated are ready to be used within [MeshLab](http://www.meshlab.net/), an open source system for processing said files. Just take into account that axis may differ from Unreal Engine and so, need to be reallocated.
 
-		:param path: (str) 
+		:param path: (str)
 		"""
 		...
 
@@ -4874,7 +4874,7 @@ class LidarMeasurement(SensorData):
 		"""
 		Retrieves the number of points sorted by channel that are generated by this measure. Sorting by channel allows to identify the original channel for every point.
 
-		:param channel: (int) 
+		:param channel: (int)
 		"""
 		...
 
@@ -4882,7 +4882,7 @@ class LidarMeasurement(SensorData):
 		"""
 
 
-		:param pos: (int) 
+		:param pos: (int)
 		"""
 		...
 
@@ -4902,9 +4902,9 @@ class LidarMeasurement(SensorData):
 		"""
 
 
-		:param pos: (int) 
+		:param pos: (int)
 
-		:param detection: (LidarDetection) 
+		:param detection: (LidarDetection)
 		"""
 		...
 
@@ -4953,7 +4953,7 @@ class SemanticLidarMeasurement(SensorData):
 		"""
 		Saves the point cloud to disk as a .ply file describing data from 3D scanners. The files generated are ready to be used within [MeshLab](http://www.meshlab.net/), an open-source system for processing said files. Just take into account that axis may differ from Unreal Engine and so, need to be reallocated.
 
-		:param path: (str) 
+		:param path: (str)
 		"""
 		...
 
@@ -4961,7 +4961,7 @@ class SemanticLidarMeasurement(SensorData):
 		"""
 		Retrieves the number of points sorted by channel that are generated by this measure. Sorting by channel allows to identify the original channel for every point.
 
-		:param channel: (int) 
+		:param channel: (int)
 		"""
 		...
 
@@ -4969,7 +4969,7 @@ class SemanticLidarMeasurement(SensorData):
 		"""
 
 
-		:param pos: (int) 
+		:param pos: (int)
 		"""
 		...
 
@@ -4989,9 +4989,9 @@ class SemanticLidarMeasurement(SensorData):
 		"""
 
 
-		:param pos: (int) 
+		:param pos: (int)
 
-		:param detection: (SemanticLidarDetection) 
+		:param detection: (SemanticLidarDetection)
 		"""
 		...
 
@@ -5147,7 +5147,7 @@ class RadarMeasurement(SensorData):
 		"""
 
 
-		:param pos: (int) 
+		:param pos: (int)
 		"""
 		...
 
@@ -5167,9 +5167,9 @@ class RadarMeasurement(SensorData):
 		"""
 
 
-		:param pos: (int) 
+		:param pos: (int)
 
-		:param detection: (RadarDetection) 
+		:param detection: (RadarDetection)
 		"""
 		...
 
@@ -5435,7 +5435,7 @@ class DVSEventArray:
 		"""
 
 
-		:param pos: (int) 
+		:param pos: (int)
 		"""
 		...
 
@@ -5455,9 +5455,9 @@ class DVSEventArray:
 		"""
 
 
-		:param pos: (int) 
+		:param pos: (int)
 
-		:param color: (Color) 
+		:param color: (Color)
 		"""
 		...
 
@@ -5558,7 +5558,7 @@ class WorldSnapshot:
 		"""
 		Given a certain actor ID, returns its corresponding snapshot or None if it is not found.
 
-		:param actor_id: (int) 
+		:param actor_id: (int)
 
 		:return: carla.ActorSnapshot
 		"""
@@ -5568,7 +5568,7 @@ class WorldSnapshot:
 		"""
 		Given a certain actor ID, checks if there is a snapshot corresponding it and so, if the actor was present at that moment.
 
-		:param actor_id: (int) 
+		:param actor_id: (int)
 
 		:return: bool
 		"""
@@ -5592,7 +5592,7 @@ class WorldSnapshot:
 		"""
 		Returns __True__ if both **timestamp** are the same.
 
-		:param other: (WorldSnapshot) 
+		:param other: (WorldSnapshot)
 
 		:return: bool
 		"""
@@ -5602,7 +5602,7 @@ class WorldSnapshot:
 		"""
 		Returns True if both **timestamp** are different.
 
-		:param other: (WorldSnapshot) 
+		:param other: (WorldSnapshot)
 
 		:return: bool
 		"""
@@ -5661,7 +5661,7 @@ import command
 
 class WeatherParameters:
 	"""
-	This class defines objects containing lighting and weather specifications that can later be applied in carla.World. So far, these conditions only intervene with [sensor.camera.rgb](ref_sensors.md#rgb-camera). They neither affect the actor's physics nor other sensors.        
+	This class defines objects containing lighting and weather specifications that can later be applied in carla.World. So far, these conditions only intervene with [sensor.camera.rgb](ref_sensors.md#rgb-camera). They neither affect the actor's physics nor other sensors.
   Each of these parameters acts indepently from the rest. Increasing the rainfall will not automatically create puddles nor change the road's humidity. That makes for a better customization but means that realistic conditions need to be scripted. However an example of dynamic weather conditions working realistically can be found [here](https://github.com/carla-simulator/carla/blob/master/PythonAPI/examples/dynamic_weather.py).
 	"""
 
@@ -5745,7 +5745,7 @@ class WeatherParameters:
 		"""
 		Returns True if both objects' variables are the same.
 
-		:param other: () 
+		:param other: ()
 
 		:return: bool
 		"""
@@ -5755,7 +5755,7 @@ class WeatherParameters:
 		"""
 		Returns True if both objects' variables are different.
 
-		:param other: () 
+		:param other: ()
 
 		:return: bool
 		"""
@@ -5797,13 +5797,13 @@ class Timestamp:
 		"""
 
 
-		:param frame: (int) 
+		:param frame: (int)
 
-		:param elapsed_seconds: (float) 
+		:param elapsed_seconds: (float)
 
-		:param delta_seconds: (float) 
+		:param delta_seconds: (float)
 
-		:param platform_timestamp: (float) 
+		:param platform_timestamp: (float)
 		"""
 		...
 
@@ -5811,7 +5811,7 @@ class Timestamp:
 		"""
 
 
-		:param other: (Timestamp) 
+		:param other: (Timestamp)
 		"""
 		...
 
@@ -5819,7 +5819,7 @@ class Timestamp:
 		"""
 
 
-		:param other: (Timestamp) 
+		:param other: (Timestamp)
 		"""
 		...
 
@@ -5840,7 +5840,7 @@ class ActorList:
 		"""
 		Filters a list of Actors matching `wildcard_pattern` against their variable type_id (which identifies the blueprint used to spawn them). Matching follows [fnmatch](https://docs.python.org/2/library/fnmatch.html) standard.
 
-		:param wildcard_pattern: (str) 
+		:param wildcard_pattern: (str)
 
 		:return: list
 		"""
@@ -5850,7 +5850,7 @@ class ActorList:
 		"""
 		Finds an actor using its identifier and returns it or None if it is not present.
 
-		:param actor_id: (int) 
+		:param actor_id: (int)
 
 		:return: carla.Actor
 		"""
@@ -5860,7 +5860,7 @@ class ActorList:
 		"""
 		Returns the actor corresponding to `pos` position in the list.
 
-		:param pos: (int) 
+		:param pos: (int)
 
 		:return: carla.Actor
 		"""
@@ -6113,9 +6113,9 @@ class TextureColor:
 		"""
 		Initializes a the texture with a (`width`, `height`) size.
 
-		:param width: (int) 
+		:param width: (int)
 
-		:param height: (int) 
+		:param height: (int)
 		"""
 		...
 
@@ -6123,9 +6123,9 @@ class TextureColor:
 		"""
 		Resizes the texture to te specified dimensions.
 
-		:param width: (int) 
+		:param width: (int)
 
-		:param height: (int) 
+		:param height: (int)
 		"""
 		...
 
@@ -6133,9 +6133,9 @@ class TextureColor:
 		"""
 		Get the (x,y) pixel data.
 
-		:param x: (int) 
+		:param x: (int)
 
-		:param y: (int) 
+		:param y: (int)
 
 		:return: carla.Color
 		"""
@@ -6145,11 +6145,11 @@ class TextureColor:
 		"""
 		Sets the (x,y) pixel data with `value`.
 
-		:param x: (int) 
+		:param x: (int)
 
-		:param y: (int) 
+		:param y: (int)
 
-		:param value: (Color) 
+		:param value: (Color)
 		"""
 		...
 
@@ -6170,9 +6170,9 @@ class TextureFloatColor:
 		"""
 		Initializes a the texture with a (`width`, `height`) size.
 
-		:param width: (int) 
+		:param width: (int)
 
-		:param height: (int) 
+		:param height: (int)
 		"""
 		...
 
@@ -6180,9 +6180,9 @@ class TextureFloatColor:
 		"""
 		Resizes the texture to te specified dimensions.
 
-		:param width: (int) 
+		:param width: (int)
 
-		:param height: (int) 
+		:param height: (int)
 		"""
 		...
 
@@ -6190,9 +6190,9 @@ class TextureFloatColor:
 		"""
 		Get the (x,y) pixel data.
 
-		:param x: (int) 
+		:param x: (int)
 
-		:param y: (int) 
+		:param y: (int)
 
 		:return: carla.FloatColor
 		"""
@@ -6202,11 +6202,11 @@ class TextureFloatColor:
 		"""
 		Sets the (x,y) pixel data with `value`.
 
-		:param x: (int) 
+		:param x: (int)
 
-		:param y: (int) 
+		:param y: (int)
 
-		:param value: (FloatColor) 
+		:param value: (FloatColor)
 		"""
 		...
 
@@ -6229,7 +6229,7 @@ class World:
 
 		**warning**: If synchronous mode is enabled, and there is a Traffic Manager running, this must be set to sync mode too. Read [this](adv_traffic_manager.md#synchronous-mode) to learn how to do it.
 
-		:param world_settings: (WorldSettings) 
+		:param world_settings: (WorldSettings)
 
 		:return: int
 		"""
@@ -6311,7 +6311,7 @@ class World:
 		"""
 		Looks up for an actor by ID and returns None if not found.
 
-		:param actor_id: (int) 
+		:param actor_id: (int)
 
 		:return: carla.Actor
 		"""
@@ -6385,7 +6385,7 @@ class World:
 		"""
 		Freezes or unfreezes all traffic lights in the scene. Frozen traffic lights can be modified by the user but the time will not update them until unfrozen.
 
-		:param frozen: (bool) 
+		:param frozen: (bool)
 		"""
 		...
 
@@ -6587,11 +6587,11 @@ class World:
 		"""
 		Applies a `texture` object in the field corresponfing to `material_parameter` (normal, diffuse, etc) to the object in the scene corresponding to `object_name`.
 
-		:param object_name: (str) 
+		:param object_name: (str)
 
-		:param material_parameter: (MaterialParameter) 
+		:param material_parameter: (MaterialParameter)
 
-		:param texture: (TextureColor) 
+		:param texture: (TextureColor)
 		"""
 		...
 
@@ -6599,11 +6599,11 @@ class World:
 		"""
 		Applies a `texture` object in the field corresponfing to `material_parameter` (normal, diffuse, etc) to the object in the scene corresponding to `object_name`.
 
-		:param object_name: (str) 
+		:param object_name: (str)
 
-		:param material_parameter: (MaterialParameter) 
+		:param material_parameter: (MaterialParameter)
 
-		:param texture: (TextureFloatColor) 
+		:param texture: (TextureFloatColor)
 		"""
 		...
 
@@ -6611,15 +6611,15 @@ class World:
 		"""
 		Applies all texture fields in carla.MaterialParameter to the object `object_name`. Empty textures here will not be applied.
 
-		:param object_name: (str) 
+		:param object_name: (str)
 
-		:param diffuse_texture: (TextureColor) 
+		:param diffuse_texture: (TextureColor)
 
-		:param emissive_texture: (TextureFloatColor) 
+		:param emissive_texture: (TextureFloatColor)
 
-		:param normal_texture: (TextureFloatColor) 
+		:param normal_texture: (TextureFloatColor)
 
-		:param ao_roughness_metallic_emissive_texture: (TextureFloatColor) 
+		:param ao_roughness_metallic_emissive_texture: (TextureFloatColor)
 		"""
 		...
 
@@ -6627,11 +6627,11 @@ class World:
 		"""
 		Applies a `texture` object in the field corresponfing to `material_parameter` (normal, diffuse, etc) to the object in the scene corresponding to all objects in `objects_name_list`.
 
-		:param objects_name_list: (list[str]) 
+		:param objects_name_list: (list[str])
 
-		:param material_parameter: (MaterialParameter) 
+		:param material_parameter: (MaterialParameter)
 
-		:param texture: (TextureColor) 
+		:param texture: (TextureColor)
 		"""
 		...
 
@@ -6639,11 +6639,11 @@ class World:
 		"""
 		Applies a `texture` object in the field corresponfing to `material_parameter` (normal, diffuse, etc) to the object in the scene corresponding to all objects in `objects_name_list`.
 
-		:param objects_name_list: (list[str]) 
+		:param objects_name_list: (list[str])
 
-		:param material_parameter: (MaterialParameter) 
+		:param material_parameter: (MaterialParameter)
 
-		:param texture: (TextureFloatColor) 
+		:param texture: (TextureFloatColor)
 		"""
 		...
 
@@ -6651,15 +6651,15 @@ class World:
 		"""
 		Applies all texture fields in carla.MaterialParameter to all objects in `objects_name_list`. Empty textures here will not be applied.
 
-		:param objects_name_list: (list[str]) 
+		:param objects_name_list: (list[str])
 
-		:param diffuse_texture: (TextureColor) 
+		:param diffuse_texture: (TextureColor)
 
-		:param emissive_texture: (TextureFloatColor) 
+		:param emissive_texture: (TextureFloatColor)
 
-		:param normal_texture: (TextureFloatColor) 
+		:param normal_texture: (TextureFloatColor)
 
-		:param ao_roughness_metallic_emissive_texture: (TextureFloatColor) 
+		:param ao_roughness_metallic_emissive_texture: (TextureFloatColor)
 		"""
 		...
 
@@ -6765,6 +6765,3 @@ class DebugHelper:
 		:param life_time: (float) Shape's lifespan. By default it only lasts one frame. Set this to 0 for permanent shapes.
 		"""
 		...
-
-
-

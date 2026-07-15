@@ -19,11 +19,13 @@ import carla
 import py_trees
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
-    ActorDestroy, ActorTransformSetter, WaypointFollower)
+    ActorDestroy, ActorTransformSetter, WaypointFollower,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import \
     CollisionTest
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
-    DriveDistance, InTriggerDistanceToVehicle)
+    DriveDistance, InTriggerDistanceToVehicle,
+)
 from srunner.scenarios.basic_scenario import BasicScenario
 from srunner.tools.scenario_helper import get_waypoint_in_distance
 
@@ -38,8 +40,10 @@ class OtherLeadingVehicle(BasicScenario):
     This is a single ego vehicle scenario
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80,
+    ):
         """
         Setup all relevant parameters and create scenario
         """
@@ -57,12 +61,14 @@ class OtherLeadingVehicle(BasicScenario):
         # Timeout of scenario in seconds
         self.timeout = timeout
 
-        super(OtherLeadingVehicle, self).__init__("VehicleDeceleratingInMultiLaneSetUp",
-                                                  ego_vehicles,
-                                                  config,
-                                                  world,
-                                                  debug_mode,
-                                                  criteria_enable=criteria_enable)
+        super(OtherLeadingVehicle, self).__init__(
+            "VehicleDeceleratingInMultiLaneSetUp",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
         """
@@ -72,10 +78,14 @@ class OtherLeadingVehicle(BasicScenario):
         second_vehicle_waypoint, _ = get_waypoint_in_distance(self._reference_waypoint, self._second_vehicle_location)
         second_vehicle_waypoint = second_vehicle_waypoint.get_left_lane()
 
-        first_vehicle_transform = carla.Transform(first_vehicle_waypoint.transform.location,
-                                                  first_vehicle_waypoint.transform.rotation)
-        second_vehicle_transform = carla.Transform(second_vehicle_waypoint.transform.location,
-                                                   second_vehicle_waypoint.transform.rotation)
+        first_vehicle_transform = carla.Transform(
+            first_vehicle_waypoint.transform.location,
+            first_vehicle_waypoint.transform.rotation,
+        )
+        second_vehicle_transform = carla.Transform(
+            second_vehicle_waypoint.transform.location,
+            second_vehicle_waypoint.transform.rotation,
+        )
 
         first_vehicle = CarlaDataProvider.request_new_actor('vehicle.nissan.patrol', first_vehicle_transform)
         second_vehicle = CarlaDataProvider.request_new_actor('vehicle.audi.tt', second_vehicle_transform)
@@ -101,21 +111,29 @@ class OtherLeadingVehicle(BasicScenario):
         drives certain distance and stops the scenario.
         """
         # start condition
-        driving_in_same_direction = py_trees.composites.Parallel("All actors driving in same direction",
-                                                                 policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+        driving_in_same_direction = py_trees.composites.Parallel(
+            "All actors driving in same direction",
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE,
+        )
         leading_actor_sequence_behavior = py_trees.composites.Sequence("Decelerating actor sequence behavior")
 
         # both actors moving in same direction
-        keep_velocity = py_trees.composites.Parallel("Trigger condition for deceleration",
-                                                     policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+        keep_velocity = py_trees.composites.Parallel(
+            "Trigger condition for deceleration",
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE,
+        )
         keep_velocity.add_child(WaypointFollower(self.other_actors[0], self._first_vehicle_speed, avoid_collision=True))
         keep_velocity.add_child(InTriggerDistanceToVehicle(self.other_actors[0], self.ego_vehicles[0], 55))
 
         # Decelerating actor sequence behavior
         decelerate = self._first_vehicle_speed / 3.2
         leading_actor_sequence_behavior.add_child(keep_velocity)
-        leading_actor_sequence_behavior.add_child(WaypointFollower(self.other_actors[0], decelerate,
-                                                                   avoid_collision=True))
+        leading_actor_sequence_behavior.add_child(
+            WaypointFollower(
+                self.other_actors[0], decelerate,
+                avoid_collision=True,
+            ),
+        )
         # end condition
         ego_drive_distance = DriveDistance(self.ego_vehicles[0], self._ego_vehicle_drive_distance)
 
@@ -126,8 +144,12 @@ class OtherLeadingVehicle(BasicScenario):
         parallel_root.add_child(ego_drive_distance)
         parallel_root.add_child(driving_in_same_direction)
         driving_in_same_direction.add_child(leading_actor_sequence_behavior)
-        driving_in_same_direction.add_child(WaypointFollower(self.other_actors[1], self._second_vehicle_speed,
-                                                             avoid_collision=True))
+        driving_in_same_direction.add_child(
+            WaypointFollower(
+                self.other_actors[1], self._second_vehicle_speed,
+                avoid_collision=True,
+            ),
+        )
 
         sequence.add_child(ActorTransformSetter(self.other_actors[0], self._first_actor_transform))
         sequence.add_child(ActorTransformSetter(self.other_actors[1], self._second_actor_transform))

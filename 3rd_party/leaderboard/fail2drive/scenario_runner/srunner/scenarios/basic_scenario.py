@@ -16,8 +16,10 @@ import py_trees
 
 import carla
 
-from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (WaitForBlackboardVariable,
-                                                                               InTimeToArrivalToLocation)
+from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
+    WaitForBlackboardVariable,
+    InTimeToArrivalToLocation,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import WaitForever
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.timer import TimeOut
@@ -31,8 +33,10 @@ class BasicScenario(object):
     Base class for user-defined scenario
     """
 
-    def __init__(self, name, ego_vehicles, config, world,
-                 debug_mode=False, terminate_on_failure=False, criteria_enable=False):
+    def __init__(
+        self, name, ego_vehicles, config, world,
+        debug_mode=False, terminate_on_failure=False, criteria_enable=False,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -53,7 +57,7 @@ class BasicScenario(object):
 
         # If no timeout was provided, set it to 60 seconds
         if not hasattr(self, 'timeout'):
-            self.timeout = 60 
+            self.timeout = 60
         if debug_mode:
             py_trees.logging.level = py_trees.logging.Level.DEBUG
 
@@ -115,14 +119,18 @@ class BasicScenario(object):
                 for criterion in criteria:
                     criterion.terminate_on_failure = terminate_on_failure
 
-                self.criteria_tree = py_trees.composites.Parallel(name="Test Criteria",
-                                                                  policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL)
+                self.criteria_tree = py_trees.composites.Parallel(
+                    name="Test Criteria",
+                    policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL,
+                )
                 self.criteria_tree.add_children(criteria)
                 self.criteria_tree.setup(timeout=1)
 
             else:
-                raise ValueError("WARNING: Scenario {} couldn't be setup, make sure the criteria is either "
-                                 "a list or a py_trees.composites.Composite".format(self.name))
+                raise ValueError(
+                    "WARNING: Scenario {} couldn't be setup, make sure the criteria is either "
+                    "a list or a py_trees.composites.Composite".format(self.name),
+                )
 
             self.scenario_tree.add_child(self.criteria_tree)
 
@@ -215,7 +223,8 @@ class BasicScenario(object):
         """
         raise NotImplementedError(
             "This function is re-implemented by all scenarios"
-            "If this error becomes visible the class hierarchy is somehow broken")
+            "If this error becomes visible the class hierarchy is somehow broken",
+        )
 
     def _create_test_criteria(self):
         """
@@ -224,7 +233,8 @@ class BasicScenario(object):
         """
         raise NotImplementedError(
             "This function is re-implemented by all scenarios"
-            "If this error becomes visible the class hierarchy is somehow broken")
+            "If this error becomes visible the class hierarchy is somehow broken",
+        )
 
     def _create_weather_behavior(self):
         """

@@ -62,7 +62,8 @@ def get_distance_along_route(route, target_location):
             while wp is not None:
                 new_location = wp.transform.location
                 new_distance_squared = ((new_location.x - prev_position.x) ** 2) + (
-                    (new_location.y - prev_position.y) ** 2)
+                    (new_location.y - prev_position.y) ** 2
+                )
 
                 if np.sign(starting_wp.lane_id) != np.sign(wp.lane_id):
                     break
@@ -79,7 +80,8 @@ def get_distance_along_route(route, target_location):
             while wp is not None:
                 new_location = wp.transform.location
                 new_distance_squared = ((new_location.x - prev_position.x) ** 2) + (
-                    (new_location.y - prev_position.y) ** 2)
+                    (new_location.y - prev_position.y) ** 2
+                )
 
                 if np.sign(starting_wp.lane_id) != np.sign(wp.lane_id):
                     break
@@ -105,8 +107,10 @@ def get_distance_along_route(route, target_location):
             if prev_wp and curr_wp and wp:
                 if wp.road_id in (prev_wp.road_id, curr_wp.road_id):
                     # Roads match, now compare the sign of the lane ids
-                    if (np.sign(wp.lane_id) == np.sign(prev_wp.lane_id) or
-                            np.sign(wp.lane_id) == np.sign(curr_wp.lane_id)):
+                    if (
+                        np.sign(wp.lane_id) == np.sign(prev_wp.lane_id) or
+                        np.sign(wp.lane_id) == np.sign(curr_wp.lane_id)
+                    ):
                         # The location is within the current route interval
                         covered_distance += math.sqrt(distance_squared)
                         found = True
@@ -129,8 +133,10 @@ def get_crossing_point(actor):
     while not wp_cross.is_intersection:
         wp_cross = wp_cross.next(2)[0]
 
-    crossing = carla.Location(x=wp_cross.transform.location.x,
-                              y=wp_cross.transform.location.y, z=wp_cross.transform.location.z)
+    crossing = carla.Location(
+        x=wp_cross.transform.location.x,
+        y=wp_cross.transform.location.y, z=wp_cross.transform.location.z,
+    )
 
     return crossing
 
@@ -176,7 +182,7 @@ def get_geometric_linear_intersection(ego_location, other_location, move_to_junc
         (ego_1_loc.x, ego_1_loc.y),
         (ego_2_loc.x, ego_2_loc.y),
         (other_1_loc.x, other_1_loc.y),
-        (other_2_loc.x, other_2_loc.y)
+        (other_2_loc.x, other_2_loc.y),
     ])
     h = np.hstack((s, np.ones((4, 1))))
     line1 = np.cross(h[0], h[1])
@@ -265,12 +271,15 @@ def generate_target_waypoint_list(waypoint, turn=0):
         if turn != 0 and reached_junction and len(plan) >= 3:
             v_1 = vector(
                 plan[-2][0].transform.location,
-                plan[-1][0].transform.location)
+                plan[-1][0].transform.location,
+            )
             v_2 = vector(
                 plan[-3][0].transform.location,
-                plan[-2][0].transform.location)
+                plan[-2][0].transform.location,
+            )
             angle_wp = math.acos(
-                np.dot(v_1, v_2) / abs((np.linalg.norm(v_1) * np.linalg.norm(v_2))))
+                np.dot(v_1, v_2) / abs((np.linalg.norm(v_1) * np.linalg.norm(v_2))),
+            )
             if angle_wp < threshold:
                 break
         elif reached_junction and not plan[-1][0].is_intersection:
@@ -279,10 +288,12 @@ def generate_target_waypoint_list(waypoint, turn=0):
     return plan, plan[-1][0]
 
 
-def generate_target_waypoint_list_multilane(waypoint, change='left',  # pylint: disable=too-many-return-statements
-                                            distance_same_lane=10, distance_other_lane=25,
-                                            total_lane_change_distance=25, check=True,
-                                            lane_changes=1, step_distance=2):
+def generate_target_waypoint_list_multilane(
+    waypoint, change='left',  # pylint: disable=too-many-return-statements
+    distance_same_lane=10, distance_other_lane=25,
+    total_lane_change_distance=25, check=True,
+    lane_changes=1, step_distance=2,
+):
     """
     This methods generates a waypoint list which leads the vehicle to a parallel lane.
     The change input must be 'left' or 'right', depending on which lane you want to change.
@@ -434,7 +445,8 @@ def choose_at_junction(current_waypoint, next_choices, direction=0):
     projected_location = current_location + \
         carla.Location(
             x=math.cos(math.radians(current_transform.rotation.yaw)),
-            y=math.sin(math.radians(current_transform.rotation.yaw)))
+            y=math.sin(math.radians(current_transform.rotation.yaw)),
+        )
     current_vector = vector(current_location, projected_location)
     cross_list = []
     cross_to_waypoint = {}
@@ -473,7 +485,8 @@ def get_intersection(ego_actor, other_actor):
             max_dot = -1 * float('inf')
             loc_projection = current_location + carla.Location(
                 x=math.cos(math.radians(waypoint.transform.rotation.yaw)),
-                y=math.sin(math.radians(waypoint.transform.rotation.yaw)))
+                y=math.sin(math.radians(waypoint.transform.rotation.yaw)),
+            )
             v_current = vector(current_location, loc_projection)
             for wp_select in waypoint_choice:
                 v_select = vector(current_location, wp_select.transform.location)
@@ -513,10 +526,12 @@ def detect_lane_obstacle(actor, extension_factor=3, margin=1.02):
             adversary_yaw = adversary_transform.rotation.yaw
             overlap_adversary = RotatedRectangle(
                 adversary_loc.x, adversary_loc.y,
-                2 * margin * adversary_bbox.extent.x, 2 * margin * adversary_bbox.extent.y, adversary_yaw)
+                2 * margin * adversary_bbox.extent.x, 2 * margin * adversary_bbox.extent.y, adversary_yaw,
+            )
             overlap_actor = RotatedRectangle(
                 actor_location.x, actor_location.y,
-                2 * margin * actor_bbox.extent.x * extension_factor, 2 * margin * actor_bbox.extent.y, actor_yaw)
+                2 * margin * actor_bbox.extent.x * extension_factor, 2 * margin * actor_bbox.extent.y, actor_yaw,
+            )
             overlap_area = overlap_adversary.intersection(overlap_actor).area
             if overlap_area > 0:
                 is_hazard = True
@@ -659,8 +674,10 @@ def get_troad_from_transform(actor_transform):
         lm_lane_offset = lm_lane.lane_width / 2
     else:
         lm_lane, lm_lane_offset = ref_lane, 0
-    lm_tr = get_offset_transform(carla.Transform(lm_lane.transform.location, lm_lane.transform.rotation),
-                                 lm_lane_offset)
+    lm_tr = get_offset_transform(
+        carla.Transform(lm_lane.transform.location, lm_lane.transform.rotation),
+        lm_lane_offset,
+    )
     distance_from_lm_lane_edge = lm_tr.location.distance(actor_loc)
     distance_from_lm_lane_ref_lane = lm_tr.location.distance(ref_lane.transform.location)
     if right_lanes:
@@ -670,9 +687,13 @@ def get_troad_from_transform(actor_transform):
         rm_lane_offset = -rm_lane.lane_width / 2
     else:
         rm_lane, rm_lane_offset = ref_lane, -distance_from_lm_lane_ref_lane
-    distance_from_rm_lane_edge = get_offset_transform(carla.Transform(rm_lane.transform.location,
-                                                                      rm_lane.transform.rotation),
-                                                      rm_lane_offset).location.distance(actor_loc)
+    distance_from_rm_lane_edge = get_offset_transform(
+        carla.Transform(
+            rm_lane.transform.location,
+            rm_lane.transform.rotation,
+        ),
+        rm_lane_offset,
+    ).location.distance(actor_loc)
     t_road = ref_lane.transform.location.distance(actor_loc)
     if not right_lanes or not left_lanes:
         closest_road_edge = min(distance_from_lm_lane_edge, distance_from_rm_lane_edge)
@@ -685,8 +706,10 @@ def get_troad_from_transform(actor_transform):
     return t_road
 
 
-def get_distance_between_actors(current, target, distance_type="euclidianDistance", freespace=False,
-                                global_planner=None):
+def get_distance_between_actors(
+    current, target, distance_type="euclidianDistance", freespace=False,
+    global_planner=None,
+):
     """
     This function finds the distance between actors for different use cases described by distance_type and freespace
     attributes

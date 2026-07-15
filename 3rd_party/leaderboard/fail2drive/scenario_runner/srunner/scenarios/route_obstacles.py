@@ -16,19 +16,23 @@ import py_trees
 import carla
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorDestroy,
-                                                                      SwitchWrongDirectionTest,
-                                                                      BasicAgentBehavior,
-                                                                      ScenarioTimeout,
-                                                                      Idle, WaitForever,
-                                                                      HandBrakeVehicle,
-                                                                      OppositeActorFlow)
+from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
+    ActorDestroy,
+    SwitchWrongDirectionTest,
+    BasicAgentBehavior,
+    ScenarioTimeout,
+    Idle, WaitForever,
+    HandBrakeVehicle,
+    OppositeActorFlow,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import CollisionTest, ScenarioTimeoutTest
-from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (DriveDistance,
-                                                                               InTriggerDistanceToLocation,
-                                                                               InTriggerDistanceToVehicle,
-                                                                               WaitUntilInFront,
-                                                                               WaitUntilInFrontPosition)
+from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
+    DriveDistance,
+    InTriggerDistanceToLocation,
+    InTriggerDistanceToVehicle,
+    WaitUntilInFront,
+    WaitUntilInFrontPosition,
+)
 from srunner.scenarios.basic_scenario import BasicScenario
 from srunner.tools.background_manager import LeaveSpaceInFront, SetMaxSpeed, ChangeOppositeBehavior, ChangeRoadBehavior
 
@@ -42,7 +46,7 @@ def get_interval_parameter(config, name, p_type, default):
     if name in config.other_parameters:
         return [
             p_type(config.other_parameters[name]['from']),
-            p_type(config.other_parameters[name]['to'])
+            p_type(config.other_parameters[name]['to']),
         ]
     else:
         return default
@@ -55,8 +59,10 @@ class Accident(BasicScenario):
     two other cars that have been in an accident.
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=180):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=180,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -64,7 +70,7 @@ class Accident(BasicScenario):
         self._world = world
         self._map = CarlaDataProvider.get_map()
         self.timeout = timeout
-        
+
         self._first_distance = 10
         self._second_distance = 6
 
@@ -84,7 +90,8 @@ class Accident(BasicScenario):
         self._scenario_timeout = 240
 
         super().__init__(
-            "Accident", ego_vehicles, config, world, randomize, debug_mode, criteria_enable=criteria_enable)
+            "Accident", ego_vehicles, config, world, randomize, debug_mode, criteria_enable=criteria_enable,
+        )
 
     def _move_waypoint_forward(self, wp, distance):
         dist = 0
@@ -136,10 +143,12 @@ class Accident(BasicScenario):
         spawn_transform.location += carla.Location(x=displacement * r_vec.x, y=displacement * r_vec.y, z=1)
         if accident_actor:
             actor = CarlaDataProvider.request_new_actor(
-                blueprint, spawn_transform, rolename='scenario no lights', attribute_filter={'base_type': 'car', 'generation': 2})
+                blueprint, spawn_transform, rolename='scenario no lights', attribute_filter={'base_type': 'car', 'generation': 2},
+            )
         else:
             actor = CarlaDataProvider.request_new_actor(
-                blueprint, spawn_transform, rolename='scenario')
+                blueprint, spawn_transform, rolename='scenario',
+            )
         if not actor:
             raise ValueError("Couldn't spawn an obstacle actor")
 
@@ -202,8 +211,11 @@ class Accident(BasicScenario):
         end_condition.add_child(WaitUntilInFrontPosition(self.ego_vehicles[0], self._end_wp.transform, False))
 
         behavior = py_trees.composites.Sequence()
-        behavior.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], self._first_vehicle_wp.transform.location, self._trigger_distance))
+        behavior.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], self._first_vehicle_wp.transform.location, self._trigger_distance,
+            ),
+        )
         behavior.add_child(Idle(self._wait_duration))
         if self.route_mode:
             behavior.add_child(SetMaxSpeed(self._max_speed))
@@ -264,8 +276,11 @@ class AccidentTwoWays(Accident):
         end_condition.add_child(WaitUntilInFrontPosition(self.ego_vehicles[0], self._end_wp.transform, False))
 
         behavior = py_trees.composites.Sequence()
-        behavior.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], self._first_vehicle_wp.transform.location, self._trigger_distance))
+        behavior.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], self._first_vehicle_wp.transform.location, self._trigger_distance,
+            ),
+        )
         behavior.add_child(Idle(self._wait_duration))
         if self.route_mode:
             behavior.add_child(SwitchWrongDirectionTest(False))
@@ -289,8 +304,10 @@ class ParkedObstacle(BasicScenario):
     forcing the ego to lane change out of the route's lane
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=180):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=180,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -315,7 +332,8 @@ class ParkedObstacle(BasicScenario):
         self._scenario_timeout = 240
 
         super().__init__(
-            "ParkedObstacle", ego_vehicles, config, world, randomize, debug_mode, criteria_enable=criteria_enable)
+            "ParkedObstacle", ego_vehicles, config, world, randomize, debug_mode, criteria_enable=criteria_enable,
+        )
 
     def _move_waypoint_forward(self, wp, distance):
         dist = 0
@@ -372,7 +390,8 @@ class ParkedObstacle(BasicScenario):
         spawn_transform.location += carla.Location(x=displacement * r_vec.x, y=displacement * r_vec.y, z=1)
         self.parking_slots.append(spawn_transform.location)
         actor = CarlaDataProvider.request_new_actor(
-            blueprint, spawn_transform, rolename='scenario no lights', attribute_filter={'base_type': 'car', 'generation': 2})
+            blueprint, spawn_transform, rolename='scenario no lights', attribute_filter={'base_type': 'car', 'generation': 2},
+        )
         if not actor:
             raise ValueError("Couldn't spawn an obstacle actor")
 
@@ -418,8 +437,11 @@ class ParkedObstacle(BasicScenario):
         end_condition.add_child(WaitUntilInFrontPosition(self.ego_vehicles[0], self._end_wp.transform, False))
 
         behavior = py_trees.composites.Sequence()
-        behavior.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], self._vehicle_wp.transform.location, self._trigger_distance))
+        behavior.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], self._vehicle_wp.transform.location, self._trigger_distance,
+            ),
+        )
         behavior.add_child(Idle(self._wait_duration))
         if self.route_mode:
             behavior.add_child(SetMaxSpeed(self._max_speed))
@@ -480,8 +502,11 @@ class ParkedObstacleTwoWays(ParkedObstacle):
         end_condition.add_child(WaitUntilInFrontPosition(self.ego_vehicles[0], self._end_wp.transform, False))
 
         behavior = py_trees.composites.Sequence()
-        behavior.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], self._vehicle_wp.transform.location, self._trigger_distance))
+        behavior.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], self._vehicle_wp.transform.location, self._trigger_distance,
+            ),
+        )
         behavior.add_child(Idle(self._wait_duration))
         if self.route_mode:
             behavior.add_child(SwitchWrongDirectionTest(False))
@@ -567,8 +592,11 @@ class BadParkingObstacleTwoWays(BadParkingObstacle):
         end_condition.add_child(WaitUntilInFrontPosition(self.ego_vehicles[0], self._end_wp.transform, False))
 
         behavior = py_trees.composites.Sequence()
-        behavior.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], self._vehicle_wp.transform.location, self._trigger_distance))
+        behavior.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], self._vehicle_wp.transform.location, self._trigger_distance,
+            ),
+        )
         behavior.add_child(Idle(self._wait_duration))
         if self.route_mode:
             behavior.add_child(SwitchWrongDirectionTest(False))
@@ -593,8 +621,10 @@ class HazardAtSideLane(BasicScenario):
     with three bicycles encroaching on some roads in front.
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=180):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=180,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -621,13 +651,15 @@ class HazardAtSideLane(BasicScenario):
         self._bicycle_drive_distance = get_value_parameter(config, 'bicycle_drive_distance', float, 50)
         self._scenario_timeout = 240
 
-        super().__init__("HazardAtSideLane",
-                         ego_vehicles,
-                         config,
-                         world,
-                         randomize,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "HazardAtSideLane",
+            ego_vehicles,
+            config,
+            world,
+            randomize,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _move_waypoint_forward(self, wp, distance):
         dist = 0
@@ -722,8 +754,11 @@ class HazardAtSideLane(BasicScenario):
             main_behavior.add_child(bicycle)
 
         behavior = py_trees.composites.Sequence(name="Side lane behavior")
-        behavior.add_child(InTriggerDistanceToVehicle(
-            self.ego_vehicles[0], self.other_actors[0], self._trigger_distance))
+        behavior.add_child(
+            InTriggerDistanceToVehicle(
+            self.ego_vehicles[0], self.other_actors[0], self._trigger_distance,
+            ),
+        )
         behavior.add_child(Idle(self._wait_duration))
         if self.route_mode:
             behavior.add_child(SetMaxSpeed(self._max_speed))
@@ -800,8 +835,11 @@ class HazardAtSideLaneTwoWays(HazardAtSideLane):
             main_behavior.add_child(bicycle)
 
         behavior = py_trees.composites.Sequence(name="Side lane behavior")
-        behavior.add_child(InTriggerDistanceToVehicle(
-            self.ego_vehicles[0], self.other_actors[0], self._trigger_distance))
+        behavior.add_child(
+            InTriggerDistanceToVehicle(
+            self.ego_vehicles[0], self.other_actors[0], self._trigger_distance,
+            ),
+        )
         behavior.add_child(Idle(self._wait_duration))
         if self.route_mode:
             behavior.add_child(SwitchWrongDirectionTest(False))

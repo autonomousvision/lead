@@ -7,12 +7,16 @@ import py_trees
 import carla
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorDestroy,
-                                                                      ActorTransformSetter,
-                                                                      Idle)
+from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
+    ActorDestroy,
+    ActorTransformSetter,
+    Idle,
+)
 from srunner.scenarios.basic_scenario import BasicScenario
-from srunner.tools.background_manager import (ChangeOppositeBehavior,
-                                              ChangeRoadBehavior)
+from srunner.tools.background_manager import (
+    ChangeOppositeBehavior,
+    ChangeRoadBehavior,
+)
 
 
 def get_value_parameter(config, name, p_type, default):
@@ -25,19 +29,21 @@ def get_interval_parameter(config, name, p_type, default):
     if name in config.other_parameters:
         return [
             p_type(config.other_parameters[name]['from']),
-            p_type(config.other_parameters[name]['to'])
+            p_type(config.other_parameters[name]['to']),
         ]
     else:
         return default
-    
+
 class RoadBlocked(BasicScenario):
     """
     Vehicle turning left at junction scenario, with actors coming in the opposite direction.
     The ego has to react to them, safely crossing the opposite lane
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80,
+    ):
         """
         Setup all relevant parameters and create scenario
         """
@@ -50,12 +56,14 @@ class RoadBlocked(BasicScenario):
 
         self.obstacle_transforms = []
 
-        super().__init__("RoadBlocked",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "RoadBlocked",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
         """
@@ -82,8 +90,9 @@ class RoadBlocked(BasicScenario):
             roll = float(static.get("roll", 0))
             transform = carla.Transform(
                 start_transform.location,
-                start_transform.rotation)
-            
+                start_transform.rotation,
+            )
+
             transform.location += x * transform.rotation.get_forward_vector()
             transform.location += y * transform.rotation.get_right_vector()
             transform.location += z * transform.rotation.get_up_vector()

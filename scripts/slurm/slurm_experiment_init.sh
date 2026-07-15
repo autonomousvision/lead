@@ -1,28 +1,20 @@
 #!/usr/bin/bash
 # Slurm bootstrap for training/evaluation experiment scripts (scripts/slurm/experiments/**).
-# Source it after any #SBATCH directives:
-#   source scripts/slurm/slurm_experiment_init.sh
-# Builds on scripts/slurm/slurm_init.sh: TRAINING_OUTPUT_DIR/EVALUATION_OUTPUT_DIR are just
-# named aliases for its generic, path-mirrored OUTPUT_DIR (outputs/<script's own path>/<date>).
+# Source it after any #SBATCH directives. TRAINING_OUTPUT_DIR/EVALUATION_OUTPUT_DIR are
+# experiment-scoped aliases for the generic OUTPUT_DIR.
 
-# The evaluate_* drivers below must keep running on the login node (they launch a screen
-# session that orchestrates its own per-route sbatch jobs), not become a batch job themselves,
-# so defer slurm_init.sh's automatic resubmit-on-source; `train` calls `submit` explicitly once
-# it's ready instead.
+# The evaluate_* drivers run on the login node (they launch a screen session that orchestrates
+# its own per-route sbatch jobs), so auto-resubmit is deferred and `train` calls `submit` explicitly.
 LEAD_SLURM_MANUAL_SUBMIT=1
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/slurm_init.sh"
 unset LEAD_SLURM_MANUAL_SUBMIT
 
 ############################# Init. Create variables when script gets sourced. #############################
 
-# `train` resubmits this whole script to Slurm, which reruns it end-to-end on the compute node,
-# so any variable built by appending to itself (export X="$X foo") must start clean each time,
-# or it would accumulate a duplicate of everything appended before the resubmit.
+# Reset accumulator variables since the script is re-run end-to-end on resubmit.
 unset LEAD_CONFIG
 
-# Help to identify the run. Don't change this. Uses LEAD_SCRIPT (an absolute path resolved by
-# slurm_init.sh before it cd'd to the repo root), not $0, so this keeps working even when $0 was
-# a path relative to some other directory the script was invoked from.
+# Run identifier derived from LEAD_SCRIPT (an absolute path) so it's stable regardless of $0.
 EXPERIMENT_NAME=$(basename "$(dirname "$LEAD_SCRIPT")") # Directory name is the experiment name
 export EXPERIMENT_NAME
 export EXPERIMENT_RUN_ID=${EXPERIMENT_NAME}_${SCRIPT_NAME}_${SLURM_JOB_DATE} # Experiment ID
@@ -100,10 +92,8 @@ function posttrain() {
 	echo "MODEL_FILE: $model_file"
 }
 
-# Train job. Override LEAD_CONFIG to set up the parameters.
-# On the submit side (no SLURM_JOB_ID, sbatch available), resubmits this same script to Slurm,
-# carrying its #SBATCH directives, so it reruns end-to-end on a compute node. On the job side
-# (or when sbatch isn't available at all), it runs the training body directly.
+# Train job. Override LEAD_CONFIG to set up the parameters. On the submit side it resubmits this
+# script to Slurm; on the job side (or without sbatch) it runs the training body directly.
 function train() {
 	export LEAD_CONFIG="$LEAD_CONFIG training.experiment.logdir=$TRAINING_OUTPUT_DIR"
 	export LEAD_CONFIG="$LEAD_CONFIG training.experiment.seed=$EXPERIMENT_SEED"

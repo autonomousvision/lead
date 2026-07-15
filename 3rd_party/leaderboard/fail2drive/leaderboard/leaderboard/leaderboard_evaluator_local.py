@@ -255,8 +255,10 @@ class LeaderboardEvaluator(object):
 
         map_name = CarlaDataProvider.get_map().name.split("/")[-1]
         if map_name != town:
-            raise Exception("The CARLA server uses the wrong map!"
-                            " This scenario requires the use of map {}".format(town))
+            raise Exception(
+                "The CARLA server uses the wrong map!"
+                " This scenario requires the use of map {}".format(town),
+            )
 
     def _register_statistics(self, route_date_string, route_index, entry_status, crash_message=""):
         """
@@ -265,7 +267,7 @@ class LeaderboardEvaluator(object):
         print("\033[1m> Registering the route statistics\033[0m")
         self.statistics_manager.save_entry_status(entry_status)
         current_stats_record = self.statistics_manager.compute_route_statistics(
-            route_date_string, route_index, self.manager.scenario_duration_system, self.manager.scenario_duration_game, crash_message
+            route_date_string, route_index, self.manager.scenario_duration_system, self.manager.scenario_duration_game, crash_message,
         )
         return current_stats_record
 
@@ -312,7 +314,7 @@ class LeaderboardEvaluator(object):
             route_string = pathlib.Path(args.routes).stem + '_'
             route_string += f'route{config.index}'
             route_date_string = route_string + '_' + '_'.join(
-                map(lambda x: '%02d' % x, (now.month, now.day, now.hour, now.minute, now.second))
+                map(lambda x: '%02d' % x, (now.month, now.day, now.hour, now.minute, now.second)),
             )
 
             self._agent_watchdog = Watchdog(args.timeout)
@@ -463,43 +465,75 @@ def main():
 
     # general parameters
     parser = argparse.ArgumentParser(description=description, formatter_class=RawTextHelpFormatter)
-    parser.add_argument('--host', default='localhost',
-                        help='IP of the host server (default: localhost)')
-    parser.add_argument('--port', default=2000, type=int,
-                        help='TCP port to listen to (default: 2000)')
-    parser.add_argument('--traffic-manager-port', default=8000, type=int,
-                        help='Port to use for the TrafficManager (default: 8000)')
-    parser.add_argument('--traffic-manager-seed', default=100, type=int,
-                        help='Seed used by the TrafficManager (default: 100)')
-    parser.add_argument('--debug', type=int,
-                        help='Run with debug output', default=0)
-    parser.add_argument('--record', type=str, default='',
-                        help='Use CARLA recording feature to create a recording of the scenario')
-    parser.add_argument('--timeout', default=300.0, type=float,
-                        help='Set the CARLA client timeout value in seconds')
+    parser.add_argument(
+        '--host', default='localhost',
+        help='IP of the host server (default: localhost)',
+    )
+    parser.add_argument(
+        '--port', default=2000, type=int,
+        help='TCP port to listen to (default: 2000)',
+    )
+    parser.add_argument(
+        '--traffic-manager-port', default=8000, type=int,
+        help='Port to use for the TrafficManager (default: 8000)',
+    )
+    parser.add_argument(
+        '--traffic-manager-seed', default=100, type=int,
+        help='Seed used by the TrafficManager (default: 100)',
+    )
+    parser.add_argument(
+        '--debug', type=int,
+        help='Run with debug output', default=0,
+    )
+    parser.add_argument(
+        '--record', type=str, default='',
+        help='Use CARLA recording feature to create a recording of the scenario',
+    )
+    parser.add_argument(
+        '--timeout', default=300.0, type=float,
+        help='Set the CARLA client timeout value in seconds',
+    )
 
     # simulation setup
-    parser.add_argument('--routes', required=True,
-                        help='Name of the routes file to be executed.')
-    parser.add_argument('--routes-subset', default='', type=str,
-                        help='Execute a specific set of routes')
-    parser.add_argument('--repetitions', type=int, default=1,
-                        help='Number of repetitions per route.')
+    parser.add_argument(
+        '--routes', required=True,
+        help='Name of the routes file to be executed.',
+    )
+    parser.add_argument(
+        '--routes-subset', default='', type=str,
+        help='Execute a specific set of routes',
+    )
+    parser.add_argument(
+        '--repetitions', type=int, default=1,
+        help='Number of repetitions per route.',
+    )
 
     # agent-related options
-    parser.add_argument("-a", "--agent", type=str,
-                        help="Path to Agent's py file to evaluate", required=True)
-    parser.add_argument("--agent-config", type=str,
-                        help="Path to Agent's configuration file", default="")
+    parser.add_argument(
+        "-a", "--agent", type=str,
+        help="Path to Agent's py file to evaluate", required=True,
+    )
+    parser.add_argument(
+        "--agent-config", type=str,
+        help="Path to Agent's configuration file", default="",
+    )
 
-    parser.add_argument("--track", type=str, default='SENSORS',
-                        help="Participation track: SENSORS, MAP")
-    parser.add_argument('--resume', type=int, default=False,
-                        help='Resume execution from last checkpoint?')
-    parser.add_argument("--checkpoint", type=str, default='./simulation_results.json',
-                        help="Path to checkpoint used for saving statistics and resuming")
-    parser.add_argument("--debug-checkpoint", type=str, default='./live_results.txt',
-                        help="Path to checkpoint used for saving live results")
+    parser.add_argument(
+        "--track", type=str, default='SENSORS',
+        help="Participation track: SENSORS, MAP",
+    )
+    parser.add_argument(
+        '--resume', type=int, default=False,
+        help='Resume execution from last checkpoint?',
+    )
+    parser.add_argument(
+        "--checkpoint", type=str, default='./simulation_results.json',
+        help="Path to checkpoint used for saving statistics and resuming",
+    )
+    parser.add_argument(
+        "--debug-checkpoint", type=str, default='./live_results.txt',
+        help="Path to checkpoint used for saving live results",
+    )
 
     arguments = parser.parse_args()
 

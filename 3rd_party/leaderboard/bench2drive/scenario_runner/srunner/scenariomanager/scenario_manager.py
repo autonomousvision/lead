@@ -215,9 +215,11 @@ class ScenarioManager(object):
             return True
 
         for criterion in criteria:
-            if (not criterion.optional and
-                    criterion.test_status != "SUCCESS" and
-                    criterion.test_status != "ACCEPTABLE"):
+            if (
+                not criterion.optional and
+                criterion.test_status != "SUCCESS" and
+                criterion.test_status != "ACCEPTABLE"
+            ):
                 failure = True
                 result = "FAILURE"
             elif criterion.test_status == "ACCEPTABLE":

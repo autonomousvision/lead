@@ -35,17 +35,23 @@ class TestLoadingXOSC(TestCase):
             CarlaDataProvider.set_client(client)
             ego_vehicles = []
             for vehicle in config.ego_vehicles:
-                ego_vehicles.append(CarlaDataProvider.request_new_actor(vehicle.model,
-                                                                        vehicle.transform,
-                                                                        vehicle.rolename,
-                                                                        color=vehicle.color,
-                                                                        actor_category=vehicle.category))
+                ego_vehicles.append(
+                    CarlaDataProvider.request_new_actor(
+                        vehicle.model,
+                        vehicle.transform,
+                        vehicle.rolename,
+                        color=vehicle.color,
+                        actor_category=vehicle.category,
+                    ),
+                )
 
-            scenario = OpenScenario(world=client.get_world(),
-                                    ego_vehicles=ego_vehicles,
-                                    config=config,
-                                    config_file=filename,
-                                    timeout=100000)
+            scenario = OpenScenario(
+                world=client.get_world(),
+                ego_vehicles=ego_vehicles,
+                config=config,
+                config_file=filename,
+                timeout=100000,
+            )
             self.assertTrue(scenario is not None)
 
             CarlaDataProvider.cleanup()

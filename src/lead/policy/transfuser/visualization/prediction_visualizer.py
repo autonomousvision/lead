@@ -2,19 +2,17 @@
 
 import typing
 
-import cv2
 import jaxtyping as jt
 import numpy as np
 import numpy.typing as npt
 import torch
 from PIL import Image, ImageDraw, ImageFont
 
-import lead.common.constants as constants
-from lead.common.constants import RadarLabels, TransfuserBoundingBoxIndex
+from lead.common.constants import RadarLabels
 from lead.config import LeadConfig
-from lead.evaluation.inference.ensemble import EnsemblePrediction
+from lead.policy.transfuser.labels import BoundingBoxIndex
 from lead.policy.transfuser.transfuser import Prediction
-from lead.policy.transfuser.visualization import viz_utils
+from lead.policy.transfuser.visualization import colors
 from lead.policy.transfuser.visualization.ground_truth_visualizer import (
     FONT_BOLD,
     GroundTruthVisualizer,
@@ -22,7 +20,7 @@ from lead.policy.transfuser.visualization.ground_truth_visualizer import (
 
 
 class PredictionVisualizer(GroundTruthVisualizer):
-    """Visualizes model predictions instead of ground-truth labels.
+    """Visualizes model predictions rather than ground-truth labels.
 
     Overwrites the BEV semantic, route, waypoint, bounding-box and radar
     drawing hooks to read from the prediction, and renders the predicted
@@ -33,7 +31,7 @@ class PredictionVisualizer(GroundTruthVisualizer):
         self,
         lead_config: LeadConfig,
         data: dict[str, typing.Any],
-        prediction: Prediction | EnsemblePrediction,
+        prediction: Prediction,
     ) -> None:
         """Initialize the visualizer from one batched sample and its prediction.
 
@@ -43,12 +41,11 @@ class PredictionVisualizer(GroundTruthVisualizer):
             prediction: Model outputs to visualize.
         """
         super().__init__(lead_config=lead_config, data=data)
-        self.prediction: Prediction | EnsemblePrediction = prediction
+        self.prediction: Prediction = prediction
 
     def _draw_bev(self) -> None:
         """Draw all BEV overlays for the prediction view."""
         self._bev_semantic()
-        self._target_point()
         if self.config.use_planning_decoder:
             self._future_waypoints()
             self._route()
@@ -61,10 +58,10 @@ class PredictionVisualizer(GroundTruthVisualizer):
         self,
         modality: str,
     ) -> jt.UInt8[npt.NDArray, "h w 3"] | None:
-        """Build one perspective image; the semantic view uses the prediction.
+        """Build one perspective image; the semantic and depth views use the prediction.
 
         Args:
-            modality: Perspective modality, ``"rgb"`` or ``"semantic"``.
+            modality: Perspective modality, one of ``perspective_modalities``.
 
         Returns:
             The perspective image, or None when the modality is unavailable.
@@ -75,12 +72,35 @@ class PredictionVisualizer(GroundTruthVisualizer):
                 image = self._draw_target_speed(image)
             return image
 
+        if modality == "depth":
+            pred_depth = self.prediction.pred_depth
+            if pred_depth is None:
+                return None
+            return self._depth_to_color(
+                pred_depth[0].detach().cpu().float().numpy(),
+            )
+
         pred_semantic = self.prediction.pred_semantic
         if pred_semantic is None:
             return None
         semantic = pred_semantic[0].argmax(dim=0).detach().cpu().numpy()
         return self._semantic_to_color(
             np.ascontiguousarray(semantic).astype(np.uint8),
+        )
+
+    def _target_speed(self) -> float | None:
+        """The predicted target speed to display.
+
+        Returns:
+            The target speed in m/s, or None if the model does not predict it.
+        """
+        if self.prediction.pred_target_speed_scalar is None:
+            return None
+        return float(
+            self.prediction.pred_target_speed_scalar.detach()
+            .cpu()
+            .float()
+            .flatten()[0],
         )
 
     def _draw_target_speed(
@@ -95,11 +115,9 @@ class PredictionVisualizer(GroundTruthVisualizer):
         Returns:
             The image with the target speed text drawn.
         """
-        if self.prediction.pred_target_speed_scalar is None:
+        pred_speed = self._target_speed()
+        if pred_speed is None:
             return image
-        pred_speed = float(
-            self.prediction.pred_target_speed_scalar.detach().cpu().float()[0],
-        )
         img_height, img_width = image.shape[:2]
         text = f"Target Speed: {pred_speed:.1f} m/s"
 
@@ -143,76 +161,37 @@ class PredictionVisualizer(GroundTruthVisualizer):
         pred_route = self.prediction.pred_route
         if pred_route is None:
             return
-        wps = pred_route.detach().cpu().float().numpy()[0]
-        for i in range(len(wps) - 1):
-            x1 = int(wps[i][0] * self.loc_pixels_per_meter + self.origin[0])
-            y1 = int(wps[i][1] * self.loc_pixels_per_meter + self.origin[1])
-            color = viz_utils.lighter_shade(
-                constants.PREDICTION_ROUTE_COLOR,
-                i,
-                len(wps),
-            )
-            cv2.circle(
-                self.bev_image,
-                (x1, y1),
-                radius=constants.PREDICTION_ROUTE_RADIUS,
-                color=color,
-                thickness=-1,
-            )
+        self._draw_waypoints(
+            pred_route.detach().cpu().float().numpy()[0],
+            colors.PREDICTION_ROUTE_COLOR,
+            colors.PREDICTION_ROUTE_RADIUS,
+        )
 
     def _future_waypoints(self) -> None:
         """Draw the predicted future waypoints."""
         pred_waypoints = self.prediction.pred_future_waypoints
         if pred_waypoints is None:
             return
-        wps = pred_waypoints.detach().cpu().float().numpy()[0]
-        for i, wp in enumerate(wps):
-            wp_x = wp[0] * self.loc_pixels_per_meter + self.origin[0]
-            wp_y = wp[1] * self.loc_pixels_per_meter + self.origin[1]
-            color = viz_utils.lighter_shade(
-                constants.PREDICTION_WAYPOINT_COLOR,
-                i,
-                len(wps),
-            )
-            cv2.circle(
-                self.bev_image,
-                (int(wp_x), int(wp_y)),
-                radius=constants.PREDICTION_WAYPOINT_RADIUS,
-                color=color,
-                thickness=-1,
-            )
+        self._draw_waypoints(
+            pred_waypoints.detach().cpu().float().numpy()[0],
+            colors.PREDICTION_WAYPOINT_COLOR,
+            colors.PREDICTION_WAYPOINT_RADIUS,
+        )
 
     def _bounding_boxes(self) -> None:
         """Draw the predicted bounding boxes above the confidence threshold."""
         if not self.config.detect_boxes:
             return
-        prediction = self.prediction
-        assert isinstance(prediction, Prediction)
-        if prediction.pred_bounding_box is None:
+        if self.prediction.pred_bounding_box is None:
             return
-        boxes = prediction.pred_bounding_box.pred_bounding_box_image_system[0]
+        boxes = self.prediction.pred_bounding_box.pred_bounding_box_image_system[0]
         if boxes is None:
             return
-        for box in boxes:
-            if (
-                box[TransfuserBoundingBoxIndex.SCORE]
-                < self.config.bb_confidence_threshold
-            ):
-                continue
-            box = box.copy()
-            inv_brake = 1.0 - box[TransfuserBoundingBoxIndex.BRAKE]
-            color_box = list(
-                list(constants.TRANSFUSER_BOUNDING_BOX_COLORS.values())[
-                    int(box[TransfuserBoundingBoxIndex.CLASS])
-                ],
-            )
-            color_box[1] = color_box[1] * inv_brake
-            box[:4] = box[:4] * self.scale_factor
-            self.bev_image = viz_utils.draw_box(
-                self.bev_image,
-                box,
-                color=color_box,
-            )
+        boxes = np.asarray(boxes)
+        confident = boxes[
+            boxes[:, BoundingBoxIndex.SCORE] >= self.config.bb_confidence_threshold
+        ]
+        self._draw_boxes(confident, brake_shading=True)
 
     def _radar_detections(self) -> None:
         """Draw the predicted radar detections."""
@@ -228,7 +207,7 @@ class PredictionVisualizer(GroundTruthVisualizer):
             valid_predictions[:, 0],
             valid_predictions[:, 1],
             np.nan_to_num(valid_predictions[:, 2], nan=0.0),
-            color=constants.RADAR_DETECTION_COLOR,
+            color=colors.RADAR_DETECTION_COLOR,
             radius_offset=1,
         )
 
@@ -239,9 +218,7 @@ class PredictionVisualizer(GroundTruthVisualizer):
             Extra text lines in ``"<name> <value>"`` format.
         """
         lines = super()._extra_meta_lines()
-        if self.prediction.pred_target_speed_scalar is not None:
-            pred_speed = float(
-                self.prediction.pred_target_speed_scalar.detach().cpu().float()[0],
-            )
+        pred_speed = self._target_speed()
+        if pred_speed is not None:
             lines.append(f"pred_target_speed {pred_speed:.2f} m/s")
         return lines

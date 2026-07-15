@@ -16,11 +16,14 @@ import py_trees
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
     ActorDestroy, ActorTransformSetter, AdaptiveConstantVelocityAgentBehavior,
-    Idle)
+    Idle,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (
-    CollisionTest, YieldToEmergencyVehicleTest)
+    CollisionTest, YieldToEmergencyVehicleTest,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
-    DriveDistance, InTriggerDistanceToVehicle, WaitUntilInFront)
+    DriveDistance, InTriggerDistanceToVehicle, WaitUntilInFront,
+)
 from srunner.scenarios.basic_scenario import BasicScenario
 from srunner.tools.background_manager import ReAddRoadLane, RemoveRoadLane
 
@@ -35,8 +38,10 @@ class YieldToEmergencyVehicle(BasicScenario):
     There should be at least two lanes on the highway.
     """
 
-    def __init__(self, world, ego_vehicles, config, debug_mode=False, criteria_enable=True,
-                 timeout=90):
+    def __init__(
+        self, world, ego_vehicles, config, debug_mode=False, criteria_enable=True,
+        timeout=90,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -62,20 +67,22 @@ class YieldToEmergencyVehicle(BasicScenario):
         # 3) Add more wps to improve BB detection
         self._opt_dict = {
             'base_vehicle_threshold': 10, 'detection_speed_ratio': 0.15, 'use_bbs_detection': True,
-            'base_min_distance': 1, 'distance_ratio': 0.2
-            }
+            'base_min_distance': 1, 'distance_ratio': 0.2,
+        }
 
         self._trigger_location = config.trigger_points[0].location
         self._reference_waypoint = self._map.get_waypoint(self._trigger_location)
 
         self._end_distance = 50
 
-        super().__init__("YieldToEmergencyVehicle",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "YieldToEmergencyVehicle",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config, add_scenario_type=True):
         """
@@ -89,7 +96,8 @@ class YieldToEmergencyVehicle(BasicScenario):
         self._ev_start_transform = ev_points[0].transform
 
         actor = CarlaDataProvider.request_new_actor(
-            "vehicle.*.*", self._ev_start_transform, attribute_filter={'special_type': 'emergency'})
+            "vehicle.*.*", self._ev_start_transform, attribute_filter={'special_type': 'emergency'},
+        )
         if actor is None:
             raise Exception("Couldn't spawn the emergency vehicle")
 
@@ -100,8 +108,11 @@ class YieldToEmergencyVehicle(BasicScenario):
         actor.set_location(new_location)
 
         # Turn on special lights
-        actor.set_light_state(carla.VehicleLightState(
-            carla.VehicleLightState.Special1 | carla.VehicleLightState.Special2))
+        actor.set_light_state(
+            carla.VehicleLightState(
+            carla.VehicleLightState.Special1 | carla.VehicleLightState.Special2,
+            ),
+        )
 
         self.other_actors.append(actor)
 
@@ -109,19 +120,21 @@ class YieldToEmergencyVehicle(BasicScenario):
         if add_scenario_type:
             from srunner.scenariomanager.carla_data_provider import \
                 ActiveScenario
-            CarlaDataProvider.active_scenarios.append(ActiveScenario(
-                type(self).__name__, 
-                first_actor=actor, 
-                scenario_id=id(self), 
-                trigger_location=config.trigger_points[0].location,
-                extra_meta={
-                    "emergency_vehicle": actor,
-                    "changed_route": False,
-                    "from_index": 1e9,
-                    "to_index": 1e9,
-                    "to_left": False,
-                }
-            ))
+            CarlaDataProvider.active_scenarios.append(
+                ActiveScenario(
+                    type(self).__name__,
+                    first_actor=actor,
+                    scenario_id=id(self),
+                    trigger_location=config.trigger_points[0].location,
+                    extra_meta={
+                        "emergency_vehicle": actor,
+                        "changed_route": False,
+                        "from_index": 1e9,
+                        "to_index": 1e9,
+                        "to_left": False,
+                    },
+                ),
+            )
 
     def _create_behavior(self):
         """
@@ -151,8 +164,11 @@ class YieldToEmergencyVehicle(BasicScenario):
         main_behavior = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
 
         end_condition_1 = py_trees.composites.Sequence()
-        end_condition_1.add_child(InTriggerDistanceToVehicle(
-            self.ego_vehicles[0], self.other_actors[0], self._trigger_distance))
+        end_condition_1.add_child(
+            InTriggerDistanceToVehicle(
+            self.ego_vehicles[0], self.other_actors[0], self._trigger_distance,
+            ),
+        )
         end_condition_1.add_child(Idle(self._ev_idle_time))
 
         end_condition_2 = py_trees.composites.Sequence()
@@ -162,8 +178,11 @@ class YieldToEmergencyVehicle(BasicScenario):
         main_behavior.add_child(end_condition_1)
         main_behavior.add_child(end_condition_2)
 
-        main_behavior.add_child(AdaptiveConstantVelocityAgentBehavior(
-            self.other_actors[0], self.ego_vehicles[0], speed_increment=self._speed_increment, opt_dict=self._opt_dict))
+        main_behavior.add_child(
+            AdaptiveConstantVelocityAgentBehavior(
+            self.other_actors[0], self.ego_vehicles[0], speed_increment=self._speed_increment, opt_dict=self._opt_dict,
+            ),
+        )
 
         sequence.add_child(main_behavior)
 

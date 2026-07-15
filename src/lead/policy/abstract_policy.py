@@ -1,32 +1,27 @@
-"""Abstract interface of a learned driving policy, swappable via ``agent.target``."""
+"""Abstract interface of a learned driving policy, swappable via ``policy.target``."""
 
 import abc
 import importlib
 import typing
+from collections.abc import Sized
 
 import torch
 from torch import nn
 from torch.utils.data import Dataset
 
 from lead.config import LeadConfig
+from lead.dataloader import Frame
+
+
+class SizedDataset(Dataset, Sized, abc.ABC):
+    """A map-style :class:`Dataset` reporting its length, as training requires."""
 
 
 class AbstractPolicy(nn.Module, abc.ABC):
     """Interface a learned driving policy implements for training and evaluation.
 
-    A policy is the trainable model together with its training contracts: the
-    dataset producing its model inputs (:meth:`build_dataset`), the forward
-    pass (:meth:`forward`), the per-task losses and their weights
-    (:meth:`compute_loss`, :meth:`detailed_loss_weights`) and visualizers of
-    its predictions, labels and feature maps (:meth:`visualize_prediction`,
-    :meth:`visualize_ground_truth`, :meth:`visualize_features`).
-
     Implementations are selected by the ``module:Class`` path in
-    ``lead_config.agent.target`` (usually set by an agent config profile) and
-    constructed via :func:`build_policy`, so swapping the policy for training
-    and evaluation only requires pointing at a different yaml. For driving in
-    CARLA, a policy is wrapped by an
-    :class:`~lead.evaluation.abstract_driving_agent.AbstractDrivingAgent`.
+    ``lead_config.policy.target`` and built via :func:`build_policy`.
     """
 
     @abc.abstractmethod
@@ -56,7 +51,44 @@ class AbstractPolicy(nn.Module, abc.ABC):
         """
 
     @abc.abstractmethod
-    def build_dataset(self) -> Dataset:
+    def build_features(self, frame: Frame) -> dict[str, typing.Any]:
+        """Turn one frame of raw driving data into this policy's model inputs.
+
+        The one featurization path of the policy: the training dataset calls it
+        on frames read from the logs, the driving agent on frames assembled from
+        the simulator, and privileged fields (labels, futures, the map) are read
+        only when :attr:`~lead.dataloader.frame.Frame.is_privileged` holds.
+
+        Args:
+            frame: One tick of raw driving data in the ego view frame.
+
+        Returns:
+            The model inputs of one unbatched sample, plus the training labels
+            when the frame is privileged.
+        """
+
+    @abc.abstractmethod
+    def batch_features(
+        self,
+        features: dict[str, typing.Any],
+        device: torch.device,
+    ) -> dict[str, typing.Any]:
+        """Turn one sample's features into a batch of one on the given device.
+
+        Training batches sample features with the dataloader's collate; driving
+        runs a single frame at a time and calls this to produce the same batched
+        layout :meth:`forward` consumes.
+
+        Args:
+            features: Model inputs of one sample, as built by :meth:`build_features`.
+            device: Device the policy runs on.
+
+        Returns:
+            The batched model inputs.
+        """
+
+    @abc.abstractmethod
+    def build_dataset(self) -> SizedDataset:
         """Build the training dataset producing this policy's model inputs."""
 
     @abc.abstractmethod
@@ -78,9 +110,9 @@ class AbstractPolicy(nn.Module, abc.ABC):
     ) -> typing.Any:
         """Build a visualizer rendering the policy's predictions for one batch.
 
-        The exact signature is policy-specific. The returned visualizer
-        renders an image via its ``visualize()`` method; callers own any
-        saving or logging.
+        The exact signature is policy-specific; the returned visualizer renders
+        an image via its ``visualize()`` method, leaving any saving or logging
+        to the caller.
         """
 
     @abc.abstractmethod
@@ -91,9 +123,9 @@ class AbstractPolicy(nn.Module, abc.ABC):
     ) -> typing.Any:
         """Build a visualizer rendering the ground-truth labels of one batch.
 
-        The exact signature is policy-specific. The returned visualizer
-        renders an image via its ``visualize()`` method; callers own any
-        saving or logging.
+        The exact signature is policy-specific; the returned visualizer renders
+        an image via its ``visualize()`` method, leaving any saving or logging
+        to the caller.
         """
 
     @abc.abstractmethod
@@ -104,9 +136,9 @@ class AbstractPolicy(nn.Module, abc.ABC):
     ) -> typing.Any:
         """Build a visualizer rendering the policy's feature maps for one batch.
 
-        The exact signature is policy-specific. The returned visualizer
-        renders an image via its ``visualize()`` method; callers own any
-        saving or logging.
+        The exact signature is policy-specific; the returned visualizer renders
+        an image via its ``visualize()`` method, leaving any saving or logging
+        to the caller.
         """
 
     def prepare_for_training(self) -> None:
@@ -114,7 +146,7 @@ class AbstractPolicy(nn.Module, abc.ABC):
 
 
 def build_policy(device: torch.device, lead_config: LeadConfig) -> AbstractPolicy:
-    """Instantiate the policy named by ``lead_config.agent.target``.
+    """Instantiate the policy named by ``lead_config.policy.target``.
 
     Args:
         device: Device the policy runs on.
@@ -123,10 +155,10 @@ def build_policy(device: torch.device, lead_config: LeadConfig) -> AbstractPolic
     Returns:
         The constructed policy.
     """
-    module_name, _, class_name = lead_config.agent.target.partition(":")
+    module_name, _, class_name = lead_config.policy.target.partition(":")
     policy_class = getattr(importlib.import_module(module_name), class_name)
     if not issubclass(policy_class, AbstractPolicy):
         raise TypeError(
-            f"agent.target '{lead_config.agent.target}' is not an AbstractPolicy subclass.",
+            f"policy.target '{lead_config.policy.target}' is not an AbstractPolicy subclass.",
         )
     return policy_class(device, lead_config)

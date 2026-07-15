@@ -20,15 +20,19 @@ from agents.navigation.local_planner import RoadOption
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import ActorFlow, ScenarioTimeout, WaitForever
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import CollisionTest, ScenarioTimeoutTest
-from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (InTriggerDistanceToLocation,
-                                                                               WaitEndIntersection,
-                                                                               WaitUntilInFrontPosition)
+from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
+    InTriggerDistanceToLocation,
+    WaitEndIntersection,
+    WaitUntilInFrontPosition,
+)
 from srunner.scenarios.basic_scenario import BasicScenario
 
-from srunner.tools.background_manager import (SwitchRouteSources,
-                                              ChangeOppositeBehavior,
-                                              HandleJunctionScenario,
-                                              RemoveRoadLane)
+from srunner.tools.background_manager import (
+    SwitchRouteSources,
+    ChangeOppositeBehavior,
+    HandleJunctionScenario,
+    RemoveRoadLane,
+)
 from srunner.tools.scenario_helper import get_same_dir_lanes, generate_target_waypoint_in_route
 
 def convert_dict_to_location(actor_dict):
@@ -38,7 +42,7 @@ def convert_dict_to_location(actor_dict):
     location = carla.Location(
         x=float(actor_dict['x']),
         y=float(actor_dict['y']),
-        z=float(actor_dict['z'])
+        z=float(actor_dict['z']),
     )
     return location
 
@@ -52,7 +56,7 @@ def get_interval_parameter(config, name, p_type, default):
     if name in config.other_parameters:
         return [
             p_type(config.other_parameters[name]['from']),
-            p_type(config.other_parameters[name]['to'])
+            p_type(config.other_parameters[name]['to']),
         ]
     else:
         return default
@@ -64,8 +68,10 @@ class EnterActorFlow(BasicScenario):
     ambulances or firetrucks.
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=180):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=180,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -86,12 +92,14 @@ class EnterActorFlow(BasicScenario):
         self._source_dist_interval = get_interval_parameter(config, 'source_dist_interval', float, [20, 50])
         self._scenario_timeout = 240
 
-        super().__init__("EnterActorFlow",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "EnterActorFlow",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _create_behavior(self):
         """
@@ -106,13 +114,17 @@ class EnterActorFlow(BasicScenario):
         sink_wps = get_same_dir_lanes(sink_wp)
 
         root = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE,
+        )
 
         for source_wp, sink_wp in zip(source_wps, sink_wps):
             root.add_child(InTriggerDistanceToLocation(self.ego_vehicles[0], sink_wp.transform.location, self._sink_distance))
-            root.add_child(ActorFlow(
+            root.add_child(
+                ActorFlow(
                 source_wp, sink_wp, self._source_dist_interval, self._sink_distance,
-                self._flow_speed, initial_actors=True, initial_junction=True))
+                self._flow_speed, initial_actors=True, initial_junction=True,
+                ),
+            )
         root.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
 
         sequence = py_trees.composites.Sequence()
@@ -126,14 +138,16 @@ class EnterActorFlow(BasicScenario):
                 if current_wp.is_junction:
                     break
 
-            sequence.add_child(HandleJunctionScenario(
-                clear_junction=True,
-                clear_ego_entry=True,
-                remove_entries=source_wps,
-                remove_exits=[],
-                stop_entries=False,
-                extend_road_exit=extra_space
-            ))
+            sequence.add_child(
+                HandleJunctionScenario(
+                    clear_junction=True,
+                    clear_ego_entry=True,
+                    remove_entries=source_wps,
+                    remove_exits=[],
+                    stop_entries=False,
+                    extend_road_exit=extra_space,
+                ),
+            )
             sequence.add_child(SwitchRouteSources(False))
         sequence.add_child(root)
         if self.route_mode:
@@ -174,10 +188,14 @@ class EnterActorFlowV2(EnterActorFlow):
         sink_wps = get_same_dir_lanes(sink_wp)
 
         root = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
-        root.add_child(ActorFlow(
-                source_wp, sink_wp, self._source_dist_interval, self._sink_distance,
-                self._flow_speed, initial_actors=True, initial_junction=True))
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE,
+        )
+        root.add_child(
+            ActorFlow(
+            source_wp, sink_wp, self._source_dist_interval, self._sink_distance,
+            self._flow_speed, initial_actors=True, initial_junction=True,
+            ),
+        )
         for sink_wp in sink_wps:
             root.add_child(InTriggerDistanceToLocation(self.ego_vehicles[0], sink_wp.transform.location, self._sink_distance))
         root.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
@@ -197,27 +215,31 @@ class EnterActorFlowV2(EnterActorFlow):
 
             sequence_2 = py_trees.composites.Sequence()
             sequence_2.add_child(WaitEndIntersection(self.ego_vehicles[0]))
-            sequence_2.add_child(HandleJunctionScenario(
-                clear_junction=False,
-                clear_ego_entry=False,
-                remove_entries=[],
-                remove_exits=[],
-                stop_entries=False,
-                extend_road_exit=self._extra_space
-            ))
+            sequence_2.add_child(
+                HandleJunctionScenario(
+                    clear_junction=False,
+                    clear_ego_entry=False,
+                    remove_entries=[],
+                    remove_exits=[],
+                    stop_entries=False,
+                    extend_road_exit=self._extra_space,
+                ),
+            )
             sequence_2.add_child(WaitForever())
             root.add_child(sequence_2)
 
         sequence = py_trees.composites.Sequence()
         if self.route_mode:
-            sequence.add_child(HandleJunctionScenario(
-                clear_junction=False,
-                clear_ego_entry=True,
-                remove_entries=[source_wp],
-                remove_exits= get_same_dir_lanes(exit_wp),
-                stop_entries=False,
-                extend_road_exit=0
-            ))
+            sequence.add_child(
+                HandleJunctionScenario(
+                    clear_junction=False,
+                    clear_ego_entry=True,
+                    remove_entries=[source_wp],
+                    remove_exits= get_same_dir_lanes(exit_wp),
+                    stop_entries=False,
+                    extend_road_exit=0,
+                ),
+            )
             sequence.add_child(SwitchRouteSources(False))
 
         sequence.add_child(root)
@@ -232,13 +254,15 @@ class HighwayExit(BasicScenario):
     This scenario is similar to CrossActorFlow
     It will remove the BackgroundActivity from the lane where ActorFlow starts.
     Then vehicles (cars) will start driving from start_actor_flow location to end_actor_flow location
-    in a relatively high speed, forcing the ego to accelerate to cut in the actor flow 
+    in a relatively high speed, forcing the ego to accelerate to cut in the actor flow
     then exit from the highway.
     This scenario works when Background Activity is running in route mode. And there should be no junctions in front of the ego.
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=180):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=180,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -257,12 +281,14 @@ class HighwayExit(BasicScenario):
         self._source_dist_interval = get_interval_parameter(config, 'source_dist_interval', float, [20, 50])
         self._scenario_timeout = 240
 
-        super().__init__("HighwayExit",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "HighwayExit",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _create_behavior(self):
         """
@@ -280,10 +306,14 @@ class HighwayExit(BasicScenario):
                 break
 
         root = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
-        root.add_child(ActorFlow(
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE,
+        )
+        root.add_child(
+            ActorFlow(
             source_wp, sink_wp, self._source_dist_interval, self._sink_distance,
-            self._flow_speed, initial_actors=True, initial_junction=True))
+            self._flow_speed, initial_actors=True, initial_junction=True,
+            ),
+        )
         root.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
         root.add_child(WaitEndIntersection(self.ego_vehicles[0], junction_id))
 
@@ -322,8 +352,10 @@ class MergerIntoSlowTraffic(BasicScenario):
     area at a highway intersection.
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=180):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=180,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -345,12 +377,14 @@ class MergerIntoSlowTraffic(BasicScenario):
         self._source_dist_interval = get_interval_parameter(config, 'source_dist_interval', float, [20, 50])
         self._scenario_timeout = 240
 
-        super().__init__("MergerIntoSlowTraffic",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "MergerIntoSlowTraffic",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _create_behavior(self):
         """
@@ -363,12 +397,16 @@ class MergerIntoSlowTraffic(BasicScenario):
         sink_wps = get_same_dir_lanes(sink_wp)
 
         root = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE,
+        )
         for wp in sink_wps:
             root.add_child(InTriggerDistanceToLocation(self.ego_vehicles[0], wp.transform.location, self._sink_distance))
-        root.add_child(ActorFlow(
+        root.add_child(
+            ActorFlow(
             source_wp, sink_wp, self._source_dist_interval, self._sink_distance,
-            self._flow_speed, initial_actors=True, initial_junction=True))
+            self._flow_speed, initial_actors=True, initial_junction=True,
+            ),
+        )
         root.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
 
         sequence = py_trees.composites.Sequence()
@@ -383,14 +421,16 @@ class MergerIntoSlowTraffic(BasicScenario):
                 if current_wp.is_junction:
                     break
 
-            sequence.add_child(HandleJunctionScenario(
-                clear_junction=True,
-                clear_ego_entry=True,
-                remove_entries=[source_wp],
-                remove_exits=[],
-                stop_entries=False,
-                extend_road_exit=extra_space + 20
-            ))
+            sequence.add_child(
+                HandleJunctionScenario(
+                    clear_junction=True,
+                    clear_ego_entry=True,
+                    remove_entries=[source_wp],
+                    remove_exits=[],
+                    stop_entries=False,
+                    extend_road_exit=extra_space + 20,
+                ),
+            )
             sequence.add_child(SwitchRouteSources(False))
         sequence.add_child(root)
         if self.route_mode:
@@ -417,7 +457,7 @@ class MergerIntoSlowTraffic(BasicScenario):
 
 class MergerIntoSlowTrafficV2(MergerIntoSlowTraffic):
     """
-    Variation of MergerIntoSlowTraffic 
+    Variation of MergerIntoSlowTraffic
     """
 
     def _create_behavior(self):
@@ -430,10 +470,14 @@ class MergerIntoSlowTrafficV2(MergerIntoSlowTraffic):
         sink_wps = get_same_dir_lanes(sink_wp)
 
         root = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
-        root.add_child(ActorFlow(
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE,
+        )
+        root.add_child(
+            ActorFlow(
             source_wp, sink_wp, self._source_dist_interval, self._sink_distance,
-            self._flow_speed, initial_actors=True, initial_junction=True))
+            self._flow_speed, initial_actors=True, initial_junction=True,
+            ),
+        )
         for sink_wp in sink_wps:
             root.add_child(InTriggerDistanceToLocation(self.ego_vehicles[0], sink_wp.transform.location, self._sink_distance))
         root.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
@@ -453,27 +497,31 @@ class MergerIntoSlowTrafficV2(MergerIntoSlowTraffic):
 
         sequence_2 = py_trees.composites.Sequence()
         sequence_2.add_child(WaitEndIntersection(self.ego_vehicles[0]))
-        sequence_2.add_child(HandleJunctionScenario(
-            clear_junction=False,
-            clear_ego_entry=False,
-            remove_entries=[],
-            remove_exits=[],
-            stop_entries=False,
-            extend_road_exit=self._extra_space
-        ))
+        sequence_2.add_child(
+            HandleJunctionScenario(
+                clear_junction=False,
+                clear_ego_entry=False,
+                remove_entries=[],
+                remove_exits=[],
+                stop_entries=False,
+                extend_road_exit=self._extra_space,
+            ),
+        )
         sequence_2.add_child(WaitForever())
         root.add_child(sequence_2)
 
         sequence = py_trees.composites.Sequence()
         if self.route_mode:
-            sequence.add_child(HandleJunctionScenario(
-                clear_junction=False,
-                clear_ego_entry=True,
-                remove_entries=[source_wp],
-                remove_exits=get_same_dir_lanes(exit_wp),
-                stop_entries=False,
-                extend_road_exit=0
-            ))
+            sequence.add_child(
+                HandleJunctionScenario(
+                    clear_junction=False,
+                    clear_ego_entry=True,
+                    remove_entries=[source_wp],
+                    remove_exits=get_same_dir_lanes(exit_wp),
+                    stop_entries=False,
+                    extend_road_exit=0,
+                ),
+            )
             sequence.add_child(SwitchRouteSources(False))
         sequence.add_child(root)
         if self.route_mode:
@@ -488,8 +536,10 @@ class InterurbanActorFlow(BasicScenario):
     where the ego leaves the interurban road by turning left, crossing an actor flow.
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=180):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=180,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -521,12 +571,14 @@ class InterurbanActorFlow(BasicScenario):
 
         self._remove_entries = [route_entry_wp, other_entry_wp, self._source_wp]
 
-        super().__init__("InterurbanActorFlow",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "InterurbanActorFlow",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _get_entry_exit_route_lanes(self, wp, route):
 
@@ -570,23 +622,29 @@ class InterurbanActorFlow(BasicScenario):
         """
 
         root = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
-        root.add_child(ActorFlow(
-            self._source_wp, self._sink_wp, self._source_dist_interval, self._sink_distance, self._flow_speed))
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE,
+        )
+        root.add_child(
+            ActorFlow(
+            self._source_wp, self._sink_wp, self._source_dist_interval, self._sink_distance, self._flow_speed,
+            ),
+        )
         root.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
         root.add_child(WaitEndIntersection(self.ego_vehicles[0]))
 
         sequence = py_trees.composites.Sequence()
 
         if self.route_mode:
-            sequence.add_child(HandleJunctionScenario(
-                clear_junction=False,
-                clear_ego_entry=True,
-                remove_entries=self._remove_entries,
-                remove_exits=[],
-                stop_entries=False,
-                extend_road_exit=0
-            ))
+            sequence.add_child(
+                HandleJunctionScenario(
+                    clear_junction=False,
+                    clear_ego_entry=True,
+                    remove_entries=self._remove_entries,
+                    remove_exits=[],
+                    stop_entries=False,
+                    extend_road_exit=0,
+                ),
+            )
             sequence.add_child(ChangeOppositeBehavior(active=False))
         sequence.add_child(root)
         if self.route_mode:
@@ -618,8 +676,10 @@ class InterurbanAdvancedActorFlow(BasicScenario):
     first crossing an actor flow, and then merging into another one.
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=180):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=180,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -640,12 +700,14 @@ class InterurbanAdvancedActorFlow(BasicScenario):
         self._source_dist_interval = get_interval_parameter(config, 'source_dist_interval', float, [20, 50])
         self._scenario_timeout = 240
 
-        super().__init__("InterurbanAdvancedActorFlow",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "InterurbanAdvancedActorFlow",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def get_lane_key(self, waypoint):
         return str(waypoint.road_id) + '*' + str(waypoint.lane_id)
@@ -667,7 +729,7 @@ class InterurbanAdvancedActorFlow(BasicScenario):
         return exit_wp
 
     def _initialize_actors(self, config):
-        
+
         self._source_wp_1 = self._map.get_waypoint(self._start_actor_flow_1)
         self._sink_wp_1 = self._map.get_waypoint(self._end_actor_flow_1)
 
@@ -731,25 +793,34 @@ class InterurbanAdvancedActorFlow(BasicScenario):
         the ego vehicle mergers into a slow traffic flow from the freeway entrance.
         """
         root = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE,
+        )
         root.add_child(WaitUntilInFrontPosition(self.ego_vehicles[0], self._sink_wp_2.transform))
-        root.add_child(ActorFlow(
-            self._source_wp_1, self._sink_wp_1, self._source_dist_interval, self._sink_distance, self._flow_speed))
-        root.add_child(ActorFlow(
-            self._source_wp_2, self._sink_wp_2, self._source_dist_interval, self._sink_distance, self._flow_speed))
+        root.add_child(
+            ActorFlow(
+            self._source_wp_1, self._sink_wp_1, self._source_dist_interval, self._sink_distance, self._flow_speed,
+            ),
+        )
+        root.add_child(
+            ActorFlow(
+            self._source_wp_2, self._sink_wp_2, self._source_dist_interval, self._sink_distance, self._flow_speed,
+            ),
+        )
         root.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
 
         sequence = py_trees.composites.Sequence()
         if self.route_mode:
 
-            sequence.add_child(HandleJunctionScenario(
-                clear_junction=True,
-                clear_ego_entry=True,
-                remove_entries=self._remove_entries,
-                remove_exits=self._remove_exits,
-                stop_entries=False,
-                extend_road_exit=self._extra_space
-            ))
+            sequence.add_child(
+                HandleJunctionScenario(
+                    clear_junction=True,
+                    clear_ego_entry=True,
+                    remove_entries=self._remove_entries,
+                    remove_exits=self._remove_exits,
+                    stop_entries=False,
+                    extend_road_exit=self._extra_space,
+                ),
+            )
             sequence.add_child(SwitchRouteSources(False))
             sequence.add_child(ChangeOppositeBehavior(active=False))
 

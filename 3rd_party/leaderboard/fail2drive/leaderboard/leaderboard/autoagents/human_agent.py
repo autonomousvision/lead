@@ -119,7 +119,7 @@ class HumanAgent(AutonomousAgent):
             self.camera_height,
             self._side_scale,
             self._left_mirror,
-            self._right_mirror
+            self._right_mirror,
         )
         self._controller = KeyboardControl(path_to_conf_file)
         self._prev_timestamp = 0
@@ -145,21 +145,29 @@ class HumanAgent(AutonomousAgent):
         """
 
         sensors = [
-            {'type': 'sensor.camera.rgb', 'x': 0.7, 'y': 0.0, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
-             'width': self.camera_width, 'height': self.camera_height, 'fov': 100, 'id': 'Center'},
+            {
+                'type': 'sensor.camera.rgb', 'x': 0.7, 'y': 0.0, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
+                'width': self.camera_width, 'height': self.camera_height, 'fov': 100, 'id': 'Center',
+            },
         ]
 
         if self._left_mirror:
             sensors.append(
-                {'type': 'sensor.camera.rgb', 'x': 0.7, 'y': -1.0, 'z': 1, 'roll': 0.0, 'pitch': 0.0, 'yaw': 210.0,
-                 'width': self.camera_width * self._side_scale, 'height': self.camera_height * self._side_scale,
-                 'fov': 100, 'id': 'Left'})
+                {
+                    'type': 'sensor.camera.rgb', 'x': 0.7, 'y': -1.0, 'z': 1, 'roll': 0.0, 'pitch': 0.0, 'yaw': 210.0,
+                    'width': self.camera_width * self._side_scale, 'height': self.camera_height * self._side_scale,
+                    'fov': 100, 'id': 'Left',
+                },
+            )
 
         if self._right_mirror:
             sensors.append(
-                {'type': 'sensor.camera.rgb', 'x': 0.7, 'y': 1.0, 'z': 1, 'roll': 0.0, 'pitch': 0.0, 'yaw': 150.0,
-                 'width': self.camera_width * self._side_scale, 'height': self.camera_height * self._side_scale,
-                 'fov': 100, 'id': 'Right'})
+                {
+                    'type': 'sensor.camera.rgb', 'x': 0.7, 'y': 1.0, 'z': 1, 'roll': 0.0, 'pitch': 0.0, 'yaw': 150.0,
+                    'width': self.camera_width * self._side_scale, 'height': self.camera_height * self._side_scale,
+                    'fov': 100, 'id': 'Right',
+                },
+            )
 
         return sensors
 
@@ -228,13 +236,15 @@ class KeyboardControl(object):
 
         # transform strs into VehicleControl commands
         for entry in self._records['records']:
-            control = carla.VehicleControl(throttle=entry['control']['throttle'],
-                                           steer=entry['control']['steer'],
-                                           brake=entry['control']['brake'],
-                                           hand_brake=entry['control']['hand_brake'],
-                                           reverse=entry['control']['reverse'],
-                                           manual_gear_shift=entry['control']['manual_gear_shift'],
-                                           gear=entry['control']['gear'])
+            control = carla.VehicleControl(
+                throttle=entry['control']['throttle'],
+                steer=entry['control']['steer'],
+                brake=entry['control']['brake'],
+                hand_brake=entry['control']['hand_brake'],
+                reverse=entry['control']['reverse'],
+                manual_gear_shift=entry['control']['manual_gear_shift'],
+                gear=entry['control']['gear'],
+            )
             self._control_list.append(control)
 
     def parse_events(self, timestamp):
@@ -260,7 +270,7 @@ class KeyboardControl(object):
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                return 
+                return
             elif event.type == pygame.KEYUP:
                 if event.key == K_q:
                     self._control.gear = 1 if self._control.reverse else -1
@@ -300,8 +310,8 @@ class KeyboardControl(object):
                 'hand_brake': self._control.hand_brake,
                 'reverse': self._control.reverse,
                 'manual_gear_shift': self._control.manual_gear_shift,
-                'gear': self._control.gear
-            }
+                'gear': self._control.gear,
+            },
         }
 
         self._log_data['records'].append(new_record)

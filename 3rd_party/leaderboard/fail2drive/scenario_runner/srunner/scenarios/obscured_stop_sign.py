@@ -3,11 +3,15 @@ import py_trees
 
 from srunner.scenarios.basic_scenario import BasicScenario
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorDestroy,
-                                                                      ActorTransformSetter,
-                                                                      ScenarioTimeout)
-from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (DriveDistance,
-                                                                               WaitEndIntersection)
+from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
+    ActorDestroy,
+    ActorTransformSetter,
+    ScenarioTimeout,
+)
+from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
+    DriveDistance,
+    WaitEndIntersection,
+)
 from srunner.tools.background_manager import HandleJunctionScenario
 
 def get_value_parameter(config, name, p_type, default):
@@ -22,8 +26,10 @@ class ObscuredStopSign(BasicScenario):
     The ego has to react to them, safely crossing the opposite lane
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80,
+    ):
         """
         Setup all relevant parameters and create scenario
         """
@@ -43,12 +49,14 @@ class ObscuredStopSign(BasicScenario):
 
         self.props = []
 
-        super().__init__("ObscuredStopSign",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "ObscuredStopSign",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
         """

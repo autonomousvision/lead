@@ -26,7 +26,7 @@ PENALTY_VALUE_DICT = {
     TrafficEventType.TRAFFIC_LIGHT_INFRACTION: 0.7,
     TrafficEventType.STOP_INFRACTION: 0.8,
     TrafficEventType.SCENARIO_TIMEOUT: 0.7,
-    TrafficEventType.YIELD_TO_EMERGENCY_VEHICLE: 0.7
+    TrafficEventType.YIELD_TO_EMERGENCY_VEHICLE: 0.7,
 }
 PENALTY_PERC_DICT = {
     # Traffic events that substract a varying amount of points. This is the per unit value.
@@ -60,7 +60,7 @@ FAILURE_MESSAGES = {
     "Simulation" : ["Crashed", "Simulation crashed"],
     "Sensors": ["Rejected", "Agent's sensors were invalid"],
     "Agent_init": ["Started", "Agent couldn't be set up"],
-    "Agent_runtime": ["Started", "Agent crashed"]
+    "Agent_runtime": ["Started", "Agent crashed"],
 }
 
 ROUND_DIGITS = 3
@@ -84,7 +84,7 @@ class RouteRecord():
         self.scores = {
             'score_route': 0,
             'score_penalty': 0,
-            'score_composed': 0
+            'score_composed': 0,
         }
 
         self.meta = {
@@ -111,7 +111,7 @@ class GlobalRecord():
         self.scores_mean = {
             'score_composed': 0,
             'score_route': 0,
-            'score_penalty': 0
+            'score_penalty': 0,
         }
         self.scores_std_dev = self.scores_mean.copy()
 
@@ -119,7 +119,7 @@ class GlobalRecord():
             "total_length": 0,
             "duration_game": 0,
             "duration_system": 0,
-            'exceptions': []
+            'exceptions': [],
         }
 
     def to_json(self):
@@ -223,10 +223,12 @@ class StatisticsManager(object):
 
     def sort_records(self):
         """Sorts the route records according to their route id (This being i.e RouteScenario0_rep0)"""
-        self._results.checkpoint.records.sort(key=lambda x: (
-            int(x.route_id.split('_')[1]),
-            int(x.route_id.split('_rep')[-1])
-        ))
+        self._results.checkpoint.records.sort(
+            key=lambda x: (
+                int(x.route_id.split('_')[1]),
+                int(x.route_id.split('_rep')[-1]),
+            ),
+        )
 
         for i, record in enumerate(self._results.checkpoint.records):
             record.index = i
@@ -243,7 +245,8 @@ class StatisticsManager(object):
         all_events.sort(key=lambda e: e.get_frame(), reverse=True)
 
         with open(self._debug_endpoint, 'w') as f:
-            f.write("Route id: {}\n\n"
+            f.write(
+                "Route id: {}\n\n"
                     "Scenario: {}\n\n"
                     "Town name: {}\n\n"
                     "Weather id: {}\n\n"
@@ -281,9 +284,9 @@ class StatisticsManager(object):
                         ego_location.x,
                         ego_location.y,
                         ego_location.z,
-                        route_record.num_infractions
-                    )
-                )
+                        route_record.num_infractions,
+                    ),
+            )
             for e in all_events[:5]:
                 # Prevent showing the ROUTE_COMPLETION event.
                 event_type = e.get_type()
@@ -461,9 +464,11 @@ class StatisticsManager(object):
             # Downgrade the global result if need be ('Perfect' -> 'Completed' -> 'Failed'), and record the failed routes
             route_result = 'Failed' if 'Failed' in route_record.status else route_record.status
             if route_result == 'Failed':
-                global_record.meta['exceptions'].append((route_record.route_id,
-                                                         route_record.index,
-                                                         route_record.status))
+                global_record.meta['exceptions'].append((
+                    route_record.route_id,
+                    route_record.index,
+                    route_record.status,
+                ))
                 global_result = route_result
             elif global_result == 'Perfect' and route_result != 'Perfect':
                 global_result = route_result
@@ -537,7 +542,7 @@ class StatisticsManager(object):
             "Agent blocked",
             "Yield emergency vehicles infractions",
             "Scenario timeouts",
-            "Min speed infractions"
+            "Min speed infractions",
         ]
 
         # Change the entry status and eligible

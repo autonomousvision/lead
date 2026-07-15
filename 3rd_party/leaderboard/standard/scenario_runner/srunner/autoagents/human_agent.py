@@ -110,10 +110,13 @@ class HumanAgent(AutonomousAgent):
         ]
 
         """
-        sensors = [{'type': 'sensor.camera.rgb', 'x': 0.7, 'y': 0.0, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
-                    'width': self.camera_width, 'height': self.camera_height, 'fov': 100, 'id': 'Center'},
-                   {'type': 'sensor.other.gnss', 'x': 0.7, 'y': -0.4, 'z': 1.60, 'id': 'GPS'}
-                   ]
+        sensors = [
+            {
+                'type': 'sensor.camera.rgb', 'x': 0.7, 'y': 0.0, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
+                'width': self.camera_width, 'height': self.camera_height, 'fov': 100, 'id': 'Center',
+            },
+            {'type': 'sensor.other.gnss', 'x': 0.7, 'y': -0.4, 'z': 1.60, 'id': 'GPS'},
+        ]
 
         return sensors
 
@@ -184,13 +187,15 @@ class KeyboardControl(object):
 
         # transform strs into VehicleControl commands
         for entry in self._records['records']:
-            control = carla.VehicleControl(throttle=entry['control']['throttle'],
-                                           steer=entry['control']['steer'],
-                                           brake=entry['control']['brake'],
-                                           hand_brake=entry['control']['hand_brake'],
-                                           reverse=entry['control']['reverse'],
-                                           manual_gear_shift=entry['control']['manual_gear_shift'],
-                                           gear=entry['control']['gear'])
+            control = carla.VehicleControl(
+                throttle=entry['control']['throttle'],
+                steer=entry['control']['steer'],
+                brake=entry['control']['brake'],
+                hand_brake=entry['control']['hand_brake'],
+                reverse=entry['control']['reverse'],
+                manual_gear_shift=entry['control']['manual_gear_shift'],
+                gear=entry['control']['gear'],
+            )
             self._control_list.append(control)
 
     def parse_events(self, timestamp):
@@ -263,8 +268,8 @@ class KeyboardControl(object):
                 'hand_brake': self._control.hand_brake,
                 'reverse': self._control.reverse,
                 'manual_gear_shift': self._control.manual_gear_shift,
-                'gear': self._control.gear
-            }
+                'gear': self._control.gear,
+            },
         }
 
         self._log_data['records'].append(new_record)

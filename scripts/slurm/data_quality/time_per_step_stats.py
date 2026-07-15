@@ -1,14 +1,8 @@
 #!/usr/bin/env python
 """Report statistics on "Time per step" values parsed from expert stdout logs.
 
-Scans every ``*.log`` file in ``$PY123D_DATA_ROOT/stdout`` (see ``.env``) for
-lines of the form::
-
-    ... Step: 40, Time per step: 213.52 ms
-
-and prints min / max / mean / median / histogram of the time-per-step values,
-both per file and aggregated over all files. Also saves a PNG histogram to
-the PY123D data root.
+Scans every ``*.log`` in ``$PY123D_DATA_ROOT/stdout`` and reports per-file and
+aggregate min/max/mean/median plus a histogram PNG.
 """
 
 from __future__ import annotations
@@ -102,11 +96,23 @@ def save_plot(values: list[float], path: Path, bins: int = 50) -> None:
     s = summarize(values)
     fig, ax = plt.subplots(figsize=(9, 5))
     ax.hist(values, bins=bins, color="#4c72b0", edgecolor="white", linewidth=0.4)
-    ax.axvline(s["median"], color="#c44e52", linestyle="--", label=f"median {s['median']:.1f} ms")
-    ax.axvline(s["mean"], color="#dd8452", linestyle="--", label=f"mean {s['mean']:.1f} ms")
+    ax.axvline(
+        s["median"],
+        color="#c44e52",
+        linestyle="--",
+        label=f"median {s['median']:.1f} ms",
+    )
+    ax.axvline(
+        s["mean"],
+        color="#dd8452",
+        linestyle="--",
+        label=f"mean {s['mean']:.1f} ms",
+    )
     ax.set_xlabel("Time per step (ms)")
     ax.set_ylabel("Count")
-    ax.set_title(f"Time per step  (n={s['count']}, min={s['min']:.1f}, max={s['max']:.1f} ms)")
+    ax.set_title(
+        f"Time per step  (n={s['count']}, min={s['min']:.1f}, max={s['max']:.1f} ms)",
+    )
     ax.legend()
     fig.tight_layout()
     fig.savefig(path, dpi=130)

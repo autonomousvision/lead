@@ -31,27 +31,60 @@ class SensorRigConfig(ConfigNode):
     # The sensor rig always uses two LiDARs; a single-LiDAR setup is not supported.
 
     # x, y, z mounting position of the first LiDAR
-    lidar_pos_1: list[float] = [0.0, 0.0, 2.5]
+    lidar_pos_1: list[float] = [1.0, 0.0, 2.5]
     # Roll, pitch, yaw rotation of first LiDAR (degrees)
     lidar_rot_1: list[float] = [0.0, 0.0, -90.0]
     # x, y, z mounting position of the second LiDAR
-    lidar_pos_2: list[float] = [0.0, 0.0, 2.5]
+    lidar_pos_2: list[float] = [-1.0, 0.0, 2.5]
     # Roll, pitch, yaw rotation of second LiDAR (degrees)
     lidar_rot_2: list[float] = [0.0, 0.0, -270.0]
-    # If true accumulate LiDAR data over multiple frames
-    lidar_accumulation: bool = True
 
     # --- Camera Configuration ---
-    # Calibration of the RGB/depth/semantic cameras. Camera ``i`` (1-based) in
-    # sensor specs corresponds to ``cameras[i - 1]``. Config profiles override
-    # this list for multi-camera rigs.
+    # Calibration of the RGB/depth/semantic cameras; camera ``i`` (1-based) in
+    # sensor specs corresponds to ``cameras[i - 1]``. Defaults to the six-camera
+    # surround rig; config profiles override this list for other rigs.
     cameras: list[CameraSpec] = [
-        {
-            "pos": [-1.5, 0.0, 2.0],
+        {  # front-left
+            "pos": [0.0, -0.3, 2.25],
+            "rot": [0.0, 0.0, -57.5],
+            "width": 384,
+            "height": 384,
+            "fov": 60,
+        },
+        {  # front
+            "pos": [0.25, 0.0, 2.25],
             "rot": [0.0, 0.0, 0.0],
-            "width": 1024,
-            "height": 512,
-            "fov": 110,
+            "width": 384,
+            "height": 384,
+            "fov": 60,
+        },
+        {  # front-right
+            "pos": [0.0, 0.3, 2.25],
+            "rot": [0.0, 0.0, 57.5],
+            "width": 384,
+            "height": 384,
+            "fov": 60,
+        },
+        {  # rear-right
+            "pos": [-0.30, 0.3, 2.25],
+            "rot": [0.0, 0.0, 122.5],
+            "width": 384,
+            "height": 384,
+            "fov": 60,
+        },
+        {  # rear
+            "pos": [-0.55, 0.0, 2.25],
+            "rot": [0.0, 0.0, 180.0],
+            "width": 384,
+            "height": 384,
+            "fov": 60,
+        },
+        {  # rear-left
+            "pos": [-0.30, -0.3, 2.25],
+            "rot": [0.0, 0.0, -122.5],
+            "width": 384,
+            "height": 384,
+            "fov": 60,
         },
     ]
 
@@ -117,13 +150,3 @@ class SensorRigConfig(ConfigNode):
 
     # If true use radar sensors
     use_radars: bool = True
-    # If true save radar point cloud as LiDAR format
-    save_radar_pc_as_lidar: bool = True
-    # If true save LiDAR data only inside bird's eye view area
-    save_lidar_only_inside_bev: bool = True
-    # If true duplicate radar points near ego vehicle for better detection
-    duplicate_radar_near_ego: bool = True
-    # Radius around ego vehicle for radar point duplication
-    duplicate_radar_radius: float = 32
-    # Multiplication factor for radar point duplication
-    duplicate_radar_factor: int = 5

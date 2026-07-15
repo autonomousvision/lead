@@ -17,7 +17,7 @@ from pathlib import Path
 
 from lead.common import runtime
 from lead.common.dotenv import read_dotenv
-from lead.common.logging_config import setup_logging
+from lead.common.logging import setup_logging
 
 setup_logging()
 LOG = logging.getLogger(__name__)
@@ -75,7 +75,7 @@ class ModeConfig:
         if is_expert:
             return (
                 LeaderboardType.AUTOPILOT,
-                "src/lead/lead/expert.py",
+                "src/lead/expert/expert_agent.py",
                 routes,
                 None,
                 "MAP",
@@ -88,9 +88,12 @@ class ModeConfig:
                 return LeaderboardType.BENCH2DRIVE
             return LeaderboardType.STANDARD
 
+        # --checkpoint and --expert form a required mutually exclusive CLI
+        # group; not is_expert means --checkpoint was given.
+        assert checkpoint is not None
         return (
             _resolve_leaderboard_type(),
-            "src/lead/evaluation/transfuser_agent.py",
+            "src/lead/evaluation/agents/transfuser/transfuser_agent.py",
             checkpoint,
             checkpoint,
             "SENSORS",
@@ -146,25 +149,18 @@ class LeaderboardWrapper:
             return "noScenarios"
 
     def _get_leaderboard_evaluator_paths(self) -> dict:
-        """Get paths to leaderboard evaluator components for subprocess execution. [Subprocess setup]
+        """Get paths to leaderboard evaluator components for subprocess execution.
 
-        Returns paths needed to locate and run the leaderboard evaluator:
-        - Where to find the evaluator script
-        - Where to find scenario runner dependencies
-        - Where to find CARLA Python API
-
-        These paths are used to build PYTHONPATH and execute the evaluator subprocess.
-
-        For BENCH2DRIVE, AUTOPILOT, and STANDARD, carla_path is derived from the
-        CARLA_ROOT setting in .env. FAIL2DRIVE uses its own fixed CARLA build since
-        it requires a different, incompatible simulator version.
+        FAIL2DRIVE requires a different, incompatible simulator version and uses
+        its own fixed CARLA build; the other modes derive carla_path from the
+        CARLA_ROOT setting in .env.
 
         Returns:
             Dictionary containing paths:
             - leaderboard_root: Root directory of leaderboard code
             - scenario_runner_root: Root directory of scenario runner
             - evaluator_script: Path to main evaluator script
-            - evaluator_module: Python module path (kept for compatibility)
+            - evaluator_module: Python module path
             - carla_path: Path to CARLA Python API
         """
         carla_path = Path(read_dotenv("CARLA_ROOT")) / "PythonAPI/carla"
@@ -218,13 +214,8 @@ class LeaderboardWrapper:
     def _build_pythonpath(self, paths: dict) -> str:
         """Build PYTHONPATH string from leaderboard paths for subprocess environment.
 
-        Constructs complete PYTHONPATH by combining:
-        1. CARLA Python API (AUTOPILOT mode only)
-        2. Leaderboard root directory
-        3. Scenario runner root directory
-        4. Existing PYTHONPATH from environment (preserved)
-
-        Order matters: CARLA API first to ensure correct imports in AUTOPILOT mode.
+        Order matters: the CARLA Python API comes first to ensure correct
+        imports, and any existing PYTHONPATH is preserved at the end.
 
         Args:
             paths: Dictionary of leaderboard paths from get_leaderboard_evaluator_paths()
@@ -311,6 +302,7 @@ class LeaderboardWrapper:
                 },
             )
         else:
+            assert checkpoint_dir is not None
             save_path = resolved_output_dir
             env_vars.update(
                 {
@@ -325,44 +317,27 @@ class LeaderboardWrapper:
 
         return env_vars
 
-    def _prepare_checkpoint_paths(self, output_path: Path) -> tuple[Path, Path]:
-        """Create checkpoint directories and return checkpoint file paths.
-
-        Creates two types of checkpoint files for evaluation state management:
-        1. checkpoint_endpoint.json: Main evaluation checkpoint for resume functionality
-        2. debug_checkpoint_endpoint.txt: Debug checkpoint for detailed tracking
-
-        Both directories are created automatically if they don't exist.
+    def _determine_checkpoint_path(self, output_path: Path) -> Path:
+        """Return the path of the leaderboard result checkpoint.
 
         Args:
-            output_path: Base output directory for evaluation results
+            output_path: Resolved evaluation output directory
 
         Returns:
-            Tuple of (checkpoint_path, debug_checkpoint_path) as Path objects
-
-        Note:
-            This method is currently unused as the logic was inlined in run()
-            for better code organization. Consider removing if not needed elsewhere.
+            Path of the result checkpoint. Expert runs write one file per route
+            under ``$PY123D_DATA_ROOT/results``, matching the layout of the
+            collected logs; model runs write into their evaluation output
+            directory.
         """
-        checkpoint_path = output_path / "checkpoint_endpoint.json"
-        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
-
-        debug_checkpoint_path = (
-            output_path / "debug_checkpoint/debug_checkpoint_endpoint.txt"
-        )
-        debug_checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
-
-        return checkpoint_path, debug_checkpoint_path
+        if self.args.expert:
+            data_root = Path(read_dotenv("PY123D_DATA_ROOT"))
+            return (
+                data_root / "results" / self.scenario_type / f"{self.routes.stem}.json"
+            )
+        return output_path / "checkpoint_endpoint.json"
 
     def run(self) -> subprocess.CompletedProcess:
         """Execute CARLA leaderboard evaluation as subprocess.
-
-        Main execution pipeline that:
-        1. Determines evaluation mode (expert/model) and leaderboard type
-        2. Sets up environment variables and output directories
-        3. Builds command with all required arguments
-        4. Executes leaderboard evaluator as subprocess
-        5. Handles graceful shutdown on interruption
 
         Returns:
             subprocess.CompletedProcess: Result of leaderboard evaluation
@@ -402,13 +377,8 @@ class LeaderboardWrapper:
             shutil.rmtree(resolved_output_path)
 
         # Build command directly
-        checkpoint_path = resolved_output_path / "checkpoint_endpoint.json"
+        checkpoint_path = self._determine_checkpoint_path(resolved_output_path)
         checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
-
-        debug_checkpoint_path = (
-            resolved_output_path / "debug_checkpoint/debug_checkpoint_endpoint.txt"
-        )
-        debug_checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
 
         cmd = [
             sys.executable,
@@ -439,11 +409,8 @@ class LeaderboardWrapper:
             str(self.args.timeout),
         ]
 
-        # Add debug checkpoint if not autopilot
         if leaderboard_type != LeaderboardType.AUTOPILOT:
-            cmd.extend(
-                ["--debug-checkpoint", str(debug_checkpoint_path), "--record", "None"],
-            )
+            cmd.extend(["--record", "None"])
 
         LOG.info("\n" + "=" * 80)
         LOG.info(
@@ -521,15 +488,6 @@ class LeaderboardWrapper:
 
 def _create_argument_parser() -> argparse.ArgumentParser:
     """Create and configure CLI argument parser with all options.
-
-    Sets up argument parser with:
-    - Mode selection (--checkpoint vs --expert)
-    - Required arguments (--routes)
-    - Leaderboard type (--bench2drive)
-    - CARLA connection settings (ports)
-    - Evaluation settings (repetitions, timeout, resume, debug)
-    - Model-specific settings (gpu)
-    - Output control (output-dir)
 
     Returns:
         Configured argument parser with usage examples
@@ -637,36 +595,9 @@ Examples:
 
 
 def main() -> None:
-    """CLI interface for running CARLA leaderboard evaluations.
+    """Run a CARLA leaderboard evaluation or expert data generation from the CLI.
 
-    Command-line entry point that:
-    1. Parses CLI arguments
-    2. Sets GPU device for model evaluation
-    3. Configures evaluation mode (expert vs model)
-    4. Creates LeaderboardWrapper instance
-    5. Runs evaluation with specified parameters
-
-    Exit codes:
-        0: Success
-        1: Error during evaluation
-        130: Keyboard interrupt (Ctrl+C)
-
-    Examples:
-        Model evaluation:
-            $ python -m lead \\
-                --checkpoint outputs/checkpoints/model \\
-                --routes src/lead/routes/benchmark_routes/Town13/0.xml
-
-        Expert data generation:
-            $ python -m lead \\
-                --expert \\
-                --routes src/lead/routes/data_routes/lead/noScenarios/short_route.xml
-
-        Bench2Drive evaluation:
-            $ python -m lead \\
-                --checkpoint outputs/checkpoints/model \\
-                --routes src/lead/routes/benchmark_routes/bench2drive/23687.xml \\
-                --bench2drive
+    Exits 0 on success, 1 on error, 130 on keyboard interrupt.
     """
 
     parser = _create_argument_parser()

@@ -7,7 +7,16 @@ EMERGENCY_MESHES = {
     "vehicle.carlamotors.firetruck",
 }
 
-CONSTRUCTION_MESHES = {"static.prop.constructioncone", "static.prop.trafficwarning"}
+CONSTRUCTION_MESHES = {
+    "static.prop.constructioncone",
+    "static.prop.trafficwarning",
+    "static.prop.warningconstruction",
+    "static.prop.warningaccident",
+}
+
+# ``traffic.*`` actors that have their own box class and are therefore not
+# collected as generic traffic signs.
+NON_SIGN_TRAFFIC_TYPES = {"traffic.traffic_light", "traffic.stop"}
 
 BIKER_MESHES = {
     "vehicle.diamondback.century",

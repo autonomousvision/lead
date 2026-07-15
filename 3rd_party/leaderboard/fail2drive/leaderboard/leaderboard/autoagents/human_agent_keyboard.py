@@ -115,7 +115,8 @@ class HumanInterface(object):
 			'',
 			'Speed:%2.0f km/h' % 1,
 			'',
-			'']
+			'',
+  ]
 
 		self._info_text += [
 			('Throttle:', control.throttle, 0.0, 1.0),
@@ -192,8 +193,10 @@ class HumanInterface(object):
 						surface = self._font_speed.render(' Speed', True, (255, 255, 255))
 						self._display.blit(surface, (8, v_offset))
 						v_offset += 50
-						surface = self._font_speed.render("{:5.1f}".format(3.6 * input_data['speedometer'][1]['speed']),
-						                                  True, (255, 255, 255))
+						surface = self._font_speed.render(
+          "{:5.1f}".format(3.6 * input_data['speedometer'][1]['speed']),
+          True, (255, 255, 255),
+      )
 					else:
 						surface = self._font_mono.render(item, True, (255, 255, 255))
 					self._display.blit(surface, (8, v_offset))
@@ -241,7 +244,7 @@ class HumanAgentSteeringWheel(AutonomousAgent):
 			self.camera_height,
 			self._side_scale,
 			self._left_mirror,
-			self._right_mirror
+			self._right_mirror,
 		)
 
 		self._controller = SteeringWheelControl(path_to_conf_file, self._hic)
@@ -271,10 +274,12 @@ class HumanAgentSteeringWheel(AutonomousAgent):
 			# {'type': 'sensor.camera.rgb', 'x': 0.7, 'y': 0.0, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
 			#  'width': self.camera_width, 'height': self.camera_height, 'fov': 100, 'id': 'Center_0'},
 
-			{'type': 'sensor.camera.rgb', 'x': -1.5, 'y': 0.0, 'z': 2.6, 'roll': 0.0, 'pitch': -15.0, 'yaw': 0.0,
-			 'width': self.camera_width, 'height': self.camera_height, 'fov': 100, 'id': 'Center_0'},
+			{
+       'type': 'sensor.camera.rgb', 'x': -1.5, 'y': 0.0, 'z': 2.6, 'roll': 0.0, 'pitch': -15.0, 'yaw': 0.0,
+       'width': self.camera_width, 'height': self.camera_height, 'fov': 100, 'id': 'Center_0',
+   },
 
-			{'type': 'sensor.speedometer', 'id': 'speedometer'}
+			{'type': 'sensor.speedometer', 'id': 'speedometer'},
 		]
 
 		# if self._left_mirror:
@@ -382,13 +387,15 @@ class SteeringWheelControl(object):
 	def _json_to_control(self):
 		# transform strs into VehicleControl commands
 		for entry in self._records['records']:
-			control = carla.VehicleControl(throttle=entry['control']['throttle'],
-			                               steer=entry['control']['steer'],
-			                               brake=entry['control']['brake'],
-			                               hand_brake=entry['control']['hand_brake'],
-			                               reverse=entry['control']['reverse'],
-			                               manual_gear_shift=entry['control']['manual_gear_shift'],
-			                               gear=entry['control']['gear'])
+			control = carla.VehicleControl(
+       throttle=entry['control']['throttle'],
+       steer=entry['control']['steer'],
+       brake=entry['control']['brake'],
+       hand_brake=entry['control']['hand_brake'],
+       reverse=entry['control']['reverse'],
+       manual_gear_shift=entry['control']['manual_gear_shift'],
+       gear=entry['control']['gear'],
+   )
 			self._control_list.append(control)
 
 
@@ -477,8 +484,8 @@ class SteeringWheelControl(object):
 				'hand_brake': self._control.hand_brake,
 				'reverse': self._control.reverse,
 				'manual_gear_shift': self._control.manual_gear_shift,
-				'gear': self._control.gear
-			}
+				'gear': self._control.gear,
+			},
 		}
 
 		self._log_data['records'].append(new_record)

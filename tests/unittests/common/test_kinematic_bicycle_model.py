@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from lead.config import load_lead_config
-from lead.lead.dynamics.kinematic_bicycle_model import KinematicBicycleModel
+from lead.expert.driving.kinematic_bicycle_model import KinematicBicycleModel
 
 
 @pytest.fixture
@@ -237,8 +237,11 @@ class TestKinematicBicycleModel:
         action = np.array([0.2, 0.5, 0.0])
 
         # Forecast ego vehicle
-        next_loc_ego, next_head_ego, next_speed_ego = (
-            bicycle_model.forecast_ego_vehicle(location, heading, speed, action)
+        next_loc_ego, _, next_speed_ego = bicycle_model.forecast_ego_vehicle(
+            location,
+            heading,
+            speed,
+            action,
         )
 
         # Forecast as "other vehicle" with same parameters
@@ -247,7 +250,7 @@ class TestKinematicBicycleModel:
         speeds = np.array([speed])
         actions = np.array([action])
 
-        future_locs_other, future_heads_other, future_speeds_other = (
+        future_locs_other, _, future_speeds_other = (
             bicycle_model.forecast_other_vehicles(
                 locations,
                 headings,

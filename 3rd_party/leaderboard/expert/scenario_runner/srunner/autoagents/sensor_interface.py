@@ -56,20 +56,22 @@ class CallBack(object):
             self._parse_gnss_cb(data, self._tag)
         elif isinstance(data, carla.IMUMeasurement):
             self._parse_imu_cb(data, self._tag)
-        elif isinstance(data, carla.libcarla.SemanticLidarMeasurement ):
+        elif isinstance(data, carla.libcarla.SemanticLidarMeasurement):
             self._parse_semantic_lidar_cb(data, self._tag)
         else:
             logging.error('No callback method for this sensor.')
 
     def _parse_semantic_lidar_cb(self, semantic_lidar_data, tag):
-        data = np.frombuffer(semantic_lidar_data.raw_data, dtype=np.dtype([
-            ('x', 'f4'),
-            ('y', 'f4'),
-            ('z', 'f4'),
-            ('cos_inc_angle', 'f4'),
-            ('object_idx', 'u4'),
-            ('semantic_tag', 'u4')
-        ]))
+        data = np.frombuffer(
+            semantic_lidar_data.raw_data, dtype=np.dtype([
+                ('x', 'f4'),
+                ('y', 'f4'),
+                ('z', 'f4'),
+                ('cos_inc_angle', 'f4'),
+                ('object_idx', 'u4'),
+                ('semantic_tag', 'u4'),
+            ]),
+        )
         data = copy.deepcopy(data)
         self._data_provider.update_sensor(tag, data, semantic_lidar_data.frame)
 
@@ -107,23 +109,30 @@ class CallBack(object):
         """
         parses gnss sensors
         """
-        array = np.array([gnss_data.latitude,
-                          gnss_data.longitude,
-                          gnss_data.altitude], dtype=np.float64)
+        array = np.array(
+            [
+                gnss_data.latitude,
+                gnss_data.longitude,
+                gnss_data.altitude,
+            ], dtype=np.float64,
+        )
         self._data_provider.update_sensor(tag, array, gnss_data.frame)
 
     def _parse_imu_cb(self, imu_data, tag):
         """
         parses IMU sensors
         """
-        array = np.array([imu_data.accelerometer.x,
-                          imu_data.accelerometer.y,
-                          imu_data.accelerometer.z,
-                          imu_data.gyroscope.x,
-                          imu_data.gyroscope.y,
-                          imu_data.gyroscope.z,
-                          imu_data.compass,
-                          ], dtype=np.float64)
+        array = np.array(
+            [
+                imu_data.accelerometer.x,
+                imu_data.accelerometer.y,
+                imu_data.accelerometer.z,
+                imu_data.gyroscope.x,
+                imu_data.gyroscope.y,
+                imu_data.gyroscope.z,
+                imu_data.compass,
+            ], dtype=np.float64,
+        )
         self._data_provider.update_sensor(tag, array, imu_data.frame)
 
 

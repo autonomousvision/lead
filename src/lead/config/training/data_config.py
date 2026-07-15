@@ -19,25 +19,15 @@ class TrainingDataConfig(ConfigNode):
         """123D split to train on; defaults to the expert's normal-view split."""
         return self._root.expert.data_collection.py123d_split
 
-    @overridable_property
-    def py123d_perturbated_split(self) -> str:
-        """123D split holding the perturbated sensor views paired with the normal split."""
-        return self._root.expert.data_collection.py123d_perturbated_split
-
     @property
     def py123d_split_name(self) -> str:
         """Full 123D split directory name."""
         return self.py123d_split
 
     @overridable_property
-    def py123d_logs_root(self) -> str:
-        """Root directory of the 123D logs (defaults to $PY123D_DATA_ROOT/logs)."""
-        return str(get_dataset_paths().py123d_logs_root)
-
-    @overridable_property
-    def py123d_maps_root(self) -> str:
-        """Root directory of the 123D maps (defaults to $PY123D_DATA_ROOT/maps)."""
-        return str(get_dataset_paths().py123d_maps_root)
+    def py123d_data_root(self) -> str:
+        """Dataset root holding ``logs/`` and ``maps/`` (defaults to $PY123D_DATA_ROOT)."""
+        return str(get_dataset_paths().py123d_data_root)
 
     # --- Modalities loaded from disk ---
     # We stack lidar frames for motion cues. Number of past frames we stack for the model input.
@@ -55,14 +45,14 @@ class TrainingDataConfig(ConfigNode):
         """Number of frames to skip at the beginning of sequences."""
         if self._root.training.is_pretraining:
             return 1
-        return self._root.agent.transfuser.num_way_points_prediction
+        return self._root.policy.transfuser.num_way_points_prediction
 
     @property
     def skip_last(self) -> int:
         """Number of frames to skip at the end of sequences."""
         if self._root.training.is_pretraining:
             return 1
-        return self._root.agent.transfuser.num_way_points_prediction
+        return self._root.policy.transfuser.num_way_points_prediction
 
     # --- Data loader ---
     # Number of data loader workers to prefetch batches.

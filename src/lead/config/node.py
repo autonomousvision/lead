@@ -21,13 +21,11 @@ _MISSING = object()
 def child_node(node_class: type[NodeT]) -> NodeT:
     """Declare a child node on a :class:`ConfigNode` subclass.
 
-    Returns the class itself; :meth:`ConfigNode.__init__` instantiates it per
-    config instance. Typed as an instance so attribute access on the tree
-    type-checks.
-
-    The instance annotation is a deliberate lie for the static checker, so the
-    function is exempt from runtime type checking (``LEAD_RUNTIME_TYPE_CHECKING``);
-    beartype would otherwise reject the class it actually returns.
+    Returns the class itself — :meth:`ConfigNode.__init__` instantiates it per
+    config instance — typed as an instance so attribute access on the tree
+    type-checks; the deliberate annotation lie is why the function is exempt
+    from runtime type checking (beartype would reject the class it actually
+    returns).
 
     Args:
         node_class: The child node class.
@@ -110,16 +108,12 @@ def _coerce(default: Any, value: Any) -> Any:
 class ConfigNode:
     """Node of the config tree.
 
-    Attribute conventions:
-        - Annotated class attribute: a tunable knob, overridable via
-          profile/env/CLI/file.
-        - Class attribute declared with :func:`child_node`: a child section.
-        - ``@property``: a derived value, never overridable.
-        - ``@overridable_property``: a derived default that may still be
-          overridden. Use only when both apply.
-
-    Every node holds ``_root``, the :class:`~lead.config.LeadConfig` it belongs
-    to, so derived properties can reference other sections of the tree.
+    Annotated class attributes are overridable knobs, :func:`child_node`
+    attributes are child sections, ``@property`` values are derived and never
+    overridable, and ``@overridable_property`` marks a derived default that
+    may still be overridden; every node holds ``_root``, the
+    :class:`~lead.config.LeadConfig` it belongs to, so derived properties can
+    reference other sections of the tree.
     """
 
     _root: "LeadConfig"
@@ -147,8 +141,7 @@ class ConfigNode:
         return attributes
 
     def __setattr__(self, name: str, value: Any) -> None:
-        # Guard against typos and renamed knobs: only attributes declared on
-        # the class (or private state) may be set.
+        # Only attributes declared on the class (or private state) may be set, to catch typos.
         if not name.startswith("_") and name not in self._class_attributes():
             raise AttributeError(
                 f"Can't set unknown config attribute "

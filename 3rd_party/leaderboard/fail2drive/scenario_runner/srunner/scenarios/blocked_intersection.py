@@ -15,11 +15,13 @@ import carla
 import py_trees
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
-from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorDestroy,
-                                                                      Idle,
-                                                                      ScenarioTimeout,
-                                                                      ActorTransformSetter,
-                                                                      HandBrakeVehicle)
+from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
+    ActorDestroy,
+    Idle,
+    ScenarioTimeout,
+    ActorTransformSetter,
+    HandBrakeVehicle,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import CollisionTest, ScenarioTimeoutTest
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import InTriggerDistanceToVehicle
 
@@ -36,7 +38,7 @@ def convert_dict_to_location(actor_dict):
     location = carla.Location(
         x=float(actor_dict['x']),
         y=float(actor_dict['y']),
-        z=float(actor_dict['z'])
+        z=float(actor_dict['z']),
     )
     return location
 
@@ -47,8 +49,10 @@ class BlockedIntersection(BasicScenario):
     the ego performs a turn only to find out that the end is blocked by another vehicle.
     """
 
-    def __init__(self, world, ego_vehicles, config, debug_mode=False, criteria_enable=True,
-                 timeout=180):
+    def __init__(
+        self, world, ego_vehicles, config, debug_mode=False, criteria_enable=True,
+        timeout=180,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -68,12 +72,14 @@ class BlockedIntersection(BasicScenario):
 
         self._blocker_transform = None
 
-        super().__init__("BlockedIntersection",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "BlockedIntersection",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
         """
@@ -87,7 +93,7 @@ class BlockedIntersection(BasicScenario):
         # Spawn the blocker vehicle
         blocker = CarlaDataProvider.request_new_actor(
             "vehicle.*.*", self._blocker_transform,
-            attribute_filter={'base_type': 'car', 'has_lights': True, 'special_type': ''}
+            attribute_filter={'base_type': 'car', 'has_lights': True, 'special_type': ''},
         )
         if blocker is None:
             raise Exception("Couldn't spawn the blocker vehicle")
@@ -107,24 +113,30 @@ class BlockedIntersection(BasicScenario):
         sequence = py_trees.composites.Sequence(name="BlockedIntersection")
 
         if self.route_mode:
-            sequence.add_child(HandleJunctionScenario(
-                clear_junction=True,
-                clear_ego_entry=True,
-                remove_entries=[],
-                remove_exits=[],
-                stop_entries=True,
-                extend_road_exit=0
-            ))
+            sequence.add_child(
+                HandleJunctionScenario(
+                    clear_junction=True,
+                    clear_ego_entry=True,
+                    remove_entries=[],
+                    remove_exits=[],
+                    stop_entries=True,
+                    extend_road_exit=0,
+                ),
+            )
         # Ego go behind the blocker
         main_behavior = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE,
+        )
         main_behavior.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
 
         behavior = py_trees.composites.Sequence(name="Approach and Wait")
         behavior.add_child(ActorTransformSetter(self.other_actors[0], self._blocker_transform, True))
         behavior.add_child(HandBrakeVehicle(self.other_actors[0], 1))
-        behavior.add_child(InTriggerDistanceToVehicle(
-            self.other_actors[-1], self.ego_vehicles[0], self._trigger_distance))
+        behavior.add_child(
+            InTriggerDistanceToVehicle(
+            self.other_actors[-1], self.ego_vehicles[0], self._trigger_distance,
+            ),
+        )
         behavior.add_child(Idle(self._stop_time))
         main_behavior.add_child(behavior)
 

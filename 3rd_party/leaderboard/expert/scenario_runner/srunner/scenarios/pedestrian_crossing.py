@@ -13,11 +13,13 @@ import py_trees
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
     ActorDestroy, ActorTransformSetter, Idle, KeepVelocity,
-    MovePedestrianWithEgo, WaitForever)
+    MovePedestrianWithEgo, WaitForever,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import \
     CollisionTest
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
-    DriveDistance, InTimeToArrivalToLocation, InTriggerDistanceToLocation)
+    DriveDistance, InTimeToArrivalToLocation, InTriggerDistanceToLocation,
+)
 from srunner.scenarios.basic_scenario import BasicScenario
 from srunner.tools.background_manager import HandleJunctionScenario
 
@@ -29,7 +31,7 @@ def convert_dict_to_location(actor_dict):
     location = carla.Location(
         x=float(actor_dict['x']),
         y=float(actor_dict['y']),
-        z=float(actor_dict['z'])
+        z=float(actor_dict['z']),
     )
     return location
 
@@ -64,19 +66,21 @@ class PedestrianCrossing(BasicScenario):
         self._walker_data = [
             {'x': 0.4, 'y': 1.5, 'z': 1.2, 'yaw': 270},
             {'x': 1, 'y': 2.5, 'z': 1.2, 'yaw': 270},
-            {'x': 1.6, 'y': 0.5, 'z': 1.2, 'yaw': 270}
+            {'x': 1.6, 'y': 0.5, 'z': 1.2, 'yaw': 270},
         ]
 
         for walker_data in self._walker_data:
             walker_data['idle_time'] = self._rng.uniform(0, 1.5)
             walker_data['speed'] = self._rng.uniform(1.3, 2.0)
 
-        super().__init__("PedestrianCrossing",
-                          ego_vehicles,
-                          config,
-                          world,
-                          debug_mode,
-                          criteria_enable=criteria_enable)
+        super().__init__(
+            "PedestrianCrossing",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _get_walker_transform(self, wp, displacement):
         disp_x = displacement['x']
@@ -91,7 +95,7 @@ class PedestrianCrossing(BasicScenario):
         spawn_loc = wp.transform.location + carla.Location(
             disp_x * start_vec.x + disp_y * start_right_vec.x,
             disp_x * start_vec.y + disp_y * start_right_vec.y,
-            disp_x * start_vec.z + disp_y * start_right_vec.z + disp_z
+            disp_x * start_vec.z + disp_y * start_right_vec.z + disp_z,
         )
 
         spawn_rotation = wp.transform.rotation
@@ -153,14 +157,16 @@ class PedestrianCrossing(BasicScenario):
         """
         sequence = py_trees.composites.Sequence(name="PedestrianCrossing")
         if self.route_mode:
-            sequence.add_child(HandleJunctionScenario(
-                clear_junction=False,
-                clear_ego_entry=True,
-                remove_entries=[],
-                remove_exits=[],
-                stop_entries=False,
-                extend_road_exit=0
-            ))
+            sequence.add_child(
+                HandleJunctionScenario(
+                    clear_junction=False,
+                    clear_ego_entry=True,
+                    remove_entries=[],
+                    remove_exits=[],
+                    stop_entries=False,
+                    extend_road_exit=0,
+                ),
+            )
 
         for walker_actor, walker_data in zip(self.other_actors, self._walker_data):
             sequence.add_child(ActorTransformSetter(walker_actor, walker_data['transform'], True))
@@ -169,22 +175,33 @@ class PedestrianCrossing(BasicScenario):
 
         # Wait until ego is close to the adversary
         trigger_adversary = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart")
-        trigger_adversary.add_child(InTimeToArrivalToLocation(
-            self.ego_vehicles[0], self._reaction_time, collision_location))
-        trigger_adversary.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], collision_location, self._min_trigger_dist))
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart",
+        )
+        trigger_adversary.add_child(
+            InTimeToArrivalToLocation(
+            self.ego_vehicles[0], self._reaction_time, collision_location,
+            ),
+        )
+        trigger_adversary.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], collision_location, self._min_trigger_dist,
+            ),
+        )
         sequence.add_child(trigger_adversary)
 
         # Move the walkers
         main_behavior = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL, name="WalkerMovement")
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL, name="WalkerMovement",
+        )
 
         for walker_actor, walker_data in zip(self.other_actors, self._walker_data):
             walker_sequence = py_trees.composites.Sequence(name="WalkerCrossing")
             walker_sequence.add_child(Idle(walker_data['idle_time']))
-            walker_sequence.add_child(KeepVelocity(
-                walker_actor, walker_data['speed'], False, walker_data['duration'], walker_data['distance']))
+            walker_sequence.add_child(
+                KeepVelocity(
+                walker_actor, walker_data['speed'], False, walker_data['duration'], walker_data['distance'],
+                ),
+            )
             walker_sequence.add_child(ActorDestroy(walker_actor, name="DestroyAdversary"))
             walker_sequence.add_child(WaitForever())
 
@@ -239,7 +256,8 @@ class PedestrianCrossing(BasicScenario):
             return trigger_tree
 
         parallel = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="ScenarioTrigger")
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="ScenarioTrigger",
+        )
 
         for i, walker in enumerate(reversed(self.other_actors)):
             parallel.add_child(MovePedestrianWithEgo(self.ego_vehicles[0], walker, 100))

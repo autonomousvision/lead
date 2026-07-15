@@ -45,7 +45,7 @@ SCENARIO_TYPES = {
         ["distance", "value"],
         ["direction", "value"],
         ["blocker_model", "value"],
-        ["crossing_angle", "value"]
+        ["crossing_angle", "value"],
     ],
     "ParkingCrossingPedestrian": [
         ["distance", "value"],

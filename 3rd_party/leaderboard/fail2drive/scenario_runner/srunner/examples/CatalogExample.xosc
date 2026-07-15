@@ -31,7 +31,7 @@
   </RoadNetwork>
   <Entities>
     <ScenarioObject name="hero">
-      <CatalogReference catalogName="VehicleCatalog" entryName="vehicle.volkswagen.t2"/> 
+      <CatalogReference catalogName="VehicleCatalog" entryName="vehicle.volkswagen.t2"/>
     </ScenarioObject>
     <ScenarioObject name="vehicle">
       <CatalogReference catalogName="VehicleCatalog" entryName="vehicle.tesla.model3">

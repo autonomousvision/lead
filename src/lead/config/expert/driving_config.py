@@ -36,8 +36,6 @@ class ExpertDrivingConfig(ConfigNode):
     max_blocked_ticks: int = 170
     # Minimum walker speed in m/s
     min_walker_speed: float = 0.5
-    # Maximum acceleration in meters per tick (1.9 m/tick)
-    longitudinal_max_accelerations: float = 1.89
 
     @property
     def fps(self) -> float:

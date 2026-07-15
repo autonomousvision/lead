@@ -1,13 +1,6 @@
-#!/usr/bin/env python
-"""
-Ground plane removal from a point cloud. What this algorithm does:
-0. Choose a set of centers.
-1. Divide the point cloud into radial segments around each center.
-2. For each radial segment, fit a ground plane iteratively.
-3. Remove points that are close to the ground plane.
-4. Return the union of all ground masks of every radial segment.
-5. Return the final ground mask which is the union of all ground masks of every center.
-"""
+"""Ground plane removal from a point cloud: over a grid of centers, split the
+surrounding points into radial segments, iteratively fit a ground plane per
+segment, and return the union of the ground masks."""
 
 import jaxtyping as jt
 import numpy as np
@@ -16,222 +9,20 @@ from numba import njit, prange
 
 from lead.config import ExpertConfig
 
-
-@njit(cache=True)
-def extract_initial_seeds(P_segment, center, Th_center, N_LPR, Th_seeds):
-    """Extract initial seed points for ground plane estimation. Choose the lowest points near center."""
-    dist = np.abs(P_segment[:, 0] - center[0]) + np.abs(
-        P_segment[:, 1] - center[1],
-    )  # L1 distance
-    P_near_center = P_segment[dist <= Th_center]
-    P_sorted = P_near_center[np.argsort(P_near_center[:, 2])]
-    if len(P_sorted) < N_LPR:
-        return np.empty((0, 3))  # Return empty array if not enough points
-    LPR_height = np.median(P_sorted[:N_LPR, 2])
-    return P_sorted[np.abs(P_sorted[:, 2] - LPR_height) < Th_seeds]
+# Points within 20 m (L1) of a center required to fit planes around it.
+_MIN_POINTS_NEAR_CENTER = 3
+# Ground percentile below which points are always marked as ground.
+_GROUND_PERCENTILE = 30.0
 
 
-@njit(cache=True)
-def estimate_plane(P_g):
-    """Estimate plane coefficients with least square."""
-    x_coords = P_g[:, 0]
-    y_coords = P_g[:, 1]
-    ones = np.ones(P_g.shape[0], dtype=np.float64)
-    A = np.column_stack((x_coords, y_coords, ones))
-    b = P_g[:, 2]
-    A = np.ascontiguousarray(A)
-    b = np.ascontiguousarray(b)
-    coeffs = np.linalg.solve(A.T @ A, A.T @ b)  # Solve (A^T A) x = A^T b
-    return coeffs
-
-
-@njit(cache=True)
-def height_difference_to_plane(plane, P):
-    """Calculate height differences to the estimated plane."""
-    a, b, d = plane
-    plane_heights = a * P[:, 0] + b * P[:, 1] + d
-    return (P[:, 2] - plane_heights) / np.sqrt(a**2 + b**2 + 1)
-
-
-@njit(cache=True)
-def fit_plane_on_radial_segment(
-    P_segment,
-    center,
-    N_iter,
-    N_LPR,
-    Th_seeds,
-    Th_dist,
-    Th_center,
-):
-    """Fit ground plane for a radial_segment iteratively."""
-    if len(P_segment) < 3:
-        return np.zeros(P_segment.shape[0], dtype=np.bool_)
-    P_g = extract_initial_seeds(P_segment, center, Th_center, N_LPR, Th_seeds)
-    if len(P_g) < 3:
-        return np.zeros(P_segment.shape[0], dtype=np.bool_)
-    for _ in range(N_iter):
-        try:
-            plane_model = estimate_plane(P_g)
-        except:  #
-            return np.zeros(P_segment.shape[0], dtype=np.bool_)
-        distances = height_difference_to_plane(plane_model, P_segment)
-        is_ground = distances < Th_dist
-        P_g = P_segment[is_ground]
-    return is_ground | (
-        P_segment[:, 2] < np.percentile(P_segment[:, 2], q=30)
-    )  # Discard points below 30th percentile. TODO: parametrize this.
-
-
-@njit(cache=True)
-def divide_plane_into_radial_segments(P, center, n_segments):
-    """Divide points into angular radial_segments."""
-    shifted_points = P[:, :2] - center[:2]
-    angles = np.arctan2(shifted_points[:, 1], shifted_points[:, 0])
-    angle_step = 2 * np.pi / n_segments
-
-    radial_segments = []
-    segments_point_indices = []
-    loop_range = range(n_segments)
-    for i in loop_range:
-        min_angle = -np.pi + i * angle_step
-        max_angle = min_angle + angle_step
-        segment_mask = (angles >= min_angle) & (angles < max_angle)
-        radial_segments.append(P[segment_mask])
-        segments_point_indices.append(np.where(segment_mask)[0])
-    return radial_segments, segments_point_indices
-
-
-@njit(cache=True)
-def remove_ground_around_a_center(
-    P,
-    center,
-    n_segments,
-    N_iter,
-    N_LPR,
-    Th_seeds,
-    Th_dist,
-    Th_center,
-):
-    """Fit a ground plane for each radial segment around a center."""
-    radial_segments, segments_point_indices = divide_plane_into_radial_segments(
-        P,
-        center,
-        n_segments,
-    )
-    plane_ground_mask = np.zeros(P.shape[0], dtype=np.bool_)
-    loop_range = range(len(radial_segments))
-    for i in loop_range:
-        radial_segment, segment_point_indices = (
-            radial_segments[i],
-            segments_point_indices[i],
-        )
-        radial_segment_ground_mask = fit_plane_on_radial_segment(
-            radial_segment,
-            center,
-            N_iter,
-            N_LPR,
-            Th_seeds,
-            Th_dist,
-            Th_center,
-        )
-        plane_ground_mask[segment_point_indices] = radial_segment_ground_mask
-    return plane_ground_mask
-
-
-@njit(cache=True)
-def fit_ground(
-    P,
-    centers,
-    n_segments,
-    N_iter,
-    N_LPR,
-    Th_seeds,
-    Th_dist,
-    Th_center,
-    max_r,
-    min_r,
-):
-    """Fit ground plane for each center, return the conjunction of ground masks.."""
-    n_points = P.shape[0]
-    union_ground_mask = np.zeros(n_points, dtype=np.bool_)
-    n_centers = centers.shape[0]
-    loop_range = range(n_centers)
-    for i in loop_range:
-        center = centers[i]
-        distances_to_center = np.sum(
-            np.abs(P[:, :2] - center[:2]),
-            axis=1,
-        )  # L1 distance
-        if (
-            np.sum(distances_to_center < 20) < 3
-        ):  # If there are less than 5 points within 20m, skip. TODO: parametrize this.
-            continue
-        proximity_mask = (distances_to_center < max_r) & (
-            distances_to_center > min_r
-        )  # Only consider points within a certain radius
-        points_within_radius = P[proximity_mask]
-        center_ground_mask = remove_ground_around_a_center(
-            points_within_radius,
-            center,
-            n_segments,
-            N_iter,
-            N_LPR,
-            Th_seeds,
-            Th_dist,
-            Th_center,
-        )
-        union_ground_mask[proximity_mask] |= center_ground_mask
-    return union_ground_mask
-
-
-@njit(parallel=True, cache=True)
-def fit_ground_parallel(
-    P,
-    centers,
-    n_segments,
-    N_iter,
-    N_LPR,
-    Th_seeds,
-    Th_dist,
-    Th_center,
-    max_r,
-    min_r,
-):
-    """Fit ground plane for each center, return the conjunction of ground masks.."""
-    n_points = P.shape[0]
-    union_ground_mask = np.zeros(n_points, dtype=np.bool_)
-    n_centers = centers.shape[0]
-    loop_range = prange(n_centers)
-    for i in loop_range:
-        center = centers[i]
-        distances_to_center = np.sum(
-            np.abs(P[:, :2] - center[:2]),
-            axis=1,
-        )  # L1 distance
-        if (
-            np.sum(distances_to_center < 20) < 3
-        ):  # If there are less than 5 points within 20m, skip. TODO: parametrize this.
-            continue
-        proximity_mask = (distances_to_center < max_r) & (
-            distances_to_center > min_r
-        )  # Only consider points within a certain radius
-        points_within_radius = P[proximity_mask]
-        center_ground_mask = remove_ground_around_a_center(
-            points_within_radius,
-            center,
-            n_segments,
-            N_iter,
-            N_LPR,
-            Th_seeds,
-            Th_dist,
-            Th_center,
-        )
-        union_ground_mask[proximity_mask] |= center_ground_mask
-    return union_ground_mask
-
-
-def generate_center_grid(center_resolution, min_x, max_x, min_y, max_y):
-    """Generate a grid of centers for ground plane fitting.."""
+def generate_center_grid(
+    center_resolution: float,
+    min_x: float,
+    max_x: float,
+    min_y: float,
+    max_y: float,
+) -> jt.Float[npt.NDArray, "c 2"]:
+    """Generate a grid of centers for ground plane fitting."""
     x_values = np.arange(
         min_x - center_resolution // 2,
         max_x + center_resolution,
@@ -247,6 +38,308 @@ def generate_center_grid(center_resolution, min_x, max_x, min_y, max_y):
     return np.array(grid_points).reshape(-1, 2)
 
 
+@njit(cache=True)
+def _median_of_lowest(values: jt.Float[npt.NDArray, " m"], count: int) -> float:
+    """Median of the ``count`` smallest values, via partial selection."""
+    if count % 2 == 0:
+        partitioned = np.partition(values, count // 2)
+        upper = partitioned[count // 2]
+        lower = np.max(partitioned[: count // 2])
+        return 0.5 * (lower + upper)
+    partitioned = np.partition(values, count // 2)
+    return partitioned[count // 2]
+
+
+@njit(cache=True)
+def _percentile(values: jt.Float[npt.NDArray, " m"], q: float) -> float:
+    """Linear-interpolation percentile via partial selection."""
+    position = (values.shape[0] - 1) * (q / 100.0)
+    upper_index = int(np.ceil(position))
+    fraction = position - np.floor(position)
+    partitioned = np.partition(values, upper_index)
+    upper = partitioned[upper_index]
+    if fraction == 0.0:
+        return upper
+    lower = np.max(partitioned[:upper_index])
+    return lower * (1.0 - fraction) + upper * fraction
+
+
+@njit(cache=True)
+def _fit_segment(
+    x: jt.Float[npt.NDArray, " m"],
+    y: jt.Float[npt.NDArray, " m"],
+    z: jt.Float[npt.NDArray, " m"],
+    distances: jt.Float[npt.NDArray, " m"],
+    ground: jt.Bool[npt.NDArray, " m"],
+    N_iter: int,
+    N_LPR: int,
+    Th_seeds: float,
+    Th_dist: float,
+    Th_center: float,
+) -> None:
+    """Iterative ground-plane fit of one radial segment, writing into ``ground``.
+
+    Seeds from the median height of the ``N_LPR`` lowest near-center points,
+    refined ``N_iter`` times, plus everything below the segment's 30th height
+    percentile.
+    """
+    num_points = x.shape[0]
+    if num_points < _MIN_POINTS_NEAR_CENTER:
+        return
+
+    num_candidates = 0
+    for k in range(num_points):
+        if distances[k] <= Th_center:
+            num_candidates += 1
+    if num_candidates < N_LPR:
+        return
+    candidate_z = np.empty(num_candidates, np.float64)
+    index = 0
+    for k in range(num_points):
+        if distances[k] <= Th_center:
+            candidate_z[index] = z[k]
+            index += 1
+    lpr_height = _median_of_lowest(candidate_z, N_LPR)
+
+    # Initial seeds: near-center points close to the lowest-point median
+    seeds = np.empty(num_points, np.bool_)
+    num_seeds = 0
+    for k in range(num_points):
+        seeds[k] = distances[k] <= Th_center and abs(z[k] - lpr_height) < Th_seeds
+        if seeds[k]:
+            num_seeds += 1
+    if num_seeds < _MIN_POINTS_NEAR_CENTER:
+        return
+
+    normal_matrix = np.empty((3, 3), np.float64)
+    rhs = np.empty(3, np.float64)
+    for _ in range(N_iter):
+        sxx = sxy = sx = syy = sy = s1 = sxz = syz = sz = 0.0
+        for k in range(num_points):
+            if not seeds[k]:
+                continue
+            sxx += x[k] * x[k]
+            sxy += x[k] * y[k]
+            sx += x[k]
+            syy += y[k] * y[k]
+            sy += y[k]
+            s1 += 1.0
+            sxz += x[k] * z[k]
+            syz += y[k] * z[k]
+            sz += z[k]
+        normal_matrix[0, 0] = sxx
+        normal_matrix[0, 1] = sxy
+        normal_matrix[0, 2] = sx
+        normal_matrix[1, 0] = sxy
+        normal_matrix[1, 1] = syy
+        normal_matrix[1, 2] = sy
+        normal_matrix[2, 0] = sx
+        normal_matrix[2, 1] = sy
+        normal_matrix[2, 2] = s1
+        rhs[0] = sxz
+        rhs[1] = syz
+        rhs[2] = sz
+        try:
+            coefficients = np.linalg.solve(normal_matrix, rhs)
+        except:
+            return
+        plane_a, plane_b, plane_d = (
+            coefficients[0],
+            coefficients[1],
+            coefficients[2],
+        )
+        denominator = np.sqrt(plane_a**2 + plane_b**2 + 1)
+        for k in range(num_points):
+            height = plane_a * x[k] + plane_b * y[k] + plane_d
+            seeds[k] = (z[k] - height) / denominator < Th_dist
+
+    percentile_height = _percentile(z, _GROUND_PERCENTILE)
+    for k in range(num_points):
+        ground[k] = seeds[k] or z[k] < percentile_height
+
+
+@njit(cache=True)
+def _process_center(
+    P: jt.Float[npt.NDArray, "n 3"],
+    center_x: float,
+    center_y: float,
+    member_point: jt.Int[npt.NDArray, " e"],
+    member_ground: jt.Bool[npt.NDArray, " e"],
+    base: int,
+    num_members: int,
+    min_angles: jt.Float[npt.NDArray, " s"],
+    max_angles: jt.Float[npt.NDArray, " s"],
+    n_segments: int,
+    N_iter: int,
+    N_LPR: int,
+    Th_seeds: float,
+    Th_dist: float,
+    Th_center: float,
+    max_r: float,
+    min_r: float,
+) -> None:
+    """Fit the radial segments of one center, writing member results in place."""
+    num_points = P.shape[0]
+
+    member_x = np.empty(num_members, np.float64)
+    member_y = np.empty(num_members, np.float64)
+    member_z = np.empty(num_members, np.float64)
+    member_distance = np.empty(num_members, np.float64)
+    segment_of_member = np.empty(num_members, np.int64)
+    segment_counts = np.zeros(n_segments, np.int64)
+    angle_step = max_angles[0] - min_angles[0]
+
+    index = 0
+    for k in range(num_points):
+        distance = abs(P[k, 0] - center_x) + abs(P[k, 1] - center_y)
+        if not (min_r < distance < max_r):
+            continue
+        member_point[base + index] = k
+        member_x[index] = P[k, 0]
+        member_y[index] = P[k, 1]
+        member_z[index] = P[k, 2]
+        member_distance[index] = distance
+
+        # Segment with the reference boundary floats; on the (ulp-rare) overlap
+        # of adjacent segments the higher one wins, like the reference loop
+        angle = np.arctan2(P[k, 1] - center_y, P[k, 0] - center_x)
+        guess = int((angle + np.pi) / angle_step)
+        segment = -1
+        high = min(guess + 1, n_segments - 1)
+        low = max(guess - 1, 0)
+        for candidate in range(high, low - 1, -1):
+            if min_angles[candidate] <= angle < max_angles[candidate]:
+                segment = candidate
+                break
+        segment_of_member[index] = segment
+        if segment >= 0:
+            segment_counts[segment] += 1
+        index += 1
+
+    # Group members by segment (stable counting sort keeps the point order)
+    segment_starts = np.zeros(n_segments + 1, np.int64)
+    for s in range(n_segments):
+        segment_starts[s + 1] = segment_starts[s] + segment_counts[s]
+    fill = segment_starts[:-1].copy()
+    member_of_slot = np.empty(num_members, np.int64)
+    for k in range(num_members):
+        segment = segment_of_member[k]
+        if segment < 0:
+            continue
+        member_of_slot[fill[segment]] = k
+        fill[segment] += 1
+
+    for s in range(n_segments):
+        start, end = segment_starts[s], segment_starts[s + 1]
+        size = end - start
+        if size == 0:
+            continue
+        x = np.empty(size, np.float64)
+        y = np.empty(size, np.float64)
+        z = np.empty(size, np.float64)
+        distances = np.empty(size, np.float64)
+        ground = np.zeros(size, np.bool_)
+        for slot in range(size):
+            k = member_of_slot[start + slot]
+            x[slot] = member_x[k]
+            y[slot] = member_y[k]
+            z[slot] = member_z[k]
+            distances[slot] = member_distance[k]
+        _fit_segment(
+            x,
+            y,
+            z,
+            distances,
+            ground,
+            N_iter,
+            N_LPR,
+            Th_seeds,
+            Th_dist,
+            Th_center,
+        )
+        for slot in range(size):
+            member_ground[base + member_of_slot[start + slot]] = ground[slot]
+
+
+@njit(parallel=True, cache=True)
+def fit_ground(
+    P: jt.Float[npt.NDArray, "n 3"],
+    centers: jt.Float[npt.NDArray, "c 2"],
+    n_segments: int,
+    N_iter: int,
+    N_LPR: int,
+    Th_seeds: float,
+    Th_dist: float,
+    Th_center: float,
+    max_r: float,
+    min_r: float,
+) -> jt.Bool[npt.NDArray, " n"]:
+    """Fit ground planes around all centers, returning the union of ground masks.
+
+    Centers run in parallel into disjoint slices of flat member arrays; the
+    final union is a serial scatter, so the result is deterministic.
+    """
+    num_points = P.shape[0]
+    num_centers = centers.shape[0]
+
+    ring_counts = np.zeros(num_centers, np.int64)
+    for c in prange(num_centers):
+        center_x, center_y = centers[c, 0], centers[c, 1]
+        near = 0
+        ring = 0
+        for k in range(num_points):
+            distance = abs(P[k, 0] - center_x) + abs(P[k, 1] - center_y)
+            if distance < 20.0:
+                near += 1
+            if min_r < distance < max_r:
+                ring += 1
+        if near >= _MIN_POINTS_NEAR_CENTER:
+            ring_counts[c] = ring
+
+    offsets = np.zeros(num_centers + 1, np.int64)
+    for c in range(num_centers):
+        offsets[c + 1] = offsets[c] + ring_counts[c]
+    num_members = offsets[num_centers]
+    member_point = np.zeros(num_members, np.int64)
+    member_ground = np.zeros(num_members, np.bool_)
+
+    angle_step = 2 * np.pi / n_segments
+    min_angles = np.empty(n_segments, np.float64)
+    max_angles = np.empty(n_segments, np.float64)
+    for s in range(n_segments):
+        min_angles[s] = -np.pi + s * angle_step
+        max_angles[s] = min_angles[s] + angle_step
+
+    for c in prange(num_centers):
+        if ring_counts[c] == 0:
+            continue
+        _process_center(
+            P,
+            centers[c, 0],
+            centers[c, 1],
+            member_point,
+            member_ground,
+            offsets[c],
+            ring_counts[c],
+            min_angles,
+            max_angles,
+            n_segments,
+            N_iter,
+            N_LPR,
+            Th_seeds,
+            Th_dist,
+            Th_center,
+            max_r,
+            min_r,
+        )
+
+    union_ground_mask = np.zeros(num_points, dtype=np.bool_)
+    for e in range(num_members):
+        if member_ground[e]:
+            union_ground_mask[member_point[e]] = True
+    return union_ground_mask
+
+
 def remove_ground(
     P: jt.Float[npt.NDArray, "n 3"],
     config: ExpertConfig,
@@ -259,7 +352,6 @@ def remove_ground(
     min_r: float = 1.0,
     max_r: float = 32.0,
     center_resolution: float = 28.0,
-    parallel: bool = False,
 ) -> jt.Bool[npt.NDArray, " n"]:
     """Remove ground points from a point cloud.
 
@@ -275,7 +367,6 @@ def remove_ground(
         min_r: Minimum radius for selecting points around a center.
         max_r: Maximum radius for selecting points around a center.
         center_resolution: Resolution for generating centers.
-        parallel: Whether to use parallel processing.
     Returns:
         Boolean mask shape (n,) indicating whether a point is on a ground or not.
             True indicates ground point.
@@ -289,32 +380,16 @@ def remove_ground(
         config.data_collection.max_x_meter,
         config.data_collection.min_y_meter,
         config.data_collection.max_y_meter,
+    ).astype(np.float64)
+    return fit_ground(
+        P,
+        centers,
+        n_segments,
+        N_iter,
+        N_LPR,
+        Th_seeds,
+        Th_dist,
+        Th_center,
+        max_r,
+        min_r,
     )
-    if parallel:
-        mask = fit_ground_parallel(
-            P,
-            centers,
-            n_segments,
-            N_iter,
-            N_LPR,
-            Th_seeds,
-            Th_dist,
-            Th_center,
-            max_r,
-            min_r,
-        )
-    else:
-        mask = fit_ground(
-            P,
-            centers,
-            n_segments,
-            N_iter,
-            N_LPR,
-            Th_seeds,
-            Th_dist,
-            Th_center,
-            max_r,
-            min_r,
-        )
-    # mask = mask | ((P[:, 0] < 2.45) & (-2.45 < P[:, 0]) & (P[:, 1] < 1.06) & (-1.06 < P[:, 1]))  # Remove points inside ego
-    return mask

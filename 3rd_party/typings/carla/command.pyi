@@ -47,9 +47,9 @@ class SpawnActor:
 		"""
 
 
-		:param blueprint: (carla.ActorBlueprint) 
+		:param blueprint: (carla.ActorBlueprint)
 
-		:param transform: (carla.Transform) 
+		:param transform: (carla.Transform)
 		"""
 		...
 
@@ -57,11 +57,11 @@ class SpawnActor:
 		"""
 
 
-		:param blueprint: (carla.ActorBlueprint) 
+		:param blueprint: (carla.ActorBlueprint)
 
-		:param transform: (carla.Transform) 
+		:param transform: (carla.Transform)
 
-		:param parent: (str) 
+		:param parent: (str)
 		"""
 		...
 
@@ -110,7 +110,7 @@ class ApplyVehiclePhysicsControl:
 
 		:param actor: (str) Actor or its ID to whom the command will be applied to.
 
-		:param physics_control: (carla.VehiclePhysicsControl) 
+		:param physics_control: (carla.VehiclePhysicsControl)
 		"""
 		...
 
@@ -133,7 +133,7 @@ class ApplyVehicleControl:
 
 		:param actor: (str) Actor or its ID to whom the command will be applied to.
 
-		:param control: (carla.VehicleControl) 
+		:param control: (carla.VehicleControl)
 		"""
 		...
 
@@ -156,7 +156,7 @@ class ApplyVehicleAckermannControl:
 
 		:param actor: (str) Actor or its ID to whom the command will be applied to.
 
-		:param control: (carla.AckermannVehicleControl) 
+		:param control: (carla.AckermannVehicleControl)
 		"""
 		...
 
@@ -179,7 +179,7 @@ class ApplyWalkerControl:
 
 		:param actor: (str) Actor or its ID to whom the command will be applied to.
 
-		:param control: (carla.WalkerControl) 
+		:param control: (carla.WalkerControl)
 		"""
 		...
 
@@ -202,7 +202,7 @@ class ApplyTransform:
 
 		:param actor: (str) Actor or its ID to whom the command will be applied to.
 
-		:param transform: (carla.Transform) 
+		:param transform: (carla.Transform)
 		"""
 		...
 
@@ -228,9 +228,9 @@ class ApplyWalkerState:
 
 		:param actor: (str) Actor or its ID to whom the command will be applied to.
 
-		:param transform: (carla.Transform) 
+		:param transform: (carla.Transform)
 
-		:param speed: (float) 
+		:param speed: (float)
 		"""
 		...
 
@@ -299,7 +299,7 @@ class ApplyImpulse:
 
 		:param actor: (str) Actor or its ID to whom the command will be applied to.
 
-		:param impulse: (carla.Vector3D) 
+		:param impulse: (carla.Vector3D)
 		"""
 		...
 
@@ -322,7 +322,7 @@ class ApplyForce:
 
 		:param actor: (str) Actor or its ID to whom the command will be applied to.
 
-		:param force: (carla.Vector3D) 
+		:param force: (carla.Vector3D)
 		"""
 		...
 
@@ -345,7 +345,7 @@ class ApplyAngularImpulse:
 
 		:param actor: (str) Actor or its ID to whom the command will be applied to.
 
-		:param impulse: (carla.Vector3D) 
+		:param impulse: (carla.Vector3D)
 		"""
 		...
 
@@ -368,7 +368,7 @@ class ApplyTorque:
 
 		:param actor: (str) Actor or its ID to whom the command will be applied to.
 
-		:param torque: (carla.Vector3D) 
+		:param torque: (carla.Vector3D)
 		"""
 		...
 
@@ -391,7 +391,7 @@ class SetSimulatePhysics:
 
 		:param actor: (str) Actor or its ID to whom the command will be applied to.
 
-		:param enabled: (bool) 
+		:param enabled: (bool)
 		"""
 		...
 
@@ -417,7 +417,7 @@ class SetAutopilot:
 
 		:param actor: (str) Actor or its ID to whom the command will be applied to.
 
-		:param enabled: (bool) 
+		:param enabled: (bool)
 
 		:param port: (np.uint16) The Traffic Manager port where the vehicle is to be registered or unlisted. If __None__ is passed, it will consider a TM at default port `8000`.
 		"""
@@ -465,7 +465,7 @@ class SetEnableGravity:
 
 		:param actor: (str) Actor or Actor ID to which the command will be applied to.
 
-		:param enabled: (bool) 
+		:param enabled: (bool)
 		"""
 		...
 
@@ -488,9 +488,6 @@ class ShowDebugTelemetry:
 
 		:param actor: (str) Actor or Actor ID to which the command will be applied to.
 
-		:param enabled: (bool) 
+		:param enabled: (bool)
 		"""
 		...
-
-
-

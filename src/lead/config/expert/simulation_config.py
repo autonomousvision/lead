@@ -24,6 +24,9 @@ class SimulationConfig(ConfigNode):
     # Target point distances for route planning (in meters). From 3.0m to 10.0m with step of 0.25m
     tp_distances: list[float] = [i / 100 for i in range(300, 1001, 25)]
 
+    # If true localize with the Kalman filter, else with the raw noisy GPS.
+    use_kalman_filter: bool = True
+
     # Extent of the ego vehicle's bounding box in x direction
     ego_extent_x: float = 2.4508416652679443
     # Extent of the ego vehicle's bounding box in y direction
@@ -31,32 +34,7 @@ class SimulationConfig(ConfigNode):
     # Extent of the ego vehicle's bounding box in z direction
     ego_extent_z: float = 0.7553732395172119
 
-    # Minimum z coordinate of the safety box
-    safety_box_z_min: float = 0.5
-    # Maximum z coordinate of the safety box
-    safety_box_z_max: float = 1.5
-
     @property
     def carla_frame_rate(self) -> float:
         """CARLA frame rate in seconds."""
         return 1.0 / self.carla_fps
-
-    @property
-    def safety_box_y_min(self) -> float:
-        """Minimum y coordinate of the safety box relative to ego vehicle."""
-        return -self.ego_extent_y * 0.8
-
-    @property
-    def safety_box_y_max(self) -> float:
-        """Maximum y coordinate of the safety box relative to ego vehicle."""
-        return self.ego_extent_y * 0.8
-
-    @property
-    def safety_box_x_min(self) -> float:
-        """Minimum x coordinate of the safety box relative to ego vehicle."""
-        return self.ego_extent_x
-
-    @property
-    def safety_box_x_max(self) -> float:
-        """Maximum x coordinate of the safety box relative to ego vehicle."""
-        return self.ego_extent_x + 2.5

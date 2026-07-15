@@ -32,7 +32,7 @@ QUALIFIER_SENSORS_LIMITS = {
     'sensor.other.gnss': 1,
     'sensor.other.imu': 1,
     'sensor.opendrive_map': 1,
-    'sensor.speedometer': 1
+    'sensor.speedometer': 1,
 }
 SENSORS_LIMITS = {
     'sensor.camera.rgb': 8,
@@ -43,7 +43,7 @@ SENSORS_LIMITS = {
     'sensor.opendrive_map': 1,
     'sensor.speedometer': 1,
     'sensor.camera.depth': 8, # for data generation
-    'sensor.camera.semantic_segmentation': 8 # for data generation
+    'sensor.camera.semantic_segmentation': 8, # for data generation
 }
 ALLOWED_SENSORS = SENSORS_LIMITS.keys()
 
@@ -100,7 +100,8 @@ def validate_sensor_configuration(sensors, agent_track, selected_track):
         if 'x' in sensor and 'y' in sensor and 'z' in sensor:
             if math.sqrt(sensor['x']**2 + sensor['y']**2 + sensor['z']**2) > MAX_ALLOWED_RADIUS_SENSOR:
                 raise SensorConfigurationInvalid(
-                    "Illegal sensor extrinsics used for sensor '{}'. Max allowed radius is {}m".format(sensor['id'], MAX_ALLOWED_RADIUS_SENSOR))
+                    "Illegal sensor extrinsics used for sensor '{}'. Max allowed radius is {}m".format(sensor['id'], MAX_ALLOWED_RADIUS_SENSOR),
+                )
 
         # Check the amount of sensors
         if sensor['type'] in sensor_count:
@@ -117,9 +118,12 @@ def validate_sensor_configuration(sensors, agent_track, selected_track):
         if sensor_type in sensor_count and sensor_count[sensor_type] > max_instances_allowed:
             raise SensorConfigurationInvalid(
                 "Too many {} used! "
-                "Maximum number allowed is {}, but {} were requested.".format(sensor_type,
-                                                                              max_instances_allowed,
-                                                                              sensor_count[sensor_type]))
+                "Maximum number allowed is {}, but {} were requested.".format(
+                    sensor_type,
+                    max_instances_allowed,
+                    sensor_count[sensor_type],
+                ),
+            )
 
 
 class AgentWrapper(object):
@@ -165,11 +169,15 @@ class AgentWrapper(object):
             attributes['image_size_y'] = str(sensor_spec['height'])
             attributes['fov'] = str(sensor_spec['fov'])
 
-            sensor_location = carla.Location(x=sensor_spec['x'], y=sensor_spec['y'],
-                                             z=sensor_spec['z'])
-            sensor_rotation = carla.Rotation(pitch=sensor_spec['pitch'],
-                                             roll=sensor_spec['roll'],
-                                             yaw=sensor_spec['yaw'])
+            sensor_location = carla.Location(
+                x=sensor_spec['x'], y=sensor_spec['y'],
+                z=sensor_spec['z'],
+            )
+            sensor_rotation = carla.Rotation(
+                pitch=sensor_spec['pitch'],
+                roll=sensor_spec['roll'],
+                yaw=sensor_spec['yaw'],
+            )
 
         elif type_ == 'sensor.lidar.ray_cast':
             attributes['range'] = str(85)
@@ -187,11 +195,15 @@ class AgentWrapper(object):
             attributes['dropoff_intensity_limit'] = str(0.8)
             attributes['dropoff_zero_intensity'] = str(0.4)
 
-            sensor_location = carla.Location(x=sensor_spec['x'], y=sensor_spec['y'],
-                                             z=sensor_spec['z'])
-            sensor_rotation = carla.Rotation(pitch=sensor_spec['pitch'],
-                                             roll=sensor_spec['roll'],
-                                             yaw=sensor_spec['yaw'])
+            sensor_location = carla.Location(
+                x=sensor_spec['x'], y=sensor_spec['y'],
+                z=sensor_spec['z'],
+            )
+            sensor_rotation = carla.Rotation(
+                pitch=sensor_spec['pitch'],
+                roll=sensor_spec['roll'],
+                yaw=sensor_spec['yaw'],
+            )
 
         elif type_ == 'sensor.other.radar':
             attributes['horizontal_fov'] = str(sensor_spec['horizontal_fov'])  # degrees
@@ -199,12 +211,16 @@ class AgentWrapper(object):
             attributes['points_per_second'] = '1500'
             attributes['range'] = '100'  # meters
 
-            sensor_location = carla.Location(x=sensor_spec['x'],
-                                             y=sensor_spec['y'],
-                                             z=sensor_spec['z'])
-            sensor_rotation = carla.Rotation(pitch=sensor_spec['pitch'],
-                                             roll=sensor_spec['roll'],
-                                             yaw=sensor_spec['yaw'])
+            sensor_location = carla.Location(
+                x=sensor_spec['x'],
+                y=sensor_spec['y'],
+                z=sensor_spec['z'],
+            )
+            sensor_rotation = carla.Rotation(
+                pitch=sensor_spec['pitch'],
+                roll=sensor_spec['roll'],
+                yaw=sensor_spec['yaw'],
+            )
 
         elif type_ == 'sensor.other.gnss':
             if DATAGEN==0:
@@ -215,9 +231,11 @@ class AgentWrapper(object):
             attributes['noise_lat_bias'] = str(0.0)
             attributes['noise_lon_bias'] = str(0.0)
 
-            sensor_location = carla.Location(x=sensor_spec['x'],
-                                             y=sensor_spec['y'],
-                                             z=sensor_spec['z'])
+            sensor_location = carla.Location(
+                x=sensor_spec['x'],
+                y=sensor_spec['y'],
+                z=sensor_spec['z'],
+            )
             sensor_rotation = carla.Rotation()
 
         elif type_ == 'sensor.other.imu':
@@ -228,12 +246,16 @@ class AgentWrapper(object):
             attributes['noise_gyro_stddev_y'] = str(0.001)
             attributes['noise_gyro_stddev_z'] = str(0.001)
 
-            sensor_location = carla.Location(x=sensor_spec['x'],
-                                             y=sensor_spec['y'],
-                                             z=sensor_spec['z'])
-            sensor_rotation = carla.Rotation(pitch=sensor_spec['pitch'],
-                                             roll=sensor_spec['roll'],
-                                             yaw=sensor_spec['yaw'])
+            sensor_location = carla.Location(
+                x=sensor_spec['x'],
+                y=sensor_spec['y'],
+                z=sensor_spec['z'],
+            )
+            sensor_rotation = carla.Rotation(
+                pitch=sensor_spec['pitch'],
+                roll=sensor_spec['roll'],
+                yaw=sensor_spec['yaw'],
+            )
         sensor_transform = carla.Transform(sensor_location, sensor_rotation)
 
         return type_, id_, sensor_transform, attributes
@@ -292,7 +314,7 @@ class ROSAgentWrapper(AgentWrapper):
 
     SENSOR_TYPE_REMAPS = {
         "sensor.opendrive_map": "sensor.pseudo.opendrive_map",
-        "sensor.speedometer": "sensor.pseudo.speedometer"
+        "sensor.speedometer": "sensor.pseudo.speedometer",
     }
 
     def __init__(self, agent):

@@ -12,9 +12,11 @@ from __future__ import print_function
 import py_trees
 
 from srunner.scenarios.basic_scenario import BasicScenario
-from srunner.tools.background_manager import (ChangeRoadBehavior,
-                                              ChangeOppositeBehavior,
-                                              ChangeJunctionBehavior)
+from srunner.tools.background_manager import (
+    ChangeRoadBehavior,
+    ChangeOppositeBehavior,
+    ChangeJunctionBehavior,
+)
 
 def get_parameter(config, name):
     if name in config.other_parameters:
@@ -29,8 +31,10 @@ class BackgroundActivityParametrizer(BasicScenario):
     where we might want a different BA behavior.
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=90):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=90,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -52,12 +56,14 @@ class BackgroundActivityParametrizer(BasicScenario):
         self._junction_spawn_dist = get_parameter(config, "junction_spawn_dist")
         self._junction_source_perc = get_parameter(config, "junction_source_perc")
 
-        super().__init__("BackgroundActivityParametrizer",
-                          ego_vehicles,
-                          config,
-                          world,
-                          debug_mode,
-                          criteria_enable=criteria_enable)
+        super().__init__(
+            "BackgroundActivityParametrizer",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _create_behavior(self):
         """
@@ -67,10 +73,16 @@ class BackgroundActivityParametrizer(BasicScenario):
 
         sequence = py_trees.composites.Sequence()
         sequence.add_child(ChangeRoadBehavior(self._num_front_vehicles, self._num_back_vehicles, self._road_spawn_dist))
-        sequence.add_child(ChangeJunctionBehavior(
-            self._junction_source_dist, self._junction_max_actors, self._junction_spawn_dist, self._junction_source_perc))
-        sequence.add_child(ChangeOppositeBehavior(
-            self._opposite_source_dist, self._opposite_spawn_dist, self._opposite_active))
+        sequence.add_child(
+            ChangeJunctionBehavior(
+            self._junction_source_dist, self._junction_max_actors, self._junction_spawn_dist, self._junction_source_perc,
+            ),
+        )
+        sequence.add_child(
+            ChangeOppositeBehavior(
+            self._opposite_source_dist, self._opposite_spawn_dist, self._opposite_active,
+            ),
+        )
 
         return sequence
 

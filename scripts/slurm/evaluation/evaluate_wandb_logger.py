@@ -107,6 +107,7 @@ class WandBLogger:
                 )
             print(f"Logged evaluation results for record {carla_route_id} to wandb")
             return bool(self.metrics["scores/success"][route_idx])
+        return False
 
     def log_metrics_artifact(self):
         if is_on_slurm():

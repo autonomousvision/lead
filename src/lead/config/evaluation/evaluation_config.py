@@ -4,24 +4,17 @@ import os
 import pathlib
 
 from lead.config.evaluation.controller_config import ControllerConfig
-from lead.config.evaluation.heuristics_config import HeuristicsConfig
 from lead.config.evaluation.inference_config import InferenceConfig
 from lead.config.node import ConfigNode, child_node, overridable_property
 
 
 class EvaluationConfig(ConfigNode):
-    """Inference driving, weather overrides and which debug/demo outputs are produced."""
+    """Inference driving and which debug/demo outputs are produced."""
 
     inference = child_node(InferenceConfig)
     controller = child_node(ControllerConfig)
-    heuristics = child_node(HeuristicsConfig)
 
     # --- Evaluation Visualization Settings ---
-    # If not None, set a custom weather for evaluation, e.g. "ClearNoon"
-    custom_weather: str | None = None
-    # If true, use random weather
-    random_weather: bool = False
-
     # Frequency of frame production during evaluation
     produce_frame_frequency: int = 1
 

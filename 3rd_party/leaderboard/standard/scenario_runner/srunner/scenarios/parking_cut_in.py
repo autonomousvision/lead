@@ -13,12 +13,16 @@ import py_trees
 import carla
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorDestroy,
-                                                                      BasicAgentBehavior)
+from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
+    ActorDestroy,
+    BasicAgentBehavior,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import CollisionTest
-from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (InTriggerDistanceToLocation,
-                                                                               InTimeToArrivalToLocation,
-                                                                               DriveDistance)
+from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
+    InTriggerDistanceToLocation,
+    InTimeToArrivalToLocation,
+    DriveDistance,
+)
 from srunner.scenarios.basic_scenario import BasicScenario
 from srunner.tools.background_manager import LeaveSpaceInFront, ChangeRoadBehavior
 
@@ -56,12 +60,14 @@ class ParkingCutIn(BasicScenario):
         else:
             self._direction = "right"
 
-        super().__init__("ParkingCutIn",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "ParkingCutIn",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
         """
@@ -81,7 +87,8 @@ class ParkingCutIn(BasicScenario):
         self.parking_slots.append(parking_wp.transform.location)
 
         self._blocker_actor = CarlaDataProvider.request_new_actor(
-            'vehicle.*', parking_wp.transform, 'scenario no lights', attribute_filter={'base_type': 'car', 'generation': 2})
+            'vehicle.*', parking_wp.transform, 'scenario no lights', attribute_filter={'base_type': 'car', 'generation': 2},
+        )
         if not self._blocker_actor:
             raise ValueError("Couldn't spawn the parked actor")
         self._blocker_actor.apply_control(carla.VehicleControl(hand_brake=True))
@@ -104,7 +111,8 @@ class ParkingCutIn(BasicScenario):
         self.parking_slots.append(parking_wp.transform.location)
 
         self._parked_actor = CarlaDataProvider.request_new_actor(
-            'vehicle.*', parking_wp.transform, 'scenario', attribute_filter=self._bp_attributes)
+            'vehicle.*', parking_wp.transform, 'scenario', attribute_filter=self._bp_attributes,
+        )
         if not self._parked_actor:
             raise ValueError("Couldn't spawn the parked actor")
         self.other_actors.append(self._parked_actor)
@@ -122,9 +130,11 @@ class ParkingCutIn(BasicScenario):
         if self._direction == 'left':
             displacement_vector *= -1
 
-        new_location = wp.transform.location + carla.Location(x=displacement*displacement_vector.x,
-                                                              y=displacement*displacement_vector.y,
-                                                              z=displacement*displacement_vector.z)
+        new_location = wp.transform.location + carla.Location(
+            x=displacement*displacement_vector.x,
+            y=displacement*displacement_vector.y,
+            z=displacement*displacement_vector.z,
+        )
         new_location.z += 0.05  # Just in case, avoid collisions with the ground
         return new_location
 
@@ -141,11 +151,18 @@ class ParkingCutIn(BasicScenario):
 
         # Wait until ego is close to the adversary
         trigger_adversary = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart")
-        trigger_adversary.add_child(InTimeToArrivalToLocation(
-            self.ego_vehicles[0], self._reaction_time, collision_location))
-        trigger_adversary.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], collision_location, self._min_trigger_dist))
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart",
+        )
+        trigger_adversary.add_child(
+            InTimeToArrivalToLocation(
+            self.ego_vehicles[0], self._reaction_time, collision_location,
+            ),
+        )
+        trigger_adversary.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], collision_location, self._min_trigger_dist,
+            ),
+        )
         sequence.add_child(trigger_adversary)
 
         if self.route_mode:
@@ -153,7 +170,8 @@ class ParkingCutIn(BasicScenario):
 
         # Move the adversary
         cut_in = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="Cut in behavior")
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="Cut in behavior",
+        )
         cut_in.add_child(BasicAgentBehavior(self.other_actors[1], opt_dict={'ignore_traffic_lights': True}))
         cut_in.add_child(DriveDistance(self.other_actors[1], self._end_distance))
         sequence.add_child(cut_in)

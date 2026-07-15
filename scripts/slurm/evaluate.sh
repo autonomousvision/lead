@@ -12,7 +12,7 @@ set -x
 python3 scripts/slurm/evaluation/evaluate_scripts_generator.py \
 --base_checkpoint_endpoint $EVALUATION_OUTPUT_DIR \
 --route_folder src/lead/routes/benchmark_routes/$EVALUATION_DATASET \
---team_agent src/lead/evaluation/transfuser_agent.py $SCRIPT_GENERATOR_PARAMETERS
+--team_agent src/lead/evaluation/agents/transfuser/transfuser_agent.py $SCRIPT_GENERATOR_PARAMETERS
 
 # Run the evaluation scripts parallelly.
 python3 scripts/slurm/evaluation/evaluate.py \

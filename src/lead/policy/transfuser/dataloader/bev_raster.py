@@ -1,6 +1,6 @@
 """Load-time BEV semantic rasterization from the 123D map.
 
-Draws the static ``TransfuserBEVSemanticClass`` map classes at training
+Draws the static ``BEVSemanticClass`` map classes at training
 resolution from 123D map queries; dynamic classes are overlaid afterwards from
 the box detections.
 """
@@ -16,8 +16,8 @@ from py123d.datatypes import MapLayer
 from py123d.datatypes.map_objects.map_layer_types import StopZoneType
 from py123d.geometry import Point2D, PoseSE2
 
-from lead.common.constants import TransfuserBEVSemanticClass
 from lead.config import LeadConfig
+from lead.policy.transfuser.labels import BEVSemanticClass
 
 # Map layers rasterized as drivable road.
 _ROAD_LAYERS = [MapLayer.LANE, MapLayer.INTERSECTION, MapLayer.GENERIC_DRIVABLE]
@@ -62,8 +62,7 @@ def world_to_pixel(
     # Ego frame: x forward, y left (ISO 8855)
     x_ego = cos_yaw * dx + sin_yaw * dy
     y_ego = -sin_yaw * dx + cos_yaw * dy
-    # Grid: columns along x (back → front), rows along -y (left → right),
-    # matching the legacy raster where the image row axis is the ego's right.
+    # Grid: columns along x (back → front), rows along -y (left → right).
     cols = (x_ego - data_config.min_x_meter) * data_config.pixels_per_meter
     rows = (-y_ego - data_config.min_y_meter) * data_config.pixels_per_meter
     return np.stack([cols, rows], axis=1).astype(np.int32)
@@ -81,8 +80,7 @@ def rasterize_bev_semantic_map(
         map_api: Queryable 123D map of the town.
         center_se2: Global pose anchoring the grid (the view frame's origin).
         stop_sign_hazard: Whether a stop sign currently affects the ego; stop
-            zones are only drawn while it does (the legacy raster cleared the
-            stop line once the expert had stopped).
+            zones are only drawn while it does.
         lead_config: Root config tree with the planning area geometry.
 
     Returns:
@@ -110,7 +108,7 @@ def rasterize_bev_semantic_map(
             cv2.fillPoly(
                 grid,
                 [world_to_pixel(exterior, center_se2, lead_config)],
-                int(TransfuserBEVSemanticClass.ROAD),
+                int(BEVSemanticClass.ROAD),
             )
 
     # Lane markings
@@ -125,7 +123,7 @@ def rasterize_bev_semantic_map(
             grid,
             [world_to_pixel(polyline, center_se2, lead_config)],
             isClosed=False,
-            color=int(TransfuserBEVSemanticClass.LANE_MARKERS),
+            color=int(BEVSemanticClass.LANE_MARKERS),
             thickness=1,
         )
 
@@ -143,7 +141,7 @@ def rasterize_bev_semantic_map(
             cv2.fillPoly(
                 grid,
                 [world_to_pixel(exterior, center_se2, lead_config)],
-                int(TransfuserBEVSemanticClass.STOP_SIGNS),
+                int(BEVSemanticClass.STOP_SIGNS),
             )
 
     return grid

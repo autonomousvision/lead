@@ -4,12 +4,13 @@ import typing
 from dataclasses import dataclass
 
 import jaxtyping as jt
+import numpy as np
 import torch
-from torch.utils.data import Dataset
 
-from lead.common.constants import SourceDataset
 from lead.config import LeadConfig
-from lead.policy.abstract_policy import AbstractPolicy
+from lead.dataloader import Frame
+from lead.policy.abstract_policy import AbstractPolicy, SizedDataset
+from lead.policy.transfuser import precision
 from lead.policy.transfuser.decoder.bev_decoder import BEVDecoder
 from lead.policy.transfuser.decoder.center_net_decoder import (
     CenterNetBoundingBoxPrediction,
@@ -19,7 +20,6 @@ from lead.policy.transfuser.decoder.perspective_decoder import PerspectiveDecode
 from lead.policy.transfuser.decoder.planning_decoder import PlanningDecoder
 from lead.policy.transfuser.decoder.radar_detector import RadarDetector
 from lead.policy.transfuser.encoder.transfuser_backbone import TransfuserBackbone
-from lead.policy.transfuser.utils import transfuser_utils as fn
 
 if typing.TYPE_CHECKING:
     from lead.policy.transfuser.visualization.feature_map_visualizer import (
@@ -42,7 +42,7 @@ class Transfuser(AbstractPolicy):
         lead_config: LeadConfig,
     ) -> None:
         super().__init__(device, lead_config)
-        self.config = lead_config.agent.transfuser
+        self.config = lead_config.policy.transfuser
         self.log = {}
 
         self.backbone = TransfuserBackbone(self.device, lead_config)
@@ -55,7 +55,6 @@ class Transfuser(AbstractPolicy):
                 perspective_upsample_factor=self.backbone.perspective_upsample_factor,
                 modality="semantic",
                 device=self.device,
-                source_data=SourceDataset.CARLA,
             )
 
         if self.config.use_depth:
@@ -66,7 +65,6 @@ class Transfuser(AbstractPolicy):
                 perspective_upsample_factor=self.backbone.perspective_upsample_factor,
                 modality="depth",
                 device=self.device,
-                source_data=SourceDataset.CARLA,
             )
 
         if self.config.use_bev_semantic:
@@ -74,7 +72,6 @@ class Transfuser(AbstractPolicy):
                 lead_config,
                 self.config.num_bev_semantic_classes,
                 self.device,
-                source_data=SourceDataset.CARLA,
             )
 
         if self.config.detect_boxes:
@@ -82,7 +79,6 @@ class Transfuser(AbstractPolicy):
                 self.config.num_bb_classes,
                 lead_config,
                 self.device,
-                source_data=SourceDataset.CARLA,
             )
 
         if self.config.use_radar_detection:
@@ -181,6 +177,7 @@ class Transfuser(AbstractPolicy):
         loss = {}
         # Semantic segmentation loss
         if self.config.use_semantic:
+            assert predictions.pred_semantic is not None
             self.semantic_decoder.compute_loss(
                 predictions.pred_semantic,
                 data,
@@ -190,6 +187,7 @@ class Transfuser(AbstractPolicy):
 
         # Depth estimation loss
         if self.config.use_depth:
+            assert predictions.pred_depth is not None
             self.depth_decoder.compute_loss(
                 predictions.pred_depth,
                 data,
@@ -199,6 +197,7 @@ class Transfuser(AbstractPolicy):
 
         # BEV semantic segmentation loss
         if self.config.use_bev_semantic:
+            assert predictions.pred_bev_semantic is not None
             self.bev_semantic_decoder.compute_loss(
                 predictions.pred_bev_semantic,
                 data,
@@ -208,6 +207,7 @@ class Transfuser(AbstractPolicy):
 
         # Bounding box detection loss
         if self.config.detect_boxes:
+            assert predictions.pred_bounding_box is not None
             self.center_net_decoder.compute_loss(
                 data=data,
                 bounding_box_features=predictions.pred_bounding_box,
@@ -217,6 +217,7 @@ class Transfuser(AbstractPolicy):
 
         # Radar detection loss
         if self.config.use_radar_detection:
+            assert predictions.pred_radar_predictions is not None
             self.radar_detector.compute_loss(
                 pred=predictions.pred_radar_predictions,
                 data=data,
@@ -235,7 +236,40 @@ class Transfuser(AbstractPolicy):
 
         return loss, self.log
 
-    def build_dataset(self) -> Dataset:
+    def build_features(self, frame: Frame) -> dict[str, typing.Any]:
+        from lead.policy.transfuser.dataloader.features import build_features
+
+        return build_features(frame, self.lead_config)
+
+    def batch_features(
+        self,
+        features: dict[str, typing.Any],
+        device: torch.device,
+    ) -> dict[str, typing.Any]:
+        # The model consumes float tensors with a leading batch dimension; the
+        # town is a plain array, as the training collate leaves it.
+        batch: dict[str, typing.Any] = {
+            "town": np.array([features["town"]]),
+        }
+        for key in (
+            "rgb",
+            "rasterized_lidar",
+            "radar",
+            "target_point_previous",
+            "target_point",
+            "target_point_next",
+            "speed",
+        ):
+            if key not in features:
+                continue
+            batch[key] = torch.as_tensor(
+                np.asarray(features[key]),
+                dtype=torch.float32,
+                device=device,
+            )[None]
+        return batch
+
+    def build_dataset(self) -> SizedDataset:
         # Imported here so evaluation-time policy imports skip the data pipeline.
         from lead.policy.transfuser.dataloader.dataset import TransfuserDataset
 
@@ -259,7 +293,7 @@ class Transfuser(AbstractPolicy):
             The prediction visualizer.
         """
         # Imported here: the visualization package imports the evaluation
-        # ensemble, which imports this module.
+        # policy runner, which imports this module.
         from lead.policy.transfuser.visualization.prediction_visualizer import (
             PredictionVisualizer,
         )
@@ -283,7 +317,7 @@ class Transfuser(AbstractPolicy):
             The ground-truth visualizer.
         """
         # Imported here: the visualization package imports the evaluation
-        # ensemble, which imports this module.
+        # policy runner, which imports this module.
         from lead.policy.transfuser.visualization.ground_truth_visualizer import (
             GroundTruthVisualizer,
         )
@@ -305,7 +339,7 @@ class Transfuser(AbstractPolicy):
             The feature-map visualizer.
         """
         # Imported here: the visualization package imports the evaluation
-        # ensemble, which imports this module.
+        # policy runner, which imports this module.
         from lead.policy.transfuser.visualization.feature_map_visualizer import (
             FeatureMapVisualizer,
         )
@@ -318,7 +352,7 @@ class Transfuser(AbstractPolicy):
 
     def prepare_for_training(self) -> None:
         """Patch norm layers to run in fp32 and optionally freeze the backbone."""
-        fn.patch_norm_fp32(self)
+        precision.patch_norm_fp32(self)
         self.backbone.requires_grad_(not self.config.freeze_backbone)
 
 
@@ -345,3 +379,23 @@ class Prediction:
     pred_bounding_box: CenterNetBoundingBoxPrediction | None
     pred_radar_features: jt.Float[torch.Tensor, "B Q C"] | None
     pred_radar_predictions: jt.Float[torch.Tensor, "B Q 4"] | None
+
+
+@dataclass
+class AgentPrediction:
+    """A prediction extended with the controls the driving agent tracked from it."""
+
+    prediction: Prediction
+
+    # Target speed after the test-time brake threshold and optional lowering.
+    target_speed: torch.Tensor | None
+    steer: float
+    throttle: float
+    brake: float
+    # Per-modality controls: None when the model did not predict that modality.
+    waypoints_steer: float | None
+    waypoints_throttle: float | None
+    waypoints_brake: float | None
+    route_steer: float | None
+    target_speed_throttle: float | None
+    target_speed_brake: float | None

@@ -10,12 +10,11 @@ import numpy.typing as npt
 import torch
 from PIL import Image, ImageDraw, ImageFont
 
-import lead.common.common_utils as common_utils
-import lead.common.constants as constants
-from lead.common.constants import RadarLabels, TransfuserBoundingBoxIndex
+from lead.common.constants import RadarLabels
 from lead.config import LeadConfig
-from lead.policy.transfuser.dataloader import dataset_utils as carla_dataset_utils
-from lead.policy.transfuser.visualization import viz_utils
+from lead.policy.transfuser.dataloader import labels
+from lead.policy.transfuser.labels import BoundingBoxIndex
+from lead.policy.transfuser.visualization import colors, drawing
 
 # Bundled fonts live alongside this module; resolve relative to the file so the
 # paths hold regardless of the current working directory.
@@ -25,104 +24,35 @@ FONT_REGULAR = os.path.join(ASSETS_DIR, "Roboto-Regular.ttf")
 
 # Units shown next to numeric meta-panel attributes.
 _META_UNITS: dict[str, str] = {
-    # Velocities
-    "speed": "m/s",
     "target_speed": "m/s",
-    "second_highest_speed": "m/s",
-    "speed_limit": "m/s",
-    "target_speed_limit": "m/s",
-    "second_highest_speed_limit": "m/s",
-    # Accelerations
-    "accel_x": "m/s²",
-    "accel_y": "m/s²",
-    "accel_z": "m/s²",
-    "privileged_acceleration": "m/s²",
-    # Distances
-    "distance_to_next_junction": "m",
-    "distance_to_junction": "m",
-    "signed_dist_to_lane_change": "m",
-    "distance_to_stop_sign": "m",
-    "meters_travelled": "m",
-    "ego_lane_width": "m",
     "perturbation_translation": "m",
-    # Angles
-    "theta": "rad",
-    "privileged_yaw": "rad",
     "perturbation_rotation": "rad",
-    # Angular velocities
-    "angular_velocity_x": "rad/s",
-    "angular_velocity_y": "rad/s",
-    "angular_velocity_z": "rad/s",
 }
 
 # Meta-panel attributes formatted with two decimal places and a unit.
 _META_FLOAT_KEYS: list[str] = [
-    "steer",
     "throttle",
     "brake",
-    "signed_dist_to_lane_change",
-    "distance_to_next_junction",
-    "speed_limit",
-    "target_speed_limit",
-    "route_curvature",
-    "distance_to_junction",
-    "ego_lane_width",
+    "target_speed",
     "perturbation_translation",
     "perturbation_rotation",
-    "speed",
-    "accel_x",
-    "accel_y",
-    "accel_z",
-    "angular_velocity_x",
-    "angular_velocity_y",
-    "angular_velocity_z",
-    "target_speed",
-    "theta",
-    "privileged_yaw",
-    "second_highest_speed",
-    "second_highest_speed_limit",
-    "distance_to_stop_sign",
-    "privileged_acceleration",
-    "meters_travelled",
 ]
 
-# Meta-panel attributes printed verbatim.
+# Number of grid columns spanned by a meta-panel entry too wide for one column.
+WIDE_COLUMN_SPAN = 2
+
+# Meta-panel attributes printed as-is.
 _META_VERBATIM_KEYS: list[str] = [
-    "vehicle_hazard",
-    "light_hazard",
-    "walker_hazard",
-    "stop_sign_hazard",
-    "stop_sign_close",
-    "num_lanes_opposite_direction",
-    "changed_route",
-    "does_emergency_brake_for_pedestrians",
-    "weather_setting",
-    "emergency_brake_for_special_vehicle",
-    "visual_visibility",
-    "num_parking_vehicles_in_proximity",
-    "slower_bad_visibility",
-    "slower_clutterness",
-    "used_traffic_bounding_boxes",
-    "europe_traffic_light",
-    "over_head_traffic_light",
-    "jpeg_storage_quality",
-    "augment_sample",
-    "rear_danger_8",
-    "rear_danger_16",
-    "town",
-    "frame_number",
-    "num_dangerous_adversarial",
-    "num_safe_adversarial",
-    "num_ignored_adversarial",
-    "rear_adversarial_id",
-    "stuck_detector",
-    "force_move",
-    "bucket_identity",
-    "perturbate_sensor",
     "route_number",
+    "frame_number",
+    "town",
+    "weather_setting",
     "current_active_scenario_type",
     "previous_active_scenario_type",
-    "scenario_type",
+    "over_head_traffic_light",
+    "slower_bad_visibility",
+    "jpeg_storage_quality",
+    "perturbate_sensor",
 ]
 
 
@@ -130,17 +60,20 @@ class GroundTruthVisualizer:
     """Visualizes the ground-truth labels of one batched sample.
 
     Composes the LiDAR BEV with label overlays, the camera perspectives and a
-    meta-information panel into one image. Subclasses overwrite the drawing
-    hooks to visualize predictions instead of labels.
+    meta-information panel into one image; subclasses overwrite the drawing
+    hooks to visualize predictions rather than labels.
     """
 
     # Height of the meta panel in pixels (before resizing to the image width).
     meta_panel_height: typing.ClassVar[int] = 639
 
-    # Radar blob rendering: radius scaling with radial velocity.
+    # Perspective modalities, in the order they are stacked in the composition.
+    perspective_modalities: typing.ClassVar[list[str]] = ["rgb", "semantic", "depth"]
+
+    # Radar marker rendering: radius scaling with radial velocity.
     radar_velocity_max: typing.ClassVar[float] = 20.0
-    radar_min_radius_pixel: typing.ClassVar[float] = 1.0
-    radar_max_radius_pixel: typing.ClassVar[float] = 20.0
+    radar_min_radius_pixel: typing.ClassVar[float] = 3.0
+    radar_max_radius_pixel: typing.ClassVar[float] = 43.0
 
     def __init__(self, lead_config: LeadConfig, data: dict[str, typing.Any]) -> None:
         """Initialize the visualizer from one batched sample.
@@ -150,7 +83,7 @@ class GroundTruthVisualizer:
             data: Dictionary containing batched input data tensors.
         """
         self.lead_config = lead_config
-        self.config = lead_config.agent.transfuser
+        self.config = lead_config.policy.transfuser
         data_config = lead_config.expert.data_collection
         self.data_config = data_config
         self.data: dict[str, typing.Any] = data
@@ -177,7 +110,7 @@ class GroundTruthVisualizer:
         )
 
         start_color = np.array([255, 255, 255], dtype=np.float32)
-        end_color = np.array(constants.LIDAR_COLOR, dtype=np.float32)
+        end_color = np.array(colors.LIDAR_COLOR, dtype=np.float32)
 
         rasterized_lidar: torch.Tensor = self.data["rasterized_lidar"]
         bev: jt.Float32[npt.NDArray, "h w"] = (
@@ -228,13 +161,11 @@ class GroundTruthVisualizer:
         self._target_point()
         self._radars()
 
-    # ------------------------------------------------------------------
-    # Perspectives
-    # ------------------------------------------------------------------
+    # --- Perspectives ---
 
     def _process_all_perspectives(self) -> None:
         """Fill ``self.perspectives`` with the available perspective images."""
-        for modality in ["rgb", "semantic"]:
+        for modality in self.perspective_modalities:
             image = self._perspective_image(modality)
             if image is not None:
                 self.perspectives[modality] = image
@@ -246,7 +177,7 @@ class GroundTruthVisualizer:
         """Build one perspective image from the ground-truth data.
 
         Args:
-            modality: Perspective modality, ``"rgb"`` or ``"semantic"``.
+            modality: Perspective modality, one of ``perspective_modalities``.
 
         Returns:
             The perspective image, or None when the modality is unavailable.
@@ -255,6 +186,10 @@ class GroundTruthVisualizer:
         if perspective is None:
             return None
         perspective = perspective[0]
+        if modality == "depth":
+            return self._depth_to_color(
+                perspective.detach().cpu().float().numpy(),
+            )
         if modality == "semantic":
             perspective = perspective.unsqueeze(0)
         image = (
@@ -264,6 +199,21 @@ class GroundTruthVisualizer:
         if modality == "semantic":
             image = self._semantic_to_color(image[..., 0])
         return image
+
+    def _depth_to_color(
+        self,
+        depth: jt.Float32[npt.NDArray, "h w"],
+    ) -> jt.UInt8[npt.NDArray, "h w 3"]:
+        """Colorize a metric depth map against the far plane it was stored with.
+
+        Args:
+            depth: Metric depth in meters.
+
+        Returns:
+            The colorized depth image.
+        """
+        max_depth_meter = self.lead_config.expert.storage.save_depth_max_meters
+        return drawing.depth_to_color(depth, max_depth_meter)
 
     def _semantic_to_color(
         self,
@@ -278,14 +228,12 @@ class GroundTruthVisualizer:
             The colored semantic image.
         """
         converter = np.array(
-            list(constants.TRANSFUSER_SEMANTIC_COLORS.values()),
+            list(colors.TRANSFUSER_SEMANTIC_COLORS.values()),
             dtype=np.uint8,
         )
         return converter[semantic]
 
-    # ------------------------------------------------------------------
-    # BEV semantic
-    # ------------------------------------------------------------------
+    # --- BEV semantic ---
 
     def _bev_semantic(self) -> None:
         """Overlay the ground-truth BEV semantic map."""
@@ -305,7 +253,7 @@ class GroundTruthVisualizer:
             bev_semantic: BEV semantic class labels.
         """
         converter = np.array(
-            list(constants.CARLA_TRANSFUSER_BEV_SEMANTIC_COLOR_CONVERTER.values()),
+            list(colors.CARLA_TRANSFUSER_BEV_SEMANTIC_COLOR_CONVERTER.values()),
         )
         converter[1][0:3] = 40
         bev_semantic_image = converter[bev_semantic, ...].astype("uint8")
@@ -329,64 +277,83 @@ class GroundTruthVisualizer:
         )
         self.bev_image = bev_semantic_image * alpha + (1 - alpha) * self.bev_image
 
-    # ------------------------------------------------------------------
-    # Route, waypoints and target points
-    # ------------------------------------------------------------------
+    # --- Shared drawing primitives ---
 
-    def _route(self) -> None:
-        """Draw the ground-truth route as connected line segments."""
-        route = self.data.get("route")
-        if route is None or not (
-            self.config.use_planning_decoder
-            or self.lead_config.training.experiment.visualize_dataset
-        ):
-            return
-        wps = route.detach().cpu().numpy()[0]
-        for i in range(len(wps) - 1):
-            x1 = int(wps[i][0] * self.loc_pixels_per_meter + self.origin[0])
-            y1 = int(wps[i][1] * self.loc_pixels_per_meter + self.origin[1])
-            x2 = int(wps[i + 1][0] * self.loc_pixels_per_meter + self.origin[0])
-            y2 = int(wps[i + 1][1] * self.loc_pixels_per_meter + self.origin[1])
-            color = viz_utils.lighter_shade(
-                constants.PREDICTION_ROUTE_COLOR,
-                i,
-                len(wps),
-            )
-            cv2.line(
+    def _to_pixel(self, x: float, y: float) -> tuple[int, int]:
+        """Convert an ego-frame position to BEV pixel coordinates.
+
+        Args:
+            x: X coordinate in the ego frame in meters.
+            y: Y coordinate in the ego frame in meters.
+
+        Returns:
+            The (x, y) pixel coordinates in the BEV image.
+        """
+        return (
+            int(x * self.loc_pixels_per_meter + self.origin[0]),
+            int(y * self.loc_pixels_per_meter + self.origin[1]),
+        )
+
+    def _draw_waypoints(
+        self,
+        waypoints: jt.Float[npt.NDArray, "n 2"],
+        base_color: tuple[int, int, int],
+        radius: int,
+    ) -> None:
+        """Draw a scatter of ego-frame waypoints, lightening along the sequence.
+
+        Args:
+            waypoints: Waypoints in the ego frame in meters.
+            base_color: Color of the first waypoint (RGB).
+            radius: Circle radius in pixels.
+        """
+        for i, waypoint in enumerate(waypoints):
+            cv2.circle(
                 self.bev_image,
-                (x1, y1),
-                (x2, y2),
-                color=color,
-                thickness=constants.PREDICTION_ROUTE_RADIUS,
+                self._to_pixel(waypoint[0], waypoint[1]),
+                radius=radius,
+                color=drawing.lighter_shade(base_color, i, len(waypoints)),
+                thickness=-1,
                 lineType=cv2.LINE_AA,
             )
 
-    def _future_waypoints(self) -> None:
-        """Draw the ground-truth future and past ego waypoints."""
-        if not (
+    @property
+    def _planning_visible(self) -> bool:
+        """Whether the route and ego waypoints are drawn."""
+        return (
             self.config.use_planning_decoder
             or self.lead_config.training.experiment.visualize_dataset
-        ):
+        )
+
+    # --- Route, waypoints and target points ---
+
+    def _route(self) -> None:
+        """Draw the ground-truth route as a scatter of waypoints."""
+        route = self.data.get("route")
+        if route is None or not self._planning_visible:
+            return
+        self._draw_waypoints(
+            route.detach().cpu().numpy()[0],
+            colors.PREDICTION_ROUTE_COLOR,
+            colors.PREDICTION_ROUTE_RADIUS,
+        )
+
+    def _future_waypoints(self) -> None:
+        """Draw the ground-truth future and past ego waypoints."""
+        if not self._planning_visible:
             return
         for key, base_color in [
-            ("future_waypoints", constants.GROUNDTRUTH_FUTURE_WAYPOINT_COLOR),
-            ("past_waypoints", constants.GROUND_TRUTH_PAST_WAYPOINT_COLOR),
+            ("future_waypoints", colors.GROUNDTRUTH_FUTURE_WAYPOINT_COLOR),
+            ("past_waypoints", colors.GROUND_TRUTH_PAST_WAYPOINT_COLOR),
         ]:
             waypoints = self.data.get(key)
             if waypoints is None or waypoints[0] is None:
                 continue
-            wps = waypoints.detach().cpu().numpy()[0]
-            for i, wp in enumerate(wps):
-                wp_x = wp[0] * self.loc_pixels_per_meter + self.origin[0]
-                wp_y = wp[1] * self.loc_pixels_per_meter + self.origin[1]
-                color = viz_utils.lighter_shade(base_color, i, len(wps))
-                cv2.circle(
-                    self.bev_image,
-                    (int(wp_x), int(wp_y)),
-                    radius=constants.PREDICTION_WAYPOINT_RADIUS,
-                    color=color,
-                    thickness=-1,
-                )
+            self._draw_waypoints(
+                waypoints.detach().cpu().numpy()[0],
+                base_color,
+                colors.PREDICTION_WAYPOINT_RADIUS,
+            )
 
     def _target_point(self) -> None:
         """Draw the previous, current and next target points."""
@@ -398,20 +365,17 @@ class GroundTruthVisualizer:
             target_point = self.data.get(key)
             if target_point is None:
                 continue
-            x_tp = target_point[0][0] * self.loc_pixels_per_meter + self.origin[0]
-            y_tp = target_point[0][1] * self.loc_pixels_per_meter + self.origin[1]
-            viz_utils.draw_circle_with_number(
+            x_tp, y_tp = self._to_pixel(target_point[0][0], target_point[0][1])
+            drawing.draw_circle_with_number(
                 self.bev_image,
-                int(x_tp),
-                int(y_tp),
-                constants.TP_DEFAULT_COLOR,
+                x_tp,
+                y_tp,
+                colors.TP_DEFAULT_COLOR,
                 radius=radius,
                 number=number,
             )
 
-    # ------------------------------------------------------------------
-    # Bounding boxes
-    # ------------------------------------------------------------------
+    # --- Bounding boxes ---
 
     def _ego_bounding_box(self) -> None:
         """Draw the ego bounding box with its current speed."""
@@ -433,52 +397,78 @@ class GroundTruthVisualizer:
                 self.data["speed"][0].item(),
             ],
         )
-        self.bev_image = viz_utils.draw_box(
+        self.bev_image = drawing.draw_box(
             self.bev_image,
             ego_box,
-            color=constants.EGO_BB_COLOR,
+            color=colors.EGO_BB_COLOR,
             thickness=4,
         )
+
+    def _class_color(
+        self,
+        class_index: int,
+        brake: float | None = None,
+    ) -> list[float]:
+        """Color of a bounding box of the given class.
+
+        Args:
+            class_index: Bounding-box class.
+            brake: Braking probability. When given, the color is darkened
+                towards braking; ground-truth boxes pass None.
+
+        Returns:
+            The box color (RGB).
+        """
+        color = list(
+            list(colors.TRANSFUSER_BOUNDING_BOX_COLORS.values())[class_index],
+        )
+        if brake is not None:
+            color[1] = color[1] * (1.0 - brake)
+        return color
+
+    def _draw_boxes(
+        self,
+        boxes: jt.Float[npt.NDArray, "n d"],
+        brake_shading: bool,
+    ) -> None:
+        """Draw bounding boxes given in the image system, colored by class.
+
+        Args:
+            boxes: Boxes in the image system, indexed by ``BoundingBoxIndex``.
+            brake_shading: Darken each box by its braking probability.
+        """
+        for box in boxes:
+            box = box.copy()
+            box[:4] = box[:4] * self.scale_factor
+            self.bev_image = drawing.draw_box(
+                self.bev_image,
+                box,
+                color=self._class_color(
+                    int(box[BoundingBoxIndex.CLASS]),
+                    box[BoundingBoxIndex.BRAKE] if brake_shading else None,
+                ),
+            )
 
     def _bounding_boxes(self) -> None:
         """Draw the ground-truth bounding boxes and their future footprints."""
         bounding_boxes = self.data.get("center_net_bounding_boxes")
         if bounding_boxes is not None:
             boxes = bounding_boxes.detach().cpu().numpy()[0]
-            boxes = boxes[boxes.sum(axis=-1) != 0.0]
-            for box in boxes:
-                box = box.copy()
-                box[:4] = box[:4] * self.scale_factor
-                color_box = list(constants.TRANSFUSER_BOUNDING_BOX_COLORS.values())[
-                    int(box[TransfuserBoundingBoxIndex.CLASS])
-                ]
-                self.bev_image = viz_utils.draw_box(
-                    self.bev_image,
-                    box,
-                    color=color_box,
-                )
+            self._draw_boxes(
+                boxes[boxes.sum(axis=-1) != 0.0],
+                brake_shading=False,
+            )
 
         vehicles_future_waypoints = self.data.get("vehicles_future_waypoints")
         vehicle_future_yaws = self.data.get("vehicles_future_yaws")
 
         if vehicles_future_waypoints is not None:
             for future_box_waypoints in vehicles_future_waypoints:
-                wps = future_box_waypoints[0]
-                for i, wp in enumerate(wps):
-                    wp_x = wp[0] * self.loc_pixels_per_meter + self.origin[0]
-                    wp_y = wp[1] * self.loc_pixels_per_meter + self.origin[1]
-                    color = viz_utils.lighter_shade(
-                        constants.GROUNDTRUTH_BB_WP_COLOR,
-                        i,
-                        len(wps),
-                    )
-                    cv2.circle(
-                        self.bev_image,
-                        (int(wp_x), int(wp_y)),
-                        radius=constants.PREDICTION_WAYPOINT_RADIUS // 4,
-                        color=color,
-                        thickness=-1,
-                    )
+                self._draw_waypoints(
+                    future_box_waypoints[0],
+                    colors.GROUNDTRUTH_BB_WP_COLOR,
+                    colors.PREDICTION_WAYPOINT_RADIUS // 4,
+                )
 
         if vehicles_future_waypoints is not None and vehicle_future_yaws is not None:
             for future_box_waypoints, future_box_yaws in zip(
@@ -489,8 +479,8 @@ class GroundTruthVisualizer:
                 wps = future_box_waypoints[0]
                 yaws = future_box_yaws[0]
                 for i, wp in enumerate(wps):
-                    color = viz_utils.lighter_shade(
-                        constants.GROUNDTRUTH_BB_WP_COLOR,
+                    color = drawing.lighter_shade(
+                        colors.GROUNDTRUTH_BB_WP_COLOR,
                         i,
                         len(wps),
                     )
@@ -520,23 +510,21 @@ class GroundTruthVisualizer:
                 yaw,
             ],
         )
-        bb = carla_dataset_utils.bb_vehicle_to_image_system(
+        bb = labels.bb_vehicle_to_image_system(
             bb[None],
             pixels_per_meter=self.data_config.pixels_per_meter,
             min_x=self.data_config.min_x_meter,
             min_y=self.data_config.min_y_meter,
         )[0]
         bb[:4] = bb[:4] * self.scale_factor
-        self.bev_image = viz_utils.draw_box(
+        self.bev_image = drawing.draw_box(
             self.bev_image,
             bb,
             color=color,
             thickness=1,
         )
 
-    # ------------------------------------------------------------------
-    # Radar
-    # ------------------------------------------------------------------
+    # --- Radar ---
 
     def _radars(self) -> None:
         """Draw the raw radar returns and the radar detections."""
@@ -558,7 +546,7 @@ class GroundTruthVisualizer:
                 points[:, 0],
                 points[:, 1],
                 np.nan_to_num(points[:, 3], nan=0.0),
-                color=constants.RADAR_COLOR,
+                color=colors.RADAR_COLOR,
             )
 
         self._radar_detections()
@@ -571,20 +559,19 @@ class GroundTruthVisualizer:
         color: tuple[int, int, int],
         radius_offset: int = 0,
     ) -> None:
-        """Draw radar returns as Gaussian blobs sized by radial velocity.
+        """Draw radar returns as markers sized by radial velocity.
 
         Args:
             x: X coordinates in meters.
             y: Y coordinates in meters.
             velocity: Radial velocities in m/s; positive means approaching.
-            color: Blob color (RGB).
-            radius_offset: Extra blob radius in pixels.
+            color: Marker color (RGB).
+            radius_offset: Extra marker radius in pixels.
         """
         min_r = self.radar_min_radius_pixel
         max_r = self.radar_max_radius_pixel
         for xm, ym, vk in zip(x, y, velocity, strict=True):
-            px = int(self.origin[0] + xm * self.loc_pixels_per_meter)
-            py = int(self.origin[1] + ym * self.loc_pixels_per_meter)
+            px, py = self._to_pixel(xm, ym)
             rpx = radius_offset + int(
                 np.clip(
                     min_r + (abs(vk) / self.radar_velocity_max) * (max_r - min_r),
@@ -592,15 +579,9 @@ class GroundTruthVisualizer:
                     max_r,
                 ),
             )
-            # Filled = approaching, outline = receding.
-            viz_utils.draw_gaussian_blob(
-                self.bev_image,
-                px,
-                py,
-                rpx,
-                color,
-                vk > 0,
-            )
+            # Ring = approaching, cross = receding.
+            draw = drawing.draw_ring if vk > 0 else drawing.draw_cross
+            draw(self.bev_image, px, py, rpx, color)
 
     def _radar_detections(self) -> None:
         """Draw the ground-truth radar detections and their waypoints."""
@@ -616,7 +597,7 @@ class GroundTruthVisualizer:
                 valid_detections[:, 0],
                 valid_detections[:, 1],
                 np.nan_to_num(valid_detections[:, 2], nan=0.0),
-                color=constants.RADAR_DETECTION_COLOR,
+                color=colors.RADAR_DETECTION_COLOR,
                 radius_offset=1,
             )
 
@@ -633,10 +614,7 @@ class GroundTruthVisualizer:
             strict=True,
         ):
             pixel_points = [
-                (
-                    int(self.origin[0] + waypoints[i, 0] * self.loc_pixels_per_meter),
-                    int(self.origin[1] + waypoints[i, 1] * self.loc_pixels_per_meter),
-                )
+                self._to_pixel(waypoints[i, 0], waypoints[i, 1])
                 for i in range(int(num_wps))
             ]
             for point in pixel_points:
@@ -644,7 +622,7 @@ class GroundTruthVisualizer:
                     self.bev_image,
                     point,
                     radius=3,
-                    color=constants.RADAR_DETECTION_COLOR,
+                    color=colors.RADAR_DETECTION_COLOR,
                     thickness=-1,
                 )
             for point, next_point in zip(
@@ -656,93 +634,12 @@ class GroundTruthVisualizer:
                     self.bev_image,
                     point,
                     next_point,
-                    color=constants.RADAR_DETECTION_COLOR,
+                    color=colors.RADAR_DETECTION_COLOR,
                     thickness=1,
                     lineType=cv2.LINE_AA,
                 )
 
-    # ------------------------------------------------------------------
-    # Perspective projection helper
-    # ------------------------------------------------------------------
-
-    def _draw_points_in_perspective(
-        self,
-        points: jt.Float[npt.NDArray, "n 2"],
-        size: int,
-        connected: bool,
-        color: tuple[int, int, int],
-    ) -> None:
-        """Project ego-frame points into the concatenated RGB perspectives.
-
-        Args:
-            points: Points in the ego frame in meters.
-            size: Circle radius or line thickness in pixels.
-            connected: Draw connected lines instead of circles.
-            color: Drawing color (RGB).
-        """
-        if not (len(points) > 0 and points.shape[0] > 0):
-            return
-        rgb = self.perspectives["rgb"]
-
-        sensor_rig = self.lead_config.expert.sensor_rig
-        camera_rots = []
-        camera_poses = []
-        camera_fovs = []
-        camera_widths = []
-        for i in range(1, min(4, sensor_rig.num_cameras + 1)):
-            camera_config = sensor_rig.cameras[i - 1]
-            camera_rots.append(camera_config["rot"])
-            camera_poses.append(camera_config["pos"])
-            camera_fovs.append(camera_config["fov"])
-            camera_widths.append(camera_config["width"])
-
-        # Reverse rotation and position lists to match the stored image order.
-        camera_rots = camera_rots[:3][::-1]
-        camera_poses = camera_poses[:3][::-1]
-        camera_height = sensor_rig.camera_height
-
-        x_offset = 0
-        for i in range(3):
-            projected_points, inside_image = common_utils.project_points_to_image(
-                camera_rots[i],
-                camera_poses[i],
-                camera_fovs[i],
-                camera_widths[i],
-                camera_height,
-                points,
-            )
-
-            if connected:
-                for j in range(len(projected_points) - 1):
-                    if not inside_image[j + 1]:
-                        continue
-                    x1, y1 = projected_points[j]
-                    x2, y2 = projected_points[j + 1]
-                    cv2.line(
-                        rgb,
-                        (int(x1 + x_offset), int(y1)),
-                        (int(x2 + x_offset), int(y2)),
-                        color,
-                        size,
-                    )
-            else:
-                for (x, y), inside in zip(
-                    projected_points,
-                    inside_image,
-                    strict=True,
-                ):
-                    if not inside:
-                        continue
-                    img_x = int(x + x_offset)
-                    img_y = int(y)
-                    if 0 <= img_x < rgb.shape[1] and 0 <= img_y < rgb.shape[0]:
-                        cv2.circle(rgb, (img_x, img_y), size, color, -1)
-
-            x_offset += camera_widths[i]
-
-    # ------------------------------------------------------------------
-    # Meta panel
-    # ------------------------------------------------------------------
+    # --- Meta panel ---
 
     def _extra_meta_lines(self) -> list[str]:
         """Additional meta-panel lines contributed by subclasses.
@@ -796,42 +693,75 @@ class GroundTruthVisualizer:
         img_pil = Image.fromarray(self.meta_panel)
         draw = ImageDraw.Draw(img_pil)
 
-        column_width = 350
-        num_columns = 4
         start_x = 10
         start_y = 10
         line_height = 20
+        gutter = 20
+        num_columns = 4
+        column_width = (self.meta_panel.shape[1] - 2 * start_x) // num_columns
 
-        for item_index, text in enumerate(text_lines):
-            row = item_index // num_columns
-            col = item_index % num_columns
-            x = start_x + col * column_width
-            y = start_y + row * line_height
+        def name_and_value(text: str) -> tuple[str, str]:
+            split_idx = text.find(" ")
+            return text[:split_idx], text[split_idx:].strip()
 
+        def text_width(text: str, font: ImageFont.FreeTypeFont) -> int:
+            bbox = draw.textbbox((0, 0), text, font=font)
+            return bbox[2] - bbox[0]
+
+        def fits(text: str, width: int) -> bool:
+            """Whether a name/value pair fits side by side in the given width."""
+            if " " not in text:
+                return text_width(text, font_regular) <= width - gutter
+            name_part, value_part = name_and_value(text)
+            name_width = text_width(name_part, font_bold)
+            value_width = text_width(value_part, font_regular)
+            return name_width + value_width <= width - gutter
+
+        # Entries too wide for one column are laid out in double-width columns.
+        wide_column_width = column_width * WIDE_COLUMN_SPAN
+        grid_lines = [text for text in text_lines if fits(text, column_width)]
+        wide_lines = [text for text in text_lines if not fits(text, column_width)]
+
+        def draw_line(text: str, x: int, y: int, width: int) -> None:
             if " " not in text:
                 draw.text((x, y), text, font=font_regular, fill=(0, 0, 0))
-                continue
-
-            # Attribute name in bold, value right-aligned within the column.
-            split_idx = text.find(" ")
-            name_part = text[:split_idx]
-            value_part = text[split_idx:].strip()
-            value_bbox = draw.textbbox((0, 0), value_part, font=font_regular)
-            value_width = value_bbox[2] - value_bbox[0]
-
+                return
+            # Attribute name in bold, value right-aligned within the width.
+            name_part, value_part = name_and_value(text)
+            value_width = text_width(value_part, font_regular)
             draw.text((x, y), name_part, font=font_bold, fill=(0, 0, 0))
             draw.text(
-                (x + column_width - value_width - 20, y),
+                (x + width - value_width - gutter, y),
                 value_part,
                 font=font_regular,
                 fill=(0, 0, 0),
             )
 
+        for item_index, text in enumerate(grid_lines):
+            row = item_index // num_columns
+            col = item_index % num_columns
+            draw_line(
+                text,
+                start_x + col * column_width,
+                start_y + row * line_height,
+                column_width,
+            )
+
+        wide_num_columns = num_columns // WIDE_COLUMN_SPAN
+        wide_start_row = -(-len(grid_lines) // num_columns)
+        for wide_index, text in enumerate(wide_lines):
+            row = wide_start_row + wide_index // wide_num_columns
+            col = wide_index % wide_num_columns
+            draw_line(
+                text,
+                start_x + col * wide_column_width,
+                start_y + row * line_height,
+                wide_column_width,
+            )
+
         self.meta_panel = np.array(img_pil)
 
-    # ------------------------------------------------------------------
-    # Composition
-    # ------------------------------------------------------------------
+    # --- Composition ---
 
     def _concatenate_all_perspectives_and_bev(
         self,
@@ -859,7 +789,7 @@ class GroundTruthVisualizer:
         # Resize all perspectives to the BEV width.
         perspective_images: list[jt.UInt8[npt.NDArray, "h w 3"]] = []
         target_width = lidar_image.shape[1]
-        for modality in ["rgb", "semantic"]:
+        for modality in self.perspective_modalities:
             if modality not in self.perspectives:
                 continue
             img = np.ascontiguousarray(self.perspectives[modality], dtype=np.uint8)

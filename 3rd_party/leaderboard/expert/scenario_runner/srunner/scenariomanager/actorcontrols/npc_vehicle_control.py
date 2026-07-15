@@ -38,7 +38,9 @@ class NpcVehicleControl(BasicControl):
         self._local_planner = LocalPlanner(  # pylint: disable=undefined-variable
             self._actor, opt_dict={
                 'target_speed': self._target_speed * 3.6,
-                'lateral_control_dict': self._args})
+                'lateral_control_dict': self._args,
+            },
+        )
 
         if self._waypoints:
             self._update_plan()
@@ -52,7 +54,8 @@ class NpcVehicleControl(BasicControl):
         plan = []
         for transform in self._waypoints:
             waypoint = CarlaDataProvider.get_map().get_waypoint(
-                transform.location, project_to_road=True, lane_type=carla.LaneType.Any)
+                transform.location, project_to_road=True, lane_type=carla.LaneType.Any,
+            )
             plan.append((waypoint, RoadOption.LANEFOLLOW))
         self._local_planner.set_global_plan(plan)
 

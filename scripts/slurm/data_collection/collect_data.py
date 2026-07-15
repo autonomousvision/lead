@@ -14,7 +14,7 @@ import yaml
 
 from lead.common import runtime
 from lead.common.dotenv import read_dotenv, read_dotenv_int
-from lead.common.logging_config import setup_logging
+from lead.common.logging import setup_logging
 from lead.config import load_lead_config, yaml_filtered
 
 LOG = logging.getLogger(__name__)
@@ -57,9 +57,9 @@ def make_bash(
     os.makedirs(f"{data_save_root}/stdout", exist_ok=True)
     os.makedirs(f"{data_save_root}/scripts", exist_ok=True)
     jobfile = f"{data_save_root}/scripts/{route_file_number}_Rep{repetition}.sh"
-    # Read fresh from .env here (make_bash runs right before sbatch), so edits to
-    # these apply to jobs not yet submitted. SLURM parses the #SBATCH directives
-    # before the shell runs, so they must be literal text in the generated script.
+    # Read fresh from .env so edits apply to jobs not yet submitted. SLURM parses
+    # the #SBATCH directives before the shell runs, so they must be literal text
+    # in the generated script.
     partition_name = read_dotenv("COLLECT_DATA_PARTITION")
     max_sleep = read_dotenv_int("COLLECT_DATA_MAX_SLEEP")
     cpus_per_task = read_dotenv_int("COLLECT_DATA_CPUS_PER_TASK")
@@ -187,7 +187,7 @@ def get_running_jobs(jobname: str, user_name: str) -> tuple[int, list[str], list
 
 def get_last_line_from_file(
     filepath: str,
-) -> str:  # this is used to check log files for errors
+) -> str:  # used to check log files for errors
     try:
         with open(filepath, "rb", encoding="utf-8") as f:
             try:
@@ -308,11 +308,15 @@ if __name__ == "__main__":
     carla_root = read_dotenv("CARLA_ROOT")
     max_route_per_scenario_type = 10  # -1 means no limit
 
-    agent = f"{code_root}/src/lead/lead/expert.py"
+    agent = f"{code_root}/src/lead/expert/expert_agent.py"
 
     scenario_white_lists = []  # Empty list = all scenarios allowed
     scenario_blacklist = ["YieldToEmergencyVehicle"]  # Scenarios to exclude
-    town_white_list = ["Town12", "Town13", "Town15"]  # Empty list = all towns allowed, e.g. ["Town12", "Town13"]
+    town_white_list = [
+        "Town12",
+        "Town13",
+        "Town15",
+    ]  # Empty list = all towns allowed, e.g. ["Town12", "Town13"]
     data_save_directory = os.path.join(code_root, read_dotenv("PY123D_DATA_ROOT"))
     log_root = f"{data_save_directory}/slurm"
 
@@ -320,8 +324,14 @@ if __name__ == "__main__":
     expert_config_dict = yaml_filtered(load_lead_config().expert.to_dict())
     with open(f"{data_save_directory}/config.yaml", "w", encoding="utf-8") as f:
         yaml.safe_dump(expert_config_dict, f, sort_keys=False)
-    sys.stdout = Tee(sys.stdout, open(f"{data_save_directory}/stdout.log", "a", encoding="utf-8"))
-    sys.stderr = Tee(sys.stderr, open(f"{data_save_directory}/stderr.log", "a", encoding="utf-8"))
+    sys.stdout = Tee(
+        sys.stdout,
+        open(f"{data_save_directory}/stdout.log", "a", encoding="utf-8"),
+    )
+    sys.stderr = Tee(
+        sys.stderr,
+        open(f"{data_save_directory}/stderr.log", "a", encoding="utf-8"),
+    )
     setup_logging()
 
     route_folder = os.path.join(code_root, args.route_folder)
@@ -346,9 +356,8 @@ if __name__ == "__main__":
         ]
         LOG.info(f"Applied scenario blacklist. Total routes: {len(routes)}")
 
-    # Apply max_route_per_scenario_type constraint.
     # Scenario type is the parent directory name (e.g. .../Accident/1054_0.xml),
-    # so we avoid parsing every XML file which is very slow on network disks.
+    # avoiding an XML parse per file, which is slow on network disks.
     if max_route_per_scenario_type > 0:
         scenario_type_counts = {}
         filtered_routes = []
@@ -382,7 +391,9 @@ if __name__ == "__main__":
             try:
                 tree = ET.parse(route)  # 'route' is the XML filepath
                 root = tree.getroot()
-                town = root.find("route").attrib["town"]
+                route_elem = root.find("route")
+                assert route_elem is not None
+                town = route_elem.attrib["town"]
             except Exception as e:
                 LOG.error(f"Error parsing town from route {route}: {e}")
                 raise e
@@ -405,7 +416,9 @@ if __name__ == "__main__":
                 continue
 
             if len(scenario_blacklist) > 0 and scenario_type in scenario_blacklist:
-                LOG.info(f"Ignoring blacklisted route with scenario type: {scenario_type}")
+                LOG.info(
+                    f"Ignoring blacklisted route with scenario type: {scenario_type}",
+                )
                 continue
 
             routefile_number = route.split("/")[-1].split(".")[
@@ -415,8 +428,8 @@ if __name__ == "__main__":
             # run time and lives inside the file as records[0]["timestamp"]).
             ckpt_endpoint = f"{data_save_directory}/results/{scenario_type}/{town}_Rep{repetition}_{routefile_number}_result.json"
 
-            # Passed through as SAVE_PATH: only used by the expert as a
-            # datagen-enabled marker now, so the directory is never created.
+            # Passed through as SAVE_PATH: the expert uses it only as a
+            # datagen-enabled marker, so the directory is never created.
             save_path = f"{data_save_directory}/data/{scenario_type}"
 
             if is_job_done(ckpt_endpoint):
@@ -429,7 +442,9 @@ if __name__ == "__main__":
                     job_name=job_name,
                     username=username,
                 )
-                LOG.info(f"{num_running_jobs}/{max_num_parallel_jobs} jobs are running...")
+                LOG.info(
+                    f"{num_running_jobs}/{max_num_parallel_jobs} jobs are running...",
+                )
                 while num_running_jobs >= max_num_parallel_jobs:
                     num_running_jobs, max_num_parallel_jobs = get_num_jobs(
                         job_name=job_name,

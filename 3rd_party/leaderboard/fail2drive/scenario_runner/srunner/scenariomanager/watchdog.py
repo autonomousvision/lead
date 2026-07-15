@@ -45,7 +45,7 @@ class Watchdog(object):
         self._watchdog = swt.WDT(
             check_interval_sec=self._interval,
             trigger_delta_sec=self._timeout,
-            callback=self._callback
+            callback=self._callback,
         )
 
     def stop(self):

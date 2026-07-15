@@ -3,36 +3,47 @@ import py_trees
 from numpy import random
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
-    ActorFlow, ScenarioTimeout, TrafficLightFreezer)
+    ActorFlow, ScenarioTimeout, TrafficLightFreezer,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (
-    CollisionTest, ScenarioTimeoutTest)
+    CollisionTest, ScenarioTimeoutTest,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
-    DriveDistance, WaitEndIntersection)
+    DriveDistance, WaitEndIntersection,
+)
 from srunner.scenarios.basic_scenario import BasicScenario
-from srunner.tools.background_manager import (ChangeOppositeBehavior,
-                                              HandleJunctionScenario)
-from srunner.tools.scenario_helper import (filter_junction_wp_direction,
-                                           generate_target_waypoint,
-                                           get_closest_traffic_light,
-                                           get_junction_topology,
-                                           get_same_dir_lanes)
+from srunner.tools.background_manager import (
+    ChangeOppositeBehavior,
+    HandleJunctionScenario,
+)
+from srunner.tools.scenario_helper import (
+    filter_junction_wp_direction,
+    generate_target_waypoint,
+    get_closest_traffic_light,
+    get_junction_topology,
+    get_same_dir_lanes,
+)
 
 
 class SequentialLaneChange(BasicScenario):
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=80, activate_scenario=True):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=80, activate_scenario=True,
+    ):
         """
         Setup all relevant parameters and create scenario
         """
         pass
         self._scenario_timeout = 240
-        super().__init__("SequentialLaneChange",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "SequentialLaneChange",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
         """

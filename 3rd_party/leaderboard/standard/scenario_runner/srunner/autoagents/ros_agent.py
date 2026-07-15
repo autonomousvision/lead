@@ -78,7 +78,8 @@ class RosAgent(AutonomousAgent):
 
         # set use_sim_time via commandline before init-node
         process = subprocess.Popen(
-            "rosparam set use_sim_time true", shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+            "rosparam set use_sim_time true", shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE,
+        )
         process.wait()
         if process.returncode:
             raise RuntimeError("Could not set use_sim_time")
@@ -109,12 +110,14 @@ class RosAgent(AutonomousAgent):
         self.step_mode_possible = False
 
         self.vehicle_control_subscriber = rospy.Subscriber(
-            '/carla/ego_vehicle/vehicle_control_cmd', CarlaEgoVehicleControl, self.on_vehicle_control)
+            '/carla/ego_vehicle/vehicle_control_cmd', CarlaEgoVehicleControl, self.on_vehicle_control,
+        )
 
         self.current_control = carla.VehicleControl()
 
         self.waypoint_publisher = rospy.Publisher(
-            '/carla/ego_vehicle/waypoints', Path, queue_size=1, latch=True)
+            '/carla/ego_vehicle/waypoints', Path, queue_size=1, latch=True,
+        )
 
         self.publisher_map = {}
         self.id_to_sensor_type_map = {}
@@ -127,30 +130,38 @@ class RosAgent(AutonomousAgent):
             self.id_to_sensor_type_map[sensor['id']] = sensor['type']
             if sensor['type'] == 'sensor.camera.rgb':
                 self.publisher_map[sensor['id']] = rospy.Publisher(
-                    '/carla/ego_vehicle/camera/rgb/' + sensor['id'] + "/image_color", Image, queue_size=1, latch=True)
+                    '/carla/ego_vehicle/camera/rgb/' + sensor['id'] + "/image_color", Image, queue_size=1, latch=True,
+                )
                 self.id_to_camera_info_map[sensor['id']] = self.build_camera_info(sensor)
                 self.publisher_map[sensor['id'] + '_info'] = rospy.Publisher(
-                    '/carla/ego_vehicle/camera/rgb/' + sensor['id'] + "/camera_info", CameraInfo, queue_size=1, latch=True)
+                    '/carla/ego_vehicle/camera/rgb/' + sensor['id'] + "/camera_info", CameraInfo, queue_size=1, latch=True,
+                )
             elif sensor['type'] == 'sensor.lidar.ray_cast':
                 self.publisher_map[sensor['id']] = rospy.Publisher(
-                    '/carla/ego_vehicle/lidar/' + sensor['id'] + "/point_cloud", PointCloud2, queue_size=1, latch=True)
+                    '/carla/ego_vehicle/lidar/' + sensor['id'] + "/point_cloud", PointCloud2, queue_size=1, latch=True,
+                )
             elif sensor['type'] == 'sensor.other.gnss':
                 self.publisher_map[sensor['id']] = rospy.Publisher(
-                    '/carla/ego_vehicle/gnss/' + sensor['id'] + "/fix", NavSatFix, queue_size=1, latch=True)
+                    '/carla/ego_vehicle/gnss/' + sensor['id'] + "/fix", NavSatFix, queue_size=1, latch=True,
+                )
             elif sensor['type'] == 'sensor.can_bus':
                 if not self.vehicle_info_publisher:
                     self.vehicle_info_publisher = rospy.Publisher(
-                        '/carla/ego_vehicle/vehicle_info', CarlaEgoVehicleInfo, queue_size=1, latch=True)
+                        '/carla/ego_vehicle/vehicle_info', CarlaEgoVehicleInfo, queue_size=1, latch=True,
+                    )
                 if not self.vehicle_status_publisher:
                     self.vehicle_status_publisher = rospy.Publisher(
-                        '/carla/ego_vehicle/vehicle_status', CarlaEgoVehicleStatus, queue_size=1, latch=True)
+                        '/carla/ego_vehicle/vehicle_status', CarlaEgoVehicleStatus, queue_size=1, latch=True,
+                    )
             elif sensor['type'] == 'sensor.hd_map':
                 if not self.odometry_publisher:
                     self.odometry_publisher = rospy.Publisher(
-                        '/carla/ego_vehicle/odometry', Odometry, queue_size=1, latch=True)
+                        '/carla/ego_vehicle/odometry', Odometry, queue_size=1, latch=True,
+                    )
                 if not self.world_info_publisher:
                     self.world_info_publisher = rospy.Publisher(
-                        '/carla/world_info', CarlaWorldInfo, queue_size=1, latch=True)
+                        '/carla/world_info', CarlaWorldInfo, queue_size=1, latch=True,
+                    )
                 if not self.map_file_publisher:
                     self.map_file_publisher = rospy.Publisher('/carla/map_file', String, queue_size=1, latch=True)
                 if not self.tf_broadcaster:
@@ -213,7 +224,8 @@ class RosAgent(AutonomousAgent):
         cx = camera_info.width / 2.0
         cy = camera_info.height / 2.0
         fx = camera_info.width / (
-            2.0 * math.tan(float(attributes['fov']) * math.pi / 360.0))
+            2.0 * math.tan(float(attributes['fov']) * math.pi / 360.0)
+        )
         fy = fx
         camera_info.K = [fx, 0, cx, 0, fy, cy, 0, 0, 1]
         camera_info.D = [0, 0, 0, 0, 0]
@@ -234,7 +246,8 @@ class RosAgent(AutonomousAgent):
             pose.pose.position.y = -wp[0].location.y
             pose.pose.position.z = wp[0].location.z
             quaternion = tf.transformations.quaternion_from_euler(
-                0, 0, -math.radians(wp[0].rotation.yaw))
+                0, 0, -math.radians(wp[0].rotation.yaw),
+            )
             pose.pose.orientation.x = quaternion[0]
             pose.pose.orientation.y = quaternion[1]
             pose.pose.orientation.z = quaternion[2]
@@ -251,7 +264,8 @@ class RosAgent(AutonomousAgent):
         :return: a list containing the required sensors
         """
         raise NotImplementedError(
-            "This function has to be implemented by the derived classes")
+            "This function has to be implemented by the derived classes",
+        )
 
     def get_header(self):
         """
@@ -269,9 +283,11 @@ class RosAgent(AutonomousAgent):
         header.frame_id = 'ego_vehicle/lidar/{}'.format(sensor_id)
 
         lidar_data = numpy.frombuffer(
-            data, dtype=numpy.float32)
+            data, dtype=numpy.float32,
+        )
         lidar_data = numpy.reshape(
-            lidar_data, (int(lidar_data.shape[0] / 3), 3))
+            lidar_data, (int(lidar_data.shape[0] / 3), 3),
+        )
         # we take the oposite of y axis
         # (as lidar point are express in left handed coordinate system, and ros need right handed)
         # we need a copy here, because the data are read only in carla numpy
@@ -318,7 +334,8 @@ class RosAgent(AutonomousAgent):
         """
         if not self.vehicle_info_publisher:
             self.vehicle_info_publisher = rospy.Publisher(
-                '/carla/ego_vehicle/vehicle_info', CarlaEgoVehicleInfo, queue_size=1, latch=True)
+                '/carla/ego_vehicle/vehicle_info', CarlaEgoVehicleInfo, queue_size=1, latch=True,
+            )
             info_msg = CarlaEgoVehicleInfo()
             for wheel in data['wheels']:
                 wheel_info = CarlaEgoVehicleInfoWheel()
@@ -415,8 +432,11 @@ class RosAgent(AutonomousAgent):
 
         # check if stack is still running
         if self.stack_process and self.stack_process.poll() is not None:
-            raise RuntimeError("Stack exited with: {} {}".format(
-                self.stack_process.returncode, self.stack_process.communicate()[0]))
+            raise RuntimeError(
+                "Stack exited with: {} {}".format(
+                self.stack_process.returncode, self.stack_process.communicate()[0],
+                ),
+            )
 
         # publish global plan to ROS once
         if self._global_plan_world_coord and not self.global_plan_published:

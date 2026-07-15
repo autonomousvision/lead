@@ -103,8 +103,11 @@ class AutonomousAgent(object):
         input_data = self.sensor_interface.get_data(GameTime.get_frame())
         get_data_duration = time.time() - get_data_start
         if get_data_duration > 0.05:
-            print('=== [Agent] -- get_data took {:.0f} ms at frame {}'.format(
-                get_data_duration * 1000, GameTime.get_frame()), flush=True)
+            print(
+                '=== [Agent] -- get_data took {:.0f} ms at frame {}'.format(
+                get_data_duration * 1000, GameTime.get_frame(),
+                ), flush=True,
+            )
 
         timestamp = GameTime.get_time()
 

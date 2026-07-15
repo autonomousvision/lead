@@ -4,10 +4,11 @@ import torch.nn.functional as F
 import torchmetrics
 from scipy.optimize import linear_sum_assignment
 from torch import nn
+from torch.amp.autocast_mode import autocast
 
 from lead.common.constants import RadarDataIndex, RadarLabels
 from lead.config import LeadConfig
-from lead.policy.transfuser.utils import transfuser_utils as fn
+from lead.policy.transfuser import ops
 
 
 class RadarDetector(nn.Module):
@@ -19,7 +20,7 @@ class RadarDetector(nn.Module):
     ) -> None:
         super().__init__()
         self.lead_config = lead_config
-        config = lead_config.agent.transfuser
+        config = lead_config.policy.transfuser
         self.config = config
         self.data_config = lead_config.expert.data_collection
         self.device = device
@@ -199,7 +200,7 @@ class RadarDetector(nn.Module):
             self.device,
             dtype=self.lead_config.training.optimization.torch_float_type,
         )  # (B, 300, 4)
-        radar_features = fn.bev_grid_sample(
+        radar_features = ops.bev_grid_sample(
             bev_tokens,
             pos,
             self.lead_config,
@@ -216,8 +217,8 @@ class RadarDetector(nn.Module):
 
         tokens = self.radar_point_tokenizer(features)
         pos = pos.reshape(-1, 2)
-        tokens = tokens + fn.gen_sineembed_for_position(
-            fn.unit_normalize_bev_points(pos.reshape(-1, 2), self.lead_config),
+        tokens = tokens + ops.gen_sineembed_for_position(
+            ops.unit_normalize_bev_points(pos.reshape(-1, 2), self.lead_config),
             hidden_dim=self.config.radar_token_dim,
         ).reshape(tokens.shape)  # Positional embedding
         return tokens
@@ -372,7 +373,7 @@ class RadarDetector(nn.Module):
         pred: jt.Float[torch.Tensor, "B Q 1"],
         gt: jt.Float[torch.Tensor, "B Q 1"],
     ) -> jt.Float[torch.Tensor, " B"]:
-        with torch.amp.autocast(device_type="cuda", enabled=False):
+        with autocast(device_type="cuda", enabled=False):
             losses = F.binary_cross_entropy_with_logits(
                 pred.float(),
                 gt.float(),
@@ -401,7 +402,7 @@ class RadarDetector(nn.Module):
         B, N, _ = pred.shape
         pred_expanded = pred[:, :, None].expand(B, N, N, 1)  # (B, N, N, 1)
         gt_expanded = gt[:, None].expand(B, N, N, 1)  # (B, N, N, 1)
-        with torch.amp.autocast(device_type="cuda", enabled=False):
+        with autocast(device_type="cuda", enabled=False):
             return (
                 F.binary_cross_entropy_with_logits(
                     pred_expanded.float(),

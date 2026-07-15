@@ -25,13 +25,13 @@ def convert_elem_to_transform(elem):
         carla.Location(
             float(elem.attrib.get('x')),
             float(elem.attrib.get('y')),
-            float(elem.attrib.get('z'))
+            float(elem.attrib.get('z')),
         ),
         carla.Rotation(
             roll=0.0,
             pitch=0.0,
-            yaw=float(elem.attrib.get('yaw'))
-        )
+            yaw=float(elem.attrib.get('yaw')),
+        ),
     )
 
 
@@ -117,9 +117,13 @@ class RouteParser(object):
             # The list of carla.Location that serve as keypoints on this route
             positions = []
             for position in route.find('waypoints').iter('position'):
-                positions.append(carla.Location(x=float(position.attrib['x']),
-                                                y=float(position.attrib['y']),
-                                                z=float(position.attrib['z'])))
+                positions.append(
+                    carla.Location(
+                        x=float(position.attrib['x']),
+                        y=float(position.attrib['y']),
+                        z=float(position.attrib['z']),
+                    ),
+                )
             route_config.keypoints = positions
 
             # The list of ScenarioConfigurations that store the scenario's data

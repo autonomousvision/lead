@@ -44,8 +44,6 @@ cd {REPO_ROOT}
 # Set environment variables
 export BASE_CHECKPOINT_ENDPOINT={args.base_checkpoint_endpoint}/eval
 export CHECKPOINT_ENDPOINT=$BASE_CHECKPOINT_ENDPOINT/{route_id}.json
-export BASE_DEBUG_CHECKPOINT_ENDPOINT={args.base_checkpoint_endpoint}/debug_checkpoint
-export DEBUG_CHECKPOINT_ENDPOINT=$BASE_DEBUG_CHECKPOINT_ENDPOINT/{route_id}.txt
 export TEAM_AGENT={args.team_agent}
 export TEAM_CONFIG={args.team_config}
 export ROUTES={route_file}
@@ -82,9 +80,7 @@ date
 
 # Create output folders and remove old eval file if exists
 mkdir -p $BASE_CHECKPOINT_ENDPOINT
-mkdir -p $BASE_DEBUG_CHECKPOINT_ENDPOINT
 rm -f $CHECKPOINT_ENDPOINT
-rm -f $DEBUG_CHECKPOINT_ENDPOINT
 
 # Sanity-check which interpreter we ended up with (inherited from the submitting shell's env)
 which python3
@@ -123,7 +119,6 @@ if [[ $EVALUATION_DATASET == "bench2drive" ]]; then
     --port=$PORT \
     --traffic-manager-port=$TM_PORT \
     --timeout=120 \
-    --debug-checkpoint=$DEBUG_CHECKPOINT_ENDPOINT \
     --traffic-manager-seed=$EXPERIMENT_SEED \
     --repetitions={args.repetitions}
 elif [[ $EVALUATION_DATASET == "fail2drive" ]]; then
@@ -139,7 +134,6 @@ elif [[ $EVALUATION_DATASET == "fail2drive" ]]; then
     --port=$PORT \
     --traffic-manager-port=$TM_PORT \
     --timeout=120 \
-    --debug-checkpoint=$DEBUG_CHECKPOINT_ENDPOINT \
     --traffic-manager-seed=$EXPERIMENT_SEED \
     --repetitions={args.repetitions}
 else
@@ -155,7 +149,6 @@ else
     --port=$PORT \
     --traffic-manager-port=$TM_PORT \
     --timeout=120 \
-    --debug-checkpoint=$DEBUG_CHECKPOINT_ENDPOINT \
     --traffic-manager-seed=$EXPERIMENT_SEED \
     --repetitions={args.repetitions}
 fi

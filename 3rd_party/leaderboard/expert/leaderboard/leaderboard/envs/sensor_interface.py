@@ -150,20 +150,22 @@ class CallBack(object):
             self._parse_imu_cb(data, self._tag)
         elif isinstance(data, GenericMeasurement):
             self._parse_pseudosensor(data, self._tag)
-        elif isinstance(data, carla.libcarla.SemanticLidarMeasurement ):
+        elif isinstance(data, carla.libcarla.SemanticLidarMeasurement):
             self._parse_semantic_lidar_cb(data, self._tag)
         else:
             logging.error('No callback method for this sensor.')
 
     def _parse_semantic_lidar_cb(self, semantic_lidar_data, tag):
-        data = np.frombuffer(semantic_lidar_data.raw_data, dtype=np.dtype([
-            ('x', 'f4'),
-            ('y', 'f4'),
-            ('z', 'f4'),
-            ('cos_inc_angle', 'f4'),
-            ('object_idx', 'u4'),
-            ('semantic_tag', 'u4')
-        ]))
+        data = np.frombuffer(
+            semantic_lidar_data.raw_data, dtype=np.dtype([
+                ('x', 'f4'),
+                ('y', 'f4'),
+                ('z', 'f4'),
+                ('cos_inc_angle', 'f4'),
+                ('object_idx', 'u4'),
+                ('semantic_tag', 'u4'),
+            ]),
+        )
         data = copy.deepcopy(data)
         self._data_provider.update_sensor(tag, data, semantic_lidar_data.frame)
 
@@ -189,20 +191,27 @@ class CallBack(object):
         self._data_provider.update_sensor(tag, points, radar_data.frame)
 
     def _parse_gnss_cb(self, gnss_data, tag):
-        array = np.array([gnss_data.latitude,
-                          gnss_data.longitude,
-                          gnss_data.altitude], dtype=np.float64)
+        array = np.array(
+            [
+                gnss_data.latitude,
+                gnss_data.longitude,
+                gnss_data.altitude,
+            ], dtype=np.float64,
+        )
         self._data_provider.update_sensor(tag, array, gnss_data.frame)
 
     def _parse_imu_cb(self, imu_data, tag):
-        array = np.array([imu_data.accelerometer.x,
-                          imu_data.accelerometer.y,
-                          imu_data.accelerometer.z,
-                          imu_data.gyroscope.x,
-                          imu_data.gyroscope.y,
-                          imu_data.gyroscope.z,
-                          imu_data.compass,
-                         ], dtype=np.float64)
+        array = np.array(
+            [
+                imu_data.accelerometer.x,
+                 imu_data.accelerometer.y,
+                 imu_data.accelerometer.z,
+                 imu_data.gyroscope.x,
+                 imu_data.gyroscope.y,
+                 imu_data.gyroscope.z,
+                 imu_data.compass,
+            ], dtype=np.float64,
+        )
         self._data_provider.update_sensor(tag, array, imu_data.frame)
 
     def _parse_pseudosensor(self, package, tag):
@@ -249,10 +258,14 @@ class SensorInterface(object):
             # the world cannot tick while get_data waits.
             due_periods = set()
             while True:
-                missing = [tag for tag in self._sensors_objects
-                           if tag not in data_dict
-                           and (self._sensor_periods[tag] <= 1
-                                or self._sensor_periods[tag] in due_periods)]
+                missing = [
+                    tag for tag in self._sensors_objects
+                    if tag not in data_dict
+                    and (
+                        self._sensor_periods[tag] <= 1
+                        or self._sensor_periods[tag] in due_periods
+                    )
+                ]
                 # Don't wait for the opendrive sensor
                 if not missing or missing == [self._opendrive_tag]:
                     break
@@ -270,8 +283,12 @@ class SensorInterface(object):
         total = time.time() - start
         if total > 0.5:
             timeline = ', '.join(
-                '{} +{:.0f}'.format(tag, arrival * 1000) for tag, arrival in arrivals)
-            print('=== [SensorInterface] -- frame {} took {:.0f} ms, arrivals (ms): {}'.format(
-                frame, total * 1000, timeline), flush=True)
+                '{} +{:.0f}'.format(tag, arrival * 1000) for tag, arrival in arrivals
+            )
+            print(
+                '=== [SensorInterface] -- frame {} took {:.0f} ms, arrivals (ms): {}'.format(
+                frame, total * 1000, timeline,
+                ), flush=True,
+            )
 
         return data_dict

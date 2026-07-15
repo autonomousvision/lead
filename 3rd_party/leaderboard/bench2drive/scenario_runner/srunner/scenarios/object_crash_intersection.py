@@ -16,20 +16,26 @@ import py_trees
 import carla
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorDestroy,
-                                                                      HandBrakeVehicle,
-                                                                      KeepVelocity,
-                                                                      ActorTransformSetter,
-                                                                      MovePedestrianWithEgo)
+from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
+    ActorDestroy,
+    HandBrakeVehicle,
+    KeepVelocity,
+    ActorTransformSetter,
+    MovePedestrianWithEgo,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import CollisionTest
-from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (InTriggerDistanceToLocation,
-                                                                               InTimeToArrivalToLocation,
-                                                                               DriveDistance)
+from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import (
+    InTriggerDistanceToLocation,
+    InTimeToArrivalToLocation,
+    DriveDistance,
+)
 from srunner.scenarios.basic_scenario import BasicScenario
-from srunner.tools.scenario_helper import (generate_target_waypoint,
-                                           generate_target_waypoint_in_route,
-                                           get_same_dir_lanes,
-                                           get_opposite_dir_lanes)
+from srunner.tools.scenario_helper import (
+    generate_target_waypoint,
+    generate_target_waypoint_in_route,
+    get_same_dir_lanes,
+    get_opposite_dir_lanes,
+)
 
 from srunner.tools.background_manager import LeaveCrossingSpace
 
@@ -67,8 +73,10 @@ class BaseVehicleTurning(BasicScenario):
     """
     _subtype = None
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=60, name="BaseVehicleTurning"):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=60, name="BaseVehicleTurning",
+    ):
         """
         Setup all relevant parameters and create scenario
         """
@@ -95,7 +103,8 @@ class BaseVehicleTurning(BasicScenario):
 
         self.timeout = timeout
         super(BaseVehicleTurning, self).__init__(
-            name, ego_vehicles, config, world, debug_mode, criteria_enable=criteria_enable)
+            name, ego_vehicles, config, world, debug_mode, criteria_enable=criteria_enable,
+        )
 
     def _get_target_waypoint(self):
         """
@@ -173,11 +182,18 @@ class BaseVehicleTurning(BasicScenario):
 
         # Adversary trigger behavior
         trigger_adversary = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart")
-        trigger_adversary.add_child(InTimeToArrivalToLocation(
-            self.ego_vehicles[0], self._reaction_time, collision_location))
-        trigger_adversary.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], collision_location, self._min_trigger_dist))
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart",
+        )
+        trigger_adversary.add_child(
+            InTimeToArrivalToLocation(
+            self.ego_vehicles[0], self._reaction_time, collision_location,
+            ),
+        )
+        trigger_adversary.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], collision_location, self._min_trigger_dist,
+            ),
+        )
 
         sequence.add_child(trigger_adversary)
         sequence.add_child(HandBrakeVehicle(self.other_actors[0], False))
@@ -187,9 +203,11 @@ class BaseVehicleTurning(BasicScenario):
         speed_distance = 2.0 * collision_distance
         if self.route_mode:
             sequence.add_child(LeaveCrossingSpace(self._collision_wp))
-        sequence.add_child(KeepVelocity(
-            self.other_actors[0], self._adversary_speed, True,
-            speed_duration, speed_distance, name="AdversaryCrossing")
+        sequence.add_child(
+            KeepVelocity(
+                self.other_actors[0], self._adversary_speed, True,
+                speed_duration, speed_distance, name="AdversaryCrossing",
+            ),
         )
 
         # Remove everything
@@ -218,14 +236,17 @@ class VehicleTurningRight(BaseVehicleTurning):
     the adversary is placed at the right side after the junction
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=60):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=60,
+    ):
         """
         Setup all relevant parameters and create scenario
         """
         self._subtype = 'right'
         super(VehicleTurningRight, self).__init__(
-            world, ego_vehicles, config, randomize, debug_mode, criteria_enable, timeout, "VehicleTurningRight")
+            world, ego_vehicles, config, randomize, debug_mode, criteria_enable, timeout, "VehicleTurningRight",
+        )
 
 
 class VehicleTurningLeft(BaseVehicleTurning):
@@ -234,14 +255,17 @@ class VehicleTurningLeft(BaseVehicleTurning):
     the adversary is placed at the left side after the junction
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=60):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=60,
+    ):
         """
         Setup all relevant parameters and create scenario
         """
         self._subtype = 'left'
         super(VehicleTurningLeft, self).__init__(
-            world, ego_vehicles, config, randomize, debug_mode, criteria_enable, timeout, "VehicleTurningLeft")
+            world, ego_vehicles, config, randomize, debug_mode, criteria_enable, timeout, "VehicleTurningLeft",
+        )
 
 
 class VehicleTurningRoute(BaseVehicleTurning):
@@ -250,14 +274,17 @@ class VehicleTurningRoute(BaseVehicleTurning):
     the adversary is placed using the route path
     """
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=60):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=60,
+    ):
         """
         Setup all relevant parameters and create scenario
         """
         self._subtype = 'route'
         super(VehicleTurningRoute, self).__init__(
-            world, ego_vehicles, config, randomize, debug_mode, criteria_enable, timeout, "VehicleTurningRoute")
+            world, ego_vehicles, config, randomize, debug_mode, criteria_enable, timeout, "VehicleTurningRoute",
+        )
 
     def _create_test_criteria(self):
         """
@@ -278,8 +305,10 @@ class VehicleTurningRoutePedestrian(BasicScenario):
     """
     _subtype = None
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=60, name="VehicleTurningRoutePedestrian"):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=60, name="VehicleTurningRoutePedestrian",
+    ):
         """
         Setup all relevant parameters and create scenario
         """
@@ -375,11 +404,18 @@ class VehicleTurningRoutePedestrian(BasicScenario):
 
         # Adversary trigger behavior
         trigger_adversary = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart")
-        trigger_adversary.add_child(InTimeToArrivalToLocation(
-            self.ego_vehicles[0], self._reaction_time, collision_location))
-        trigger_adversary.add_child(InTriggerDistanceToLocation(
-            self.ego_vehicles[0], collision_location, self._min_trigger_dist))
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerAdversaryStart",
+        )
+        trigger_adversary.add_child(
+            InTimeToArrivalToLocation(
+            self.ego_vehicles[0], self._reaction_time, collision_location,
+            ),
+        )
+        trigger_adversary.add_child(
+            InTriggerDistanceToLocation(
+            self.ego_vehicles[0], collision_location, self._min_trigger_dist,
+            ),
+        )
 
         sequence.add_child(trigger_adversary)
         if self.route_mode:
@@ -388,9 +424,11 @@ class VehicleTurningRoutePedestrian(BasicScenario):
         # Move the adversary.
         speed_distance = self._adversary_distance
         speed_duration = self._adversary_distance / self._adversary_speed
-        sequence.add_child(KeepVelocity(
-            self.other_actors[0], self._adversary_speed, True,
-            speed_duration, speed_distance, name="AdversaryCrossing")
+        sequence.add_child(
+            KeepVelocity(
+                self.other_actors[0], self._adversary_speed, True,
+                speed_duration, speed_distance, name="AdversaryCrossing",
+            ),
         )
 
         # Remove everything
@@ -435,7 +473,8 @@ class VehicleTurningRoutePedestrian(BasicScenario):
             return trigger_tree
 
         parallel = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="ScenarioTrigger")
+            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="ScenarioTrigger",
+        )
 
         parallel.add_child(MovePedestrianWithEgo(self.ego_vehicles[0], self.other_actors[0], 100))
 

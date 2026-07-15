@@ -77,7 +77,7 @@ def is_within_distance(target_transform, reference_transform, max_distance, angl
     """
     target_vector = np.array([
         target_transform.location.x - reference_transform.location.x,
-        target_transform.location.y - reference_transform.location.y
+        target_transform.location.y - reference_transform.location.y,
     ])
     norm_target = np.linalg.norm(target_vector)
 

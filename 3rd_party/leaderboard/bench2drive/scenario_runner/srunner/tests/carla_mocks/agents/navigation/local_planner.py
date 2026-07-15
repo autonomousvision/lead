@@ -113,13 +113,15 @@ class LocalPlanner(object):
 
     def _init_controller(self):
         """Controller initialization"""
-        self._vehicle_controller = VehiclePIDController(self._vehicle,
-                                                        args_lateral=self._args_lateral_dict,
-                                                        args_longitudinal=self._args_longitudinal_dict,
-                                                        offset=self._offset,
-                                                        max_throttle=self._max_throt,
-                                                        max_brake=self._max_brake,
-                                                        max_steering=self._max_steer)
+        self._vehicle_controller = VehiclePIDController(
+            self._vehicle,
+            args_lateral=self._args_lateral_dict,
+            args_longitudinal=self._args_longitudinal_dict,
+            offset=self._offset,
+            max_throttle=self._max_throt,
+            max_brake=self._max_brake,
+            max_steering=self._max_steer,
+        )
 
         # Compute the current vehicle waypoint
         current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
@@ -134,8 +136,10 @@ class LocalPlanner(object):
         :return:
         """
         if self._follow_speed_limits:
-            print("WARNING: The max speed is currently set to follow the speed limits. "
-                  "Use 'follow_speed_limits' to deactivate this")
+            print(
+                "WARNING: The max speed is currently set to follow the speed limits. "
+                "Use 'follow_speed_limits' to deactivate this",
+            )
         self._target_speed = speed
 
     def follow_speed_limits(self, value=True):
@@ -171,10 +175,14 @@ class LocalPlanner(object):
             else:
                 # random choice between the possible options
                 road_options_list = _retrieve_options(
-                    next_waypoints, last_waypoint)
+                    next_waypoints, last_waypoint,
+                )
                 road_option = random.choice(road_options_list)
-                next_waypoint = next_waypoints[road_options_list.index(
-                    road_option)]
+                next_waypoint = next_waypoints[
+                    road_options_list.index(
+                    road_option,
+                    )
+                ]
 
             self._waypoints_queue.append((next_waypoint, road_option))
 

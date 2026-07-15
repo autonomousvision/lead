@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-#SBATCH --ntasks=1
-#SBATCH --nodes=1
-#SBATCH --time=1-00:00:00
-#SBATCH --gres=gpu:0
-#SBATCH --cpus-per-task=24
-#SBATCH --mem=128gb
+# SBATCH --ntasks=1
+# SBATCH --nodes=1
+# SBATCH --time=1-00:00:00
+# SBATCH --gres=gpu:0
+# SBATCH --cpus-per-task=24
+# SBATCH --mem=128gb
 
-"""Visualize the py123d expert logs frame by frame with the ground-truth visualizer.
+"""Render py123d expert logs frame by frame with the ground-truth visualizer.
 
-Frames are split into successful/failed subfolders by route outcome and rendered
-concurrently across worker processes. Within each status folder, images are
-grouped per route, per scenario type, or kept flat (--group-by).
+Frames are split into successful/failed subfolders by route outcome, grouped
+within each per ``--group-by``, and rendered across worker processes.
 """
 
 import argparse
@@ -21,12 +20,14 @@ from concurrent.futures import FIRST_COMPLETED, Future, ProcessPoolExecutor, wai
 
 import torch
 from PIL import Image
+from slurm.slurm_init import slurm_init
 from tqdm import tqdm
 
 from lead.config import LeadConfig, load_lead_config
 from lead.policy.transfuser.dataloader.dataset import TransfuserDataset
-from lead.policy.transfuser.visualization.ground_truth_visualizer import GroundTruthVisualizer
-from slurm.slurm_init import slurm_init
+from lead.policy.transfuser.visualization.ground_truth_visualizer import (
+    GroundTruthVisualizer,
+)
 
 RESIZE_FACTOR = 0.75
 
@@ -46,11 +47,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--group-by",
-        choices=["route", "scenario_type", "flat"],
-        default="scenario_type",
+        choices=["route", "scenario_type", "scenario_type_dir", "flat"],
+        default="scenario_type_dir",
         help=(
             "How to organize output images: one folder per route, one folder per "
-            "scenario type, or a single flat folder (default: scenario_type)."
+            "currently active scenario type, one folder per the route's scenario "
+            "directory, or a single flat folder (default: scenario_type_dir)."
         ),
     )
     return parser.parse_args()
@@ -73,8 +75,8 @@ def _is_failed_record(record: dict) -> bool:
 
 def _collect_failed_timestamps(lead_config: LeadConfig) -> set[str]:
     """Route timestamps (from leaderboard results) whose run counts as failed."""
-    logs_root = lead_config.training.data.py123d_logs_root
-    results_root = os.path.join(os.path.dirname(logs_root), "results")
+    data_root = lead_config.training.data.py123d_data_root
+    results_root = os.path.join(data_root, "results")
     failed_timestamps: set[str] = set()
     if not os.path.isdir(results_root):
         return failed_timestamps
@@ -118,7 +120,7 @@ def render_frames(
     max_samples: int | None = None,
 ) -> None:
     output_root = os.path.join(
-        os.path.dirname(lead_config.training.data.py123d_logs_root),
+        lead_config.training.data.py123d_data_root,
         "transfuser_visualization",
     )
     print(f"Visualizing {view_name} -> {output_root}")
@@ -164,6 +166,8 @@ def render_frames(
                 group = log_name
             elif group_by == "scenario_type":
                 group = sample["scenario_type"][0]
+            elif group_by == "scenario_type_dir":
+                group = sample["scenario_type_dir"][0]
             else:  # flat
                 group = ""
             output_dir = os.path.join(output_root, status, view_name, group)
@@ -201,7 +205,7 @@ def visualize_normal_view(
 ) -> None:
     lead_config = load_lead_config()
     lead_config.training.data.use_sensor_perburtation = False
-    lead_config.agent.transfuser.use_planning_decoder = False
+    lead_config.policy.transfuser.use_planning_decoder = False
     lead_config.training.experiment.visualize_dataset = True
     render_frames(
         lead_config,
@@ -217,12 +221,14 @@ def visualize_perturbated_view(
     random_order: bool = False,
     max_samples: int | None = None,
 ) -> None:
-    lead_config = load_lead_config(loaded_config={"use_sensor_perburtation_prob": 1.0})
-    lead_config.agent.transfuser.use_planning_decoder = False
+    lead_config = load_lead_config(
+        loaded_config={"training": {"data": {"use_sensor_perburtation_prob": 1.0}}},
+    )
+    lead_config.policy.transfuser.use_planning_decoder = False
     lead_config.training.experiment.visualize_dataset = True
     render_frames(
         lead_config,
-        lead_config.training.data.py123d_perturbated_split,
+        lead_config.expert.data_collection.py123d_perturbated_split,
         group_by,
         random_order,
         max_samples,

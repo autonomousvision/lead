@@ -29,7 +29,7 @@ def check_missing_data(route_ids):
         # Missing data will create a jump of 2 units
         # (i.e if 'Route0_rep1' is missing, 'Route0_rep0' will be followed by 'Route0_rep2', which are two units)
         total_int = route_int * rep_num + rep_int
-        if total_int - prev_total_int > 1: 
+        if total_int - prev_total_int > 1:
             raise ValueError(f"Stopping. Missing some data as the ids jumped from {prev_id} to {id}")
 
         prev_rep_int = rep_int
@@ -71,10 +71,12 @@ def main():
             elif data['sensors'] != sensors:
                 raise ValueError("Stopping. Found two files with different sensor configurations")
 
-    route_ids.sort(key=lambda x: (
-        int(x.split('_')[1]),
-        int(x.split('_rep')[-1])
-    ))
+    route_ids.sort(
+        key=lambda x: (
+            int(x.split('_')[1]),
+            int(x.split('_rep')[-1]),
+        ),
+    )
 
     global_statistics = total_progress != 0 and total_routes == total_progress
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-import numbers
 from dataclasses import dataclass
 from functools import cached_property
 from math import sqrt
@@ -12,16 +11,13 @@ import numpy.typing as npt
 import torch
 import torch.nn.functional as F
 from torch import nn
+from torch.amp.autocast_mode import autocast
 
-import lead.common.common_utils as common_utils
-from lead.common.constants import (
-    SOURCE_DATASET_NAME_MAP,
-    SourceDataset,
-    TransfuserBoundingBoxIndex,
-)
+import lead.common.geometry as geometry
 from lead.config import LeadConfig
-from lead.policy.transfuser.dataloader import dataset_utils as carla_dataset_utils
-from lead.policy.transfuser.utils import transfuser_utils as fn
+from lead.policy.transfuser import ops, precision
+from lead.policy.transfuser.dataloader import labels
+from lead.policy.transfuser.labels import BoundingBoxIndex
 
 
 class CenterNetDecoder(nn.Module):
@@ -30,22 +26,19 @@ class CenterNetDecoder(nn.Module):
         num_classes: int,
         lead_config: LeadConfig,
         device: torch.device,
-        source_data: int,
     ) -> None:
         """Center Net Head implementation adapted from MM Detection
         Args:
             num_classes: Number of classes to predict.
             lead_config: Root config tree.
             device: Device to run the model on.
-            source_data: Source dataset identifier (e.g., SourceDataset.CARLA).
         """
         super().__init__()
         self.device = device
         self.lead_config = lead_config
-        config = lead_config.agent.transfuser
+        config = lead_config.policy.transfuser
         self.config = config
         self.num_classes = num_classes
-        self.source_data = source_data
 
         self.heatmap_head: nn.Sequential = self._build_head(
             config.bb_input_channel,
@@ -100,10 +93,9 @@ class CenterNetDecoder(nn.Module):
         offset_pred: torch.Tensor = self.offset_head(bev_feature_grid)
         yaw_class_pred: torch.Tensor = self.yaw_class_head(bev_feature_grid)
         yaw_res_pred: torch.Tensor = self.yaw_res_head(bev_feature_grid)
-        velocity_pred: torch.Tensor = None
+        velocity_pred: torch.Tensor | None = None
         if self.lead_config.training.data.training_used_lidar_steps > 1:
             velocity_pred = self.velocity_head(bev_feature_grid)
-        brake_pred: torch.Tensor = None  # Not used in current implementation
 
         return CenterNetBoundingBoxPrediction(
             center_heatmap_logit_pred=center_heatmap_pred,
@@ -113,7 +105,6 @@ class CenterNetDecoder(nn.Module):
             yaw_class_pred=yaw_class_pred,
             yaw_res_pred=yaw_res_pred,
             velocity_pred=velocity_pred,
-            brake_pred=brake_pred,
             lead_config=self.lead_config,
         )
 
@@ -131,78 +122,59 @@ class CenterNetDecoder(nn.Module):
             bounding_box_features: Bounding box predictions.
             losses: Dictionary to store computed losses.
             log: Dictionary to store debug messages.
-        Returns:
-            None: Updates losses dictionary in place.
         """
-        dataset_name = SOURCE_DATASET_NAME_MAP[self.source_data]
-        prefix = f"{dataset_name}_"
-        if self.source_data == SourceDataset.CARLA:
-            prefix = ""
-        # Mask for samples from the correct source dataset
-        source_dataset = data["source_dataset"].to(
-            self.device,
-            dtype=torch.long,
-            non_blocking=True,
-        )  # (B,)
-        source_mask = (source_dataset == self.source_data).float()  # (B,)
-        if source_mask.sum() == 0:
-            return  # No samples from this source dataset in the batch
-
-        center_heatmap_target: torch.Tensor = data[f"{prefix}center_net_heatmap"].to(
+        center_heatmap_target: torch.Tensor = data["center_net_heatmap"].to(
             self.device,
             dtype=self.lead_config.training.optimization.torch_float_type,
             non_blocking=True,
         )
 
-        wh_target: torch.Tensor = data[f"{prefix}center_net_wh"].to(
+        wh_target: torch.Tensor = data["center_net_wh"].to(
             self.device,
             dtype=self.lead_config.training.optimization.torch_float_type,
             non_blocking=True,
         )
 
-        yaw_class_target: torch.Tensor = data[f"{prefix}center_net_yaw_class"].to(
+        yaw_class_target: torch.Tensor = data["center_net_yaw_class"].to(
             self.device,
             dtype=torch.long,
             non_blocking=True,
         )
 
-        yaw_res_target: torch.Tensor = data[f"{prefix}center_net_yaw_res"].to(
+        yaw_res_target: torch.Tensor = data["center_net_yaw_res"].to(
             self.device,
             dtype=self.lead_config.training.optimization.torch_float_type,
             non_blocking=True,
         )
 
-        offset_target: torch.Tensor = data[f"{prefix}center_net_offset"].to(
+        offset_target: torch.Tensor = data["center_net_offset"].to(
             self.device,
             dtype=self.lead_config.training.optimization.torch_float_type,
             non_blocking=True,
         )
 
-        velocity_target: torch.Tensor = data[f"{prefix}center_net_velocity"].to(
+        velocity_target: torch.Tensor = data["center_net_velocity"].to(
             self.device,
             dtype=self.lead_config.training.optimization.torch_float_type,
             non_blocking=True,
         )
 
-        pixel_weight: torch.Tensor = data[f"{prefix}center_net_pixel_weight"].to(
+        pixel_weight: torch.Tensor = data["center_net_pixel_weight"].to(
             self.device,
             dtype=self.lead_config.training.optimization.torch_float_type,
             non_blocking=True,
         )  # [bs, 2, h, w]
 
-        # The number of valid bounding boxes can vary.
-        # The avg factor represents the amount of valid bounding boxes in the batch.
-        # We don't want the empty bounding boxes to have an impact therefore we use reduction sum and divide by the actual
-        # number of bounding boxes instead of using standard mean reduction.
-        # The weight sets all pixels without a bounding box to 0.
-        # Add small epsilon to have numerical stability in the case where there are no boxes in the batch.
-        avg_factor = data[f"{prefix}center_net_avg_factor"].to(
+        # avg_factor is the number of valid bounding boxes in the batch: losses use
+        # sum reduction divided by it so pixels without a box (zeroed by pixel_weight)
+        # have no impact. A small epsilon keeps this stable when there are no boxes.
+        avg_factor = data["center_net_avg_factor"].to(
             self.device,
             dtype=self.lead_config.training.optimization.torch_float_type,
             non_blocking=True,
         )  # (B,)
 
-        with torch.amp.autocast(device_type="cuda", enabled=False):
+        with autocast(device_type="cuda", enabled=False):
             # Compute per-sample losses for heatmap
             loss_center_heatmap_per_sample = gaussian_focal_loss(
                 pred=bounding_box_features.center_heatmap_pred,
@@ -212,19 +184,15 @@ class CenterNetDecoder(nn.Module):
             loss_center_heatmap_per_sample = loss_center_heatmap_per_sample.sum(
                 dim=(1, 2, 3),
             )  # (B,)
-            # Mask out samples from other sources and normalize
             avg_factor_clamped = (
                 avg_factor
                 + torch.finfo(
                     self.lead_config.training.optimization.torch_float_type,
                 ).eps
             )
-            loss_center_heatmap_per_sample = (
-                loss_center_heatmap_per_sample / avg_factor_clamped
-            )  # (B,)
             loss_center_heatmap = (
-                loss_center_heatmap_per_sample * source_mask
-            ).sum() / source_mask.sum().clamp(min=1)
+                loss_center_heatmap_per_sample / avg_factor_clamped
+            ).mean()
 
             # Compute per-sample losses for wh
             loss_wh_per_sample = (
@@ -236,12 +204,10 @@ class CenterNetDecoder(nn.Module):
                 * pixel_weight.float()
             )  # (B, 2, H, W)
             loss_wh_per_sample = loss_wh_per_sample.sum(dim=(1, 2, 3))  # (B,)
-            loss_wh_per_sample = loss_wh_per_sample / (
-                avg_factor_clamped * bounding_box_features.wh_pred.shape[1]
-            )  # (B,)
             loss_wh = (
-                loss_wh_per_sample * source_mask
-            ).sum() / source_mask.sum().clamp(min=1)
+                loss_wh_per_sample
+                / (avg_factor_clamped * bounding_box_features.wh_pred.shape[1])
+            ).mean()
 
             # Compute per-sample losses for offset
             loss_offset_per_sample = (
@@ -253,12 +219,10 @@ class CenterNetDecoder(nn.Module):
                 * pixel_weight.float()
             )  # (B, 2, H, W)
             loss_offset_per_sample = loss_offset_per_sample.sum(dim=(1, 2, 3))  # (B,)
-            loss_offset_per_sample = loss_offset_per_sample / (
-                avg_factor_clamped * bounding_box_features.wh_pred.shape[1]
-            )  # (B,)
             loss_offset = (
-                loss_offset_per_sample * source_mask
-            ).sum() / source_mask.sum().clamp(min=1)
+                loss_offset_per_sample
+                / (avg_factor_clamped * bounding_box_features.wh_pred.shape[1])
+            ).mean()
 
             # Compute per-sample losses for yaw class
             loss_yaw_class_per_sample = (
@@ -272,12 +236,7 @@ class CenterNetDecoder(nn.Module):
             loss_yaw_class_per_sample = loss_yaw_class_per_sample.sum(
                 dim=(1, 2),
             )  # (B,)
-            loss_yaw_class_per_sample = (
-                loss_yaw_class_per_sample / avg_factor_clamped
-            )  # (B,)
-            loss_yaw_class = (
-                loss_yaw_class_per_sample * source_mask
-            ).sum() / source_mask.sum().clamp(min=1)
+            loss_yaw_class = (loss_yaw_class_per_sample / avg_factor_clamped).mean()
 
             # Compute per-sample losses for yaw res
             loss_yaw_res_per_sample = (
@@ -289,12 +248,7 @@ class CenterNetDecoder(nn.Module):
                 * pixel_weight[:, 0:1].float()
             )  # (B, 1, H, W)
             loss_yaw_res_per_sample = loss_yaw_res_per_sample.sum(dim=(1, 2, 3))  # (B,)
-            loss_yaw_res_per_sample = (
-                loss_yaw_res_per_sample / avg_factor_clamped
-            )  # (B,)
-            loss_yaw_res = (
-                loss_yaw_res_per_sample * source_mask
-            ).sum() / source_mask.sum().clamp(min=1)
+            loss_yaw_res = (loss_yaw_res_per_sample / avg_factor_clamped).mean()
 
         loss_velocity = torch.zeros(
             1,
@@ -302,6 +256,7 @@ class CenterNetDecoder(nn.Module):
             device=self.device,
         )
         if self.lead_config.training.data.training_used_lidar_steps > 1:
+            assert bounding_box_features.velocity_pred is not None
             loss_velocity_per_sample = (
                 F.l1_loss(
                     bounding_box_features.velocity_pred,
@@ -313,22 +268,16 @@ class CenterNetDecoder(nn.Module):
             loss_velocity_per_sample = loss_velocity_per_sample.sum(
                 dim=(1, 2, 3),
             )  # (B,)
-            loss_velocity_per_sample = (
-                loss_velocity_per_sample / avg_factor_clamped
-            )  # (B,)
-            loss_velocity = (
-                loss_velocity_per_sample * source_mask
-            ).sum() / source_mask.sum().clamp(min=1)
+            loss_velocity = (loss_velocity_per_sample / avg_factor_clamped).mean()
 
-        # Add dataset name prefix
         losses.update(
             {
-                f"{prefix}loss_center_net_heatmap": loss_center_heatmap,
-                f"{prefix}loss_center_net_wh": loss_wh,
-                f"{prefix}loss_center_net_offset": loss_offset,
-                f"{prefix}loss_center_net_yaw_class": loss_yaw_class,
-                f"{prefix}loss_center_net_yaw_res": loss_yaw_res,
-                f"{prefix}loss_center_net_velocity": loss_velocity,
+                "loss_center_net_heatmap": loss_center_heatmap,
+                "loss_center_net_wh": loss_wh,
+                "loss_center_net_offset": loss_offset,
+                "loss_center_net_yaw_class": loss_yaw_class,
+                "loss_center_net_yaw_res": loss_yaw_res,
+                "loss_center_net_velocity": loss_velocity,
             },
         )
 
@@ -340,42 +289,26 @@ class CenterNetDecoder(nn.Module):
             )
             == 0
         ):
-            subset = source_mask.bool()
-            heatmap_pred = bounding_box_features.center_heatmap_pred[subset]
-            wh_pred = bounding_box_features.wh_pred[subset]
-            offset_pred = bounding_box_features.offset_pred[subset]
-            yaw_class_pred = bounding_box_features.yaw_class_pred[subset]
-            yaw_res_pred = bounding_box_features.yaw_res_pred[subset]
-            log[f"{prefix}center_net_output/heatmap_pred_min"] = (
-                heatmap_pred.min().item()
-            )
-            log[f"{prefix}center_net_output/heatmap_pred_max"] = (
-                heatmap_pred.max().item()
-            )
-            log[f"{prefix}center_net_output/wh_pred_min"] = wh_pred.min().item()
-            log[f"{prefix}center_net_output/wh_pred_max"] = wh_pred.max().item()
-            log[f"{prefix}center_net_output/offset_pred_min"] = offset_pred.min().item()
-            log[f"{prefix}center_net_output/offset_pred_max"] = offset_pred.max().item()
-            log[f"{prefix}center_net_output/yaw_class_pred_min"] = (
-                yaw_class_pred.min().item()
-            )
-            log[f"{prefix}center_net_output/yaw_class_pred_max"] = (
-                yaw_class_pred.max().item()
-            )
-            log[f"{prefix}center_net_output/yaw_res_pred_min"] = (
-                yaw_res_pred.min().item()
-            )
-            log[f"{prefix}center_net_output/yaw_res_pred_max"] = (
-                yaw_res_pred.max().item()
-            )
+            heatmap_pred = bounding_box_features.center_heatmap_pred
+            wh_pred = bounding_box_features.wh_pred
+            offset_pred = bounding_box_features.offset_pred
+            yaw_class_pred = bounding_box_features.yaw_class_pred
+            yaw_res_pred = bounding_box_features.yaw_res_pred
+            log["center_net_output/heatmap_pred_min"] = heatmap_pred.min().item()
+            log["center_net_output/heatmap_pred_max"] = heatmap_pred.max().item()
+            log["center_net_output/wh_pred_min"] = wh_pred.min().item()
+            log["center_net_output/wh_pred_max"] = wh_pred.max().item()
+            log["center_net_output/offset_pred_min"] = offset_pred.min().item()
+            log["center_net_output/offset_pred_max"] = offset_pred.max().item()
+            log["center_net_output/yaw_class_pred_min"] = yaw_class_pred.min().item()
+            log["center_net_output/yaw_class_pred_max"] = yaw_class_pred.max().item()
+            log["center_net_output/yaw_res_pred_min"] = yaw_res_pred.min().item()
+            log["center_net_output/yaw_res_pred_max"] = yaw_res_pred.max().item()
             if self.lead_config.training.data.training_used_lidar_steps > 1:
-                velocity_pred = bounding_box_features.velocity_pred[subset]
-                log[f"{prefix}center_net_output/velocity_pred_min"] = (
-                    velocity_pred.min().item()
-                )
-                log[f"{prefix}center_net_output/velocity_pred_max"] = (
-                    velocity_pred.max().item()
-                )
+                velocity_pred = bounding_box_features.velocity_pred
+                assert velocity_pred is not None
+                log["center_net_output/velocity_pred_min"] = velocity_pred.min().item()
+                log["center_net_output/velocity_pred_max"] = velocity_pred.max().item()
 
 
 @dataclass
@@ -388,14 +321,13 @@ class CenterNetBoundingBoxPrediction:
     offset_pred: torch.Tensor
     yaw_class_pred: torch.Tensor
     yaw_res_pred: torch.Tensor
-    velocity_pred: torch.Tensor
-    brake_pred: torch.Tensor
+    velocity_pred: torch.Tensor | None
     lead_config: LeadConfig
 
     @cached_property
     def pred_bounding_box_image_system(self) -> jt.Float[npt.NDArray, "B K 9"]:
         """Numpy array of shape (bs, k, 9) with features (x, y, w, h, yaw, velocity, brake, class, score) in image system"""
-        config = self.lead_config.agent.transfuser
+        config = self.lead_config.policy.transfuser
         data_config = self.lead_config.expert.data_collection
         k = config.top_k_center_keypoints
         kernel = config.center_net_max_pooling_kernel
@@ -413,7 +345,7 @@ class CenterNetBoundingBoxPrediction:
 
         # convert class + res to yaw
         yaw_class = torch.argmax(yaw_class, -1)
-        yaw = fn.class2angle(yaw_class, yaw_res.squeeze(2), config)
+        yaw = ops.class2angle(yaw_class, yaw_res.squeeze(2), config)
 
         brake = torch.zeros_like(
             yaw,
@@ -422,6 +354,7 @@ class CenterNetBoundingBoxPrediction:
         if self.lead_config.training.data.training_used_lidar_steps <= 1:
             velocity = torch.zeros_like(yaw)
         else:
+            assert self.velocity_pred is not None
             velocity = transpose_and_gather_feat(self.velocity_pred, batch_index)
             velocity = velocity[..., 0]
 
@@ -440,21 +373,19 @@ class CenterNetBoundingBoxPrediction:
             ),
             dim=-1,
         )
-        batch_bboxes[:, :, : TransfuserBoundingBoxIndex.YAW] *= (
-            data_config.pixels_per_meter
-        )
+        batch_bboxes[:, :, : BoundingBoxIndex.YAW] *= data_config.pixels_per_meter
 
         return batch_bboxes.detach().cpu().float().numpy()
 
     @cached_property
     def pred_bounding_box_vehicle_system(self) -> jt.Float[npt.NDArray, "B K 9"]:
         """Numpy array of shape (bs, k, 9) with features (x, y, w, h, yaw, velocity, brake, class, score) in vehicle system"""
-        config = self.lead_config.agent.transfuser
+        config = self.lead_config.policy.transfuser
         data_config = self.lead_config.expert.data_collection
         bboxes_image_system = self.pred_bounding_box_image_system
         # filter bbox based on the confidence of the prediction
         bboxes_image_system = bboxes_image_system[
-            bboxes_image_system[:, :, TransfuserBoundingBoxIndex.SCORE]
+            bboxes_image_system[:, :, BoundingBoxIndex.SCORE]
             > config.bb_confidence_threshold
         ]
         # convert to vehicle system
@@ -463,7 +394,7 @@ class CenterNetBoundingBoxPrediction:
             original_shape = bis.shape
             bis = bis.reshape(-1, 9)
             bounding_box_vehicle_system.append(
-                carla_dataset_utils.bb_image_to_vehicle_system(
+                labels.bb_image_to_vehicle_system(
                     bis,
                     data_config.pixels_per_meter,
                     data_config.min_x_meter,
@@ -497,15 +428,15 @@ class PredictedBoundingBox:
 
     def update(
         self,
-        x: numbers.Real,
-        y: numbers.Real,
-        orientation: numbers.Real,
-        x_target: numbers.Real,
-        y_target: numbers.Real,
-        orientation_target: numbers.Real,
+        x: float,
+        y: float,
+        orientation: float,
+        x_target: float,
+        y_target: float,
+        orientation_target: float,
     ) -> PredictedBoundingBox:
         pos_diff = np.array([x_target, y_target]) - np.array([x, y])
-        rot_diff = common_utils.normalize_angle(orientation_target - orientation)
+        rot_diff = geometry.normalize_angle(orientation_target - orientation)
 
         # Rotate difference vector from global to local coordinate system.
         rotation_matrix = np.array(
@@ -527,7 +458,7 @@ class PredictedBoundingBox:
         # Calculate new coordinates
         local_coords = local_rot_matrix.T @ (np.array([self.x, self.y]) - pos_diff).T
         new_x, new_y = float(local_coords[0]), float(local_coords[1])
-        new_yaw = float(common_utils.normalize_angle(self.yaw - rot_diff))
+        new_yaw = float(geometry.normalize_angle(self.yaw - rot_diff))
 
         # Return a new bounding box with updated values
         return PredictedBoundingBox(
@@ -570,7 +501,7 @@ class PredictedBoundingBox:
         ][index]
 
 
-@fn.force_fp32(apply_to=("pred", "gaussian_target"))
+@precision.force_fp32(apply_to=("pred", "gaussian_target"))
 def gaussian_focal_loss(
     pred: torch.Tensor,
     gaussian_target: torch.Tensor,
@@ -604,9 +535,9 @@ def gaussian_focal_loss(
 
 
 def gaussian2d(
-    radius: numbers.Real,
-    sigma: numbers.Real = 1,
-    dtype: np.dtype = np.float32,
+    radius: int,
+    sigma: float = 1,
+    dtype: type[np.floating] = np.float32,
 ) -> np.ndarray:
     """Generate 2D gaussian kernel.
 
@@ -672,104 +603,11 @@ def gen_gaussian_target(
 
 
 def gaussian_radius(det_size: list[float], min_overlap: float) -> int:
-    r"""Generate 2D gaussian radius.
+    r"""Gaussian kernel radius for a box of shape ``det_size`` keeping IoU ``min_overlap``.
 
-    Args:
-        det_size: Shape of object.
-        min_overlap: Min IoU with ground truth for boxes generated by
-            keypoints inside the gaussian kernel.
-
-    Returns:
-        radius: Radius of gaussian kernel.
-
-    This function is modified from the `official github repo
-    <https://github.com/princeton-vl/CornerNet-Lite/blob/master/core/sample/
-    utils.py#L65>`_.
-
-    Given ``min_overlap``, radius could computed by a quadratic equation
-    according to Vieta's formulas.
-
-    There are 3 cases for computing gaussian radius, details are following:
-
-    - Explanation of figure: ``lt`` and ``br`` indicates the left-top and
-      bottom-right corner of ground truth box. ``x`` indicates the
-      generated corner at the limited position when ``radius=r``.
-
-    - Case1: one corner is inside the gt box and the other is outside.
-
-    .. code:: text
-
-        |<   width   >|
-
-        lt-+----------+         -
-        |  |          |         ^
-        +--x----------+--+
-        |  |          |  |
-        |  |          |  |    height
-        |  | overlap  |  |
-        |  |          |  |
-        |  |          |  |      v
-        +--+---------br--+      -
-           |          |  |
-           +----------+--x
-
-    To ensure IoU of generated box and gt box is larger than ``min_overlap``:
-
-    .. math::
-        \cfrac{(w-r)*(h-r)}{w*h+(w+h)r-r^2} \ge {iou} \quad\Rightarrow\quad
-        {r^2-(w+h)r+\cfrac{1-iou}{1+iou}*w*h} \ge 0 \\
-        {a} = 1,\quad{b} = {-(w+h)},\quad{c} = {\cfrac{1-iou}{1+iou}*w*h}
-        {r} \le \cfrac{-b-\sqrt{b^2-4*a*c}}{2*a}
-
-    - Case2: both two corners are inside the gt box.
-
-    .. code:: text
-
-        |<   width   >|
-
-        lt-+----------+         -
-        |  |          |         ^
-        +--x-------+  |
-        |  |       |  |
-        |  |overlap|  |       height
-        |  |       |  |
-        |  +-------x--+
-        |          |  |         v
-        +----------+-br         -
-
-    To ensure IoU of generated box and gt box is larger than ``min_overlap``:
-
-    .. math::
-        \cfrac{(w-2*r)*(h-2*r)}{w*h} \ge {iou} \quad\Rightarrow\quad
-        {4r^2-2(w+h)r+(1-iou)*w*h} \ge 0 \\
-        {a} = 4,\quad {b} = {-2(w+h)},\quad {c} = {(1-iou)*w*h}
-        {r} \le \cfrac{-b-\sqrt{b^2-4*a*c}}{2*a}
-
-    - Case3: both two corners are outside the gt box.
-
-    .. code:: text
-
-           |<   width   >|
-
-        x--+----------------+
-        |  |                |
-        +-lt-------------+  |   -
-        |  |             |  |   ^
-        |  |             |  |
-        |  |   overlap   |  | height
-        |  |             |  |
-        |  |             |  |   v
-        |  +------------br--+   -
-        |                |  |
-        +----------------+--x
-
-    To ensure IoU of generated box and gt box is larger than ``min_overlap``:
-
-    .. math::
-        \cfrac{w*h}{(w+2*r)*(h+2*r)} \ge {iou} \quad\Rightarrow\quad
-        {4*iou*r^2+2*iou*(w+h)r+(iou-1)*w*h} \le 0 \\
-        {a} = {4*iou},\quad {b} = {2*iou*(w+h)},\quad {c} = {(iou-1)*w*h} \\
-        {r} \le \cfrac{-b+\sqrt{b^2-4*a*c}}{2*a}
+    The radius is the smallest root over three corner-placement cases; each case's
+    quadratic coefficients (a, b, c) are Vieta's-formula terms for its IoU bound.
+    From CornerNet-Lite: https://github.com/princeton-vl/CornerNet-Lite/blob/master/core/sample/utils.py#L65
     """
     height, width = det_size
 
@@ -790,7 +628,7 @@ def gaussian_radius(det_size: list[float], min_overlap: float) -> int:
     c3 = (min_overlap - 1) * width * height
     sq3 = sqrt(b3**2 - 4 * a3 * c3)
     r3 = (b3 + sq3) / (2 * a3)
-    return min(r1, r2, r3)
+    return int(min(r1, r2, r3))
 
 
 def get_local_maximum(heat: torch.Tensor, kernel: int = 3) -> torch.Tensor:
@@ -875,5 +713,4 @@ def transpose_and_gather_feat(feat: torch.Tensor, ind: torch.Tensor) -> torch.Te
     feat = feat.permute(0, 2, 3, 1).contiguous()
     feat = feat.view(feat.size(0), -1, feat.size(3))
     feat = gather_feat(feat, ind)
-    return feat
     return feat

@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchmetrics
+from torch.amp.autocast_mode import autocast
 
-from lead.common.constants import SOURCE_DATASET_NAME_MAP, SourceDataset
 from lead.config import LeadConfig
 
 
@@ -16,7 +16,6 @@ class PerspectiveDecoder(nn.Module):
         perspective_upsample_factor: int,
         modality: str,
         device: torch.device,
-        source_data: int,
     ) -> None:
         """Decodes a low resolution perspective grid to a full resolution output. E.g. semantic segmentation, depth
 
@@ -27,14 +26,12 @@ class PerspectiveDecoder(nn.Module):
             perspective_upsample_factor: Upsampling factor from input feature grid to output
             modality: "semantic" or "depth"
             device: torch device
-            source_data: Source dataset identifier (e.g., SourceDataset.CARLA)
         """
         super().__init__()
         self.modality = modality
         self.lead_config = lead_config
-        self.config = lead_config.agent.transfuser
+        self.config = lead_config.policy.transfuser
         self.device = device
-        self.source_data = source_data
         self.scale_factor_0 = (
             perspective_upsample_factor // self.config.deconv_scale_factor_0
         )
@@ -105,54 +102,21 @@ class PerspectiveDecoder(nn.Module):
             data: dict containing the ground truth labels and masks
             loss: dict to store the computed loss
             log: dict to store computed metrics and logs
-        Returns:
-            None
         """
         if self.config.use_semantic:
-            # Mask for samples from the correct source dataset
-            source_dataset = data["source_dataset"].to(
-                prediction.device,
-                dtype=torch.long,
-                non_blocking=True,
-            )  # (B,)
-            source_mask = (source_dataset == self.source_data).float()  # (B,)
-
-            if source_mask.sum() == 0:
-                return  # No samples from this source dataset in the batch
-
             label = data[self.modality].to(
                 prediction.device,
                 dtype=torch.long,
                 non_blocking=True,
             )
 
-            # Compute loss per sample
-            with torch.amp.autocast(device_type="cuda", enabled=False):
+            with autocast(device_type="cuda", enabled=False):
                 if self.modality == "semantic":
-                    loss_per_sample = F.cross_entropy(
-                        prediction.float(),
-                        label,
-                        reduction="none",
-                    )  # (B, H, W)
-                    loss_per_sample = loss_per_sample.mean(dim=(1, 2))  # (B,)
+                    loss_value = F.cross_entropy(prediction.float(), label)
                 else:
-                    loss_per_sample = F.l1_loss(
-                        prediction.float(),
-                        label.float(),
-                        reduction="none",
-                    )  # (B, H, W)
-                    loss_per_sample = loss_per_sample.mean(dim=(1, 2))  # (B,)
+                    loss_value = F.l1_loss(prediction.float(), label.float())
 
-                # Mask out losses from other data sources
-                loss_value = (
-                    loss_per_sample * source_mask
-                ).sum() / source_mask.sum().clamp(min=1)
-
-            # Add dataset name prefix
-            prefix = SOURCE_DATASET_NAME_MAP[self.source_data]
-            if self.source_data == SourceDataset.CARLA:
-                prefix = ""
-            loss.update({f"{prefix}loss_{self.modality}": loss_value})
+            loss.update({f"loss_{self.modality}": loss_value})
 
             if (
                 "iteration" in data
@@ -162,33 +126,30 @@ class PerspectiveDecoder(nn.Module):
                 )
                 == 0
             ):
-                subset = source_mask.bool()
-                subset_pred = prediction[subset]
-                subset_label = label[subset]
-                log[f"{prefix}{self.modality}/output_min"] = subset_pred.min().item()
-                log[f"{prefix}{self.modality}/output_max"] = subset_pred.max().item()
+                log[f"{self.modality}/output_min"] = prediction.min().item()
+                log[f"{self.modality}/output_max"] = prediction.max().item()
                 if self.modality == "semantic":
                     miou = torchmetrics.functional.jaccard_index(
-                        subset_pred,
-                        subset_label,
+                        prediction,
+                        label,
                         task="multiclass",
                         num_classes=self.config.num_semantic_classes,
                     )
                     f1 = torchmetrics.functional.f1_score(
-                        subset_pred,
-                        subset_label,
+                        prediction,
+                        label,
                         task="multiclass",
                         num_classes=self.config.num_semantic_classes,
                         average="macro",
                     )
-                    log[f"{prefix}metric/semantic_miou"] = miou.item()
-                    log[f"{prefix}metric/semantic_f1"] = f1.item()
+                    log["metric/semantic_miou"] = miou.item()
+                    log["metric/semantic_f1"] = f1.item()
                 else:
                     mae = torchmetrics.functional.mean_absolute_error(
-                        subset_pred.float(),
-                        subset_label.float(),
+                        prediction.float(),
+                        label.float(),
                     )
-                    log[f"{prefix}metric/depth_mae"] = mae.item()
+                    log["metric/depth_mae"] = mae.item()
 
     def forward(self, data: dict, image_feature_grid: torch.Tensor, log: dict):
         """Forward pass for the decoder.

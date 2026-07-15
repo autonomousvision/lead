@@ -31,8 +31,10 @@ class HardBreakRoute(BasicScenario):
 
     timeout = 120            # Timeout of scenario in seconds
 
-    def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 timeout=60):
+    def __init__(
+        self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
+        timeout=60,
+    ):
         """
         Setup all relevant parameters and create scenario
         """
@@ -40,12 +42,14 @@ class HardBreakRoute(BasicScenario):
         self._stop_duration = 10
         self.end_distance = 15
 
-        super().__init__("HardBreak",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "HardBreak",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
         """

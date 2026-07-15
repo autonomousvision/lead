@@ -17,14 +17,18 @@ import py_trees
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (
     ActorDestroy, BatchActorTransformSetter, InvadingActorFlow,
-    ScenarioTimeout)
+    ScenarioTimeout,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (
-    CollisionTest, ScenarioTimeoutTest)
+    CollisionTest, ScenarioTimeoutTest,
+)
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import \
     WaitUntilInFrontPosition
 from srunner.scenarios.basic_scenario import BasicScenario
-from srunner.tools.background_manager import (ChangeOppositeBehavior,
-                                              ReAddRoadLane, RemoveRoadLane)
+from srunner.tools.background_manager import (
+    ChangeOppositeBehavior,
+    ReAddRoadLane, RemoveRoadLane,
+)
 
 
 def convert_dict_to_location(actor_dict):
@@ -34,7 +38,7 @@ def convert_dict_to_location(actor_dict):
     location = carla.Location(
         x=float(actor_dict['x']),
         y=float(actor_dict['y']),
-        z=float(actor_dict['z'])
+        z=float(actor_dict['z']),
     )
     return location
 
@@ -55,8 +59,10 @@ class InvadingTurn(BasicScenario):
     This scenario is expected to take place on a road that has only one lane in each direction.
     """
 
-    def __init__(self, world, ego_vehicles, config, debug_mode=False, criteria_enable=True,
-                 timeout=90):
+    def __init__(
+        self, world, ego_vehicles, config, debug_mode=False, criteria_enable=True,
+        timeout=90,
+    ):
         """
         Setup all relevant parameters and create scenario
         and instantiate scenario manager
@@ -66,7 +72,8 @@ class InvadingTurn(BasicScenario):
 
         self._trigger_location = config.trigger_points[0].location
         self._reference_waypoint = self._map.get_waypoint(
-            self._trigger_location)
+            self._trigger_location,
+        )
 
         self._flow_frequency = 40 # m
         self._source_dist = 30 # Distance between source and end point
@@ -79,12 +86,14 @@ class InvadingTurn(BasicScenario):
 
         self._obstacle_transforms = []
 
-        super().__init__("InvadingTurn",
-                         ego_vehicles,
-                         config,
-                         world,
-                         debug_mode,
-                         criteria_enable=criteria_enable)
+        super().__init__(
+            "InvadingTurn",
+            ego_vehicles,
+            config,
+            world,
+            debug_mode,
+            criteria_enable=criteria_enable,
+        )
 
     def _initialize_actors(self, config):
         """
@@ -114,20 +123,22 @@ class InvadingTurn(BasicScenario):
         first_cone = self.other_actors[-1]
         last_cone = self.other_actors[0]
         from srunner.scenariomanager.carla_data_provider import ActiveScenario
-        CarlaDataProvider.active_scenarios.append(ActiveScenario(
-            type(self).__name__, 
-            first_actor=first_cone, 
-            last_actor=last_cone, 
-            metadata=self._true_offset, 
-            scenario_id=id(self), 
-            trigger_location=config.trigger_points[0].location,
-            extra_meta={
-                "obstacles": self.other_actors,
-                "first_cone": first_cone,
-                "last_cone": last_cone,
-                "offset": self._true_offset
-            }
-        ))
+        CarlaDataProvider.active_scenarios.append(
+            ActiveScenario(
+                type(self).__name__,
+                first_actor=first_cone,
+                last_actor=last_cone,
+                metadata=self._true_offset,
+                scenario_id=id(self),
+                trigger_location=config.trigger_points[0].location,
+                extra_meta={
+                    "obstacles": self.other_actors,
+                    "first_cone": first_cone,
+                    "last_cone": last_cone,
+                    "offset": self._true_offset,
+                },
+            ),
+        )
 
     def _create_obstacle(self):
 
@@ -169,8 +180,11 @@ class InvadingTurn(BasicScenario):
         sequence.add_child(BatchActorTransformSetter(self._obstacle_transforms))
 
         main_behavior = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
-        main_behavior.add_child(InvadingActorFlow(
-            self._source_wp, self._sink_wp, self.ego_vehicles[0], self._flow_frequency, offset=self._true_offset))
+        main_behavior.add_child(
+            InvadingActorFlow(
+            self._source_wp, self._sink_wp, self.ego_vehicles[0], self._flow_frequency, offset=self._true_offset,
+            ),
+        )
 
         main_behavior.add_child(WaitUntilInFrontPosition(self.ego_vehicles[0], self._forward_wp.transform, True, self._check_distance))
         main_behavior.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))

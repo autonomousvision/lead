@@ -12,7 +12,7 @@ from lead.policy.transfuser.decoder.planning_decoder import (
 @pytest.fixture
 def config():
     """Fixture providing the transfuser config section."""
-    return load_lead_config().agent.transfuser
+    return load_lead_config().policy.transfuser
 
 
 @pytest.fixture

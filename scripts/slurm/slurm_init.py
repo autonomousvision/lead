@@ -1,24 +1,9 @@
-"""Python counterpart of slurm_init.sh: lets a Python script submit itself to Slurm.
+"""Lets a Python script submit itself to Slurm.
 
-Declare resources as regular #SBATCH comment lines at the top of the script —
-after the shebang, before the docstring (sbatch stops parsing directives at the
-first non-comment line) — and call ``slurm_init()`` first thing in ``__main__``:
-
-    #!/usr/bin/env python3
-    #SBATCH --time=1-00:00:00
-    #SBATCH --cpus-per-task=24
-    #SBATCH --mem=128gb
-    '''Module docstring.'''
-    from slurm.slurm_init import slurm_init
-
-    if __name__ == "__main__":
-        slurm_init()
-        ...
-
-Run ``python3 the_script.py`` and it submits itself (the .py file is the batch
-script; sbatch reads the #SBATCH lines from it). Inside the job, or on a
-machine without sbatch, ``slurm_init()`` just sets up OUTPUT_DIR, cds to the
-repo root, and returns so the script keeps running.
+Declare resources as ``#SBATCH`` comment lines after the shebang and before the
+docstring (sbatch stops parsing directives at the first non-comment line), then
+call ``slurm_init()`` first thing in ``__main__``. Inside a job, or without
+sbatch, it just sets up OUTPUT_DIR, cds to the repo root, and returns.
 """
 
 import os

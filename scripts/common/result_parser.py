@@ -40,8 +40,18 @@ def outside_route_lanes_penalty(percentage):
 def main():
     # available arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("--xml", type=str, default="src/lead/routes/benchmark_routes/Town13.xml", help="Routes file.")
-    parser.add_argument("--results", type=str, required=True, help="Folder with json files to be parsed")
+    parser.add_argument(
+        "--xml",
+        type=str,
+        default="src/lead/routes/benchmark_routes/Town13.xml",
+        help="Routes file.",
+    )
+    parser.add_argument(
+        "--results",
+        type=str,
+        required=True,
+        help="Folder with json files to be parsed",
+    )
     parser.add_argument(
         "--strict",
         action="store_true",
@@ -144,7 +154,9 @@ def main():
                     abort = True
                 if record["status"] == "Failed":
                     print(
-                        "Error: There is at least one route that failed." + " Route ID: " + record["route_id"],
+                        "Error: There is at least one route that failed."
+                        + " Route ID: "
+                        + record["route_id"],
                         file=sys.stderr,
                     )
                     abort = True
@@ -168,13 +180,11 @@ def main():
                 percentage_of_route_completed = record["scores"]["score_route"] / 100.0
                 route_length_km = record["meta"]["route_length"] / 1000.0
                 driven_km = percentage_of_route_completed * route_length_km
-                route_time_hours = record["meta"]["duration_game"] / 3600.0  # conversion from seconds to hours
+                route_time_hours = (
+                    record["meta"]["duration_game"] / 3600.0
+                )  # conversion from seconds to hours
                 total_driven_hours += route_time_hours
                 total_km_driven += driven_km
-                if route_time_hours > 0.0:
-                    driven_km / route_time_hours
-                else:
-                    pass
 
                 total_number_of_routes += 1
                 local_infractions = {}
@@ -182,7 +192,10 @@ def main():
                     local_infractions[infraction_name] = 0
                     if infraction_name == "outside_route_lanes":
                         if len(record["infractions"][infraction_name]) > 0:
-                            meters_off_road = re.findall(r"\d+\.\d+", record["infractions"][infraction_name][0])[0]
+                            meters_off_road = re.findall(
+                                r"\d+\.\d+",
+                                record["infractions"][infraction_name][0],
+                            )[0]
                             km_off_road = float(meters_off_road) / 1000.0
                             total_infractions[infraction_name] += km_off_road
                             local_infractions[infraction_name] += km_off_road
@@ -194,9 +207,15 @@ def main():
                             perc_speed_of_traffic = []
                             for min_speed_inf in record["infractions"][infraction_name]:
                                 pattern = r"(\d+(\.\d+)?)%"
-                                min_speed_section = float(re.findall(pattern, min_speed_inf)[0][0]) / 100.0
+                                min_speed_section = (
+                                    float(re.findall(pattern, min_speed_inf)[0][0])
+                                    / 100.0
+                                )
                                 # clip to 0 to 1
-                                min_speed_section = min(1.0, max(0.0, min_speed_section))
+                                min_speed_section = min(
+                                    1.0,
+                                    max(0.0, min_speed_section),
+                                )
                                 perc_speed_of_traffic.append(min_speed_section)
                             avg_min_speed = np.mean(perc_speed_of_traffic)
                             # We log percentage of route where the min speed was violated.
@@ -217,20 +236,29 @@ def main():
                     if inf_name in PENALTY_VALUE_DICT:
                         if driven_km > 0.0:
                             score_penalty *= math.pow(
-                                PENALTY_VALUE_DICT[inf_name], (local_infractions[inf_name] / driven_km),
+                                PENALTY_VALUE_DICT[inf_name],
+                                (local_infractions[inf_name] / driven_km),
                             )
 
                 # Special infraction min speed
                 if len(record["infractions"]["min_speed_infractions"]) > 0:
                     for min_speed_inf in record["infractions"]["min_speed_infractions"]:
-                        min_speed_section = float(re.findall(r"\d+\.\d+", min_speed_inf)[0])
+                        min_speed_section = float(
+                            re.findall(r"\d+\.\d+", min_speed_inf)[0],
+                        )
                         score_penalty *= min_speed_penalty(min_speed_section)
 
                 # Special infraction outside route lanes
                 if len(record["infractions"]["outside_route_lanes"]) > 0:
-                    for outside_route_lanes in record["infractions"]["outside_route_lanes"]:
-                        outside_route_lanes_perc = float(re.findall(r"\d+\.\d+", outside_route_lanes)[1])
-                        score_penalty *= outside_route_lanes_penalty(outside_route_lanes_perc)
+                    for outside_route_lanes in record["infractions"][
+                        "outside_route_lanes"
+                    ]:
+                        outside_route_lanes_perc = float(
+                            re.findall(r"\d+\.\d+", outside_route_lanes)[1],
+                        )
+                        score_penalty *= outside_route_lanes_penalty(
+                            outside_route_lanes_perc,
+                        )
 
                 normalied_ds = score_route * score_penalty
 
@@ -308,7 +336,9 @@ def main():
         elif value == "Agent blocked":
             total_score_values[idx] = total_infractions_per_km["vehicle_blocked"]
         elif value == "Yield emergency vehicles infractions":
-            total_score_values[idx] = total_infractions_per_km["yield_emergency_vehicle_infractions"]
+            total_score_values[idx] = total_infractions_per_km[
+                "yield_emergency_vehicle_infractions"
+            ]
         elif value == "Scenario timeouts":
             total_score_values[idx] = total_infractions_per_km["scenario_timeouts"]
         elif value == "Min speed infractions":
@@ -316,18 +346,28 @@ def main():
         elif value == "Avg. speed km/h":
             total_score_values[idx] = avg_km_h_speed
         elif value == "Avg. Normalized DS":
-            total_score_values[idx] = np.sum(normalized_driving_scores) / len(normalized_driving_scores)
+            total_score_values[idx] = np.sum(normalized_driving_scores) / len(
+                normalized_driving_scores,
+            )
         elif value == "Avg. Normalized IS":
-            total_score_values[idx] = np.sum(normalized_infraction_scores) / len(normalized_infraction_scores)
+            total_score_values[idx] = np.sum(normalized_infraction_scores) / len(
+                normalized_infraction_scores,
+            )
 
     # dict to extract unique identity of route in case of repetitions
     route_to_id = {}
     for route_id in route_ids:
-        route_to_id[route_id] = str(re.search("_(\d+)_", route_id).group(1))
+        match = re.search(r"_(\d+)_", route_id)
+        if match is None:
+            raise ValueError(
+                f"Route id {route_id!r} does not match the expected '_<digits>_' pattern.",
+            )
+        route_to_id[route_id] = match.group(1)
 
     # build table of relevant information
     total_score_info = [
-        {"label": label, "value": value} for label, value in zip(total_score_labels, total_score_values)
+        {"label": label, "value": value}
+        for label, value in zip(total_score_labels, total_score_values, strict=True)
     ]
     route_scenarios = [
         {
@@ -338,7 +378,9 @@ def main():
             "DS": driving_scores[idx],
             "RC": route_completions[idx],
             "NDS": normalized_driving_scores[idx],
-            "infractions": [(key, item) for key, item in individual_infractions[idx].items()],
+            "infractions": [
+                (key, item) for key, item in individual_infractions[idx].items()
+            ],
         }
         for idx, route_id in enumerate(route_ids)
     ]
@@ -348,7 +390,9 @@ def main():
     evaluation_filtered = {}
 
     for filter in filters:
-        subcategories = np.unique(np.array([scenario[filter] for scenario in route_scenarios]))
+        subcategories = np.unique(
+            np.array([scenario[filter] for scenario in route_scenarios]),
+        )
         route_scenarios_per_subcategory = {}
         evaluation_per_subcategory = {}
         for subcategory in subcategories:
@@ -357,11 +401,36 @@ def main():
         for scenario in route_scenarios:
             route_scenarios_per_subcategory[scenario[filter]].append(scenario)
         for subcategory in subcategories:
-            scores = np.array([scenario["DS"] for scenario in route_scenarios_per_subcategory[subcategory]])
-            completions = np.array([scenario["RC"] for scenario in route_scenarios_per_subcategory[subcategory]])
-            n_scores = np.array([scenario["NDS"] for scenario in route_scenarios_per_subcategory[subcategory]])
-            durations = np.array([scenario["duration"] for scenario in route_scenarios_per_subcategory[subcategory]])
-            lengths = np.array([scenario["length"] for scenario in route_scenarios_per_subcategory[subcategory]])
+            scores = np.array(
+                [
+                    scenario["DS"]
+                    for scenario in route_scenarios_per_subcategory[subcategory]
+                ],
+            )
+            completions = np.array(
+                [
+                    scenario["RC"]
+                    for scenario in route_scenarios_per_subcategory[subcategory]
+                ],
+            )
+            n_scores = np.array(
+                [
+                    scenario["NDS"]
+                    for scenario in route_scenarios_per_subcategory[subcategory]
+                ],
+            )
+            durations = np.array(
+                [
+                    scenario["duration"]
+                    for scenario in route_scenarios_per_subcategory[subcategory]
+                ],
+            )
+            lengths = np.array(
+                [
+                    scenario["length"]
+                    for scenario in route_scenarios_per_subcategory[subcategory]
+                ],
+            )
 
             infractions = np.array(
                 [
@@ -376,7 +445,14 @@ def main():
 
             durations_combined = (durations.mean(), durations.std())
             lengths_combined = (lengths.mean(), lengths.std())
-            infractions_combined = [(mean, std) for mean, std in zip(infractions.mean(axis=0), infractions.std(axis=0))]
+            infractions_combined = [
+                (mean, std)
+                for mean, std in zip(
+                    infractions.mean(axis=0),
+                    infractions.std(axis=0),
+                    strict=True,
+                )
+            ]
 
             evaluation_per_subcategory[subcategory] = {
                 "DS": scores_combined,
@@ -391,7 +467,10 @@ def main():
     # write output csv file
     if not os.path.isdir(args.results):
         os.mkdir(args.save_dir)
-    with open(os.path.join(args.results, "results.csv"), "w") as f:  # Make file object first
+    with open(
+        os.path.join(args.results, "results.csv"),
+        "w",
+    ) as f:  # Make file object first
         csv_writer_object = csv.writer(f)  # Make csv writer object
         # writerow writes one row of data given as list object
         for info in total_score_info:
@@ -441,9 +520,16 @@ def main():
                     + infractions_types,
                 )
 
+            def route_index(fil: str) -> int:
+                match = re.search(r"_(\d+)_", fil)
+                if match is None:
+                    raise AttributeError(f"no route index in {fil!r}")
+                return int(match.group(1))
+
             try:
                 sorted_keys = sorted(
-                    evaluation_filtered[filter].keys(), key=lambda fil: int(re.search("_(\d+)_", fil).group(1)),
+                    evaluation_filtered[filter].keys(),
+                    key=route_index,
                 )
             except AttributeError:
                 sorted_keys = sorted(evaluation_filtered[filter].keys())
