@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [ main, "dev-v*" ]
+    branches: [ main, "dev-v*", stage ]
+  workflow_dispatch:
 
 jobs:
   test-and-lint:

@@ -153,4 +153,4 @@ cython_debug/
 /*.py
 /*.prof
 .env
-!./setup.py
+!/setup.py
