@@ -162,6 +162,15 @@ def _add_labels(
     meta = frame.meta
     assert meta is not None
 
+    current_active_scenario_type = meta.get("current_active_scenario_type")
+    previous_active_scenario_type = meta.get("previous_active_scenario_type")
+    if current_active_scenario_type is not None:
+        data["scenario_type"] = current_active_scenario_type
+    elif previous_active_scenario_type is not None:
+        data["scenario_type"] = previous_active_scenario_type
+    else:
+        data["scenario_type"] = "NA"
+
     # Bounding boxes
     boxes = boxes_waypoints = boxes_num_waypoints = None
     if config.detect_boxes or config.use_bev_semantic:

@@ -37,7 +37,7 @@ class BaseAgent:
         self.lead_config = lead_config
         self.config_expert = lead_config.expert
         self.kalman_filter = KalmanFilter(self.config_expert)
-        self.gnss_mirrors_latitude = gps.gnss_mirrors_latitude(
+        self.gnss_uses_transverse_mercator = gps.gnss_uses_transverse_mercator(
             CarlaDataProvider.get_client(),
         )
 
@@ -92,7 +92,7 @@ class BaseAgent:
             input_data["gps"][1],
             self.noisy_lat_ref,
             self.noisy_lon_ref,
-            self.gnss_mirrors_latitude,
+            self.gnss_uses_transverse_mercator,
         )
         self.filtered_state = self.kalman_filter.step(
             noisy_position=noisy_gps_pos,

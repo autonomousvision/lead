@@ -38,7 +38,7 @@ def read_dotenv_int(key: str, default: int | None = None) -> int:
     """Read one integer value from ``.env``, freshly from disk on every call.
 
     Args:
-        key: Variable name, e.g. ``"COLLECT_DATA_MAX_SLEEP"``.
+        key: Variable name, e.g. ``"COLLECT_DATA_CARLA_BOOT_TIMEOUT"``.
         default: Value returned when the key is missing.
 
     Returns:

@@ -1,9 +1,16 @@
+"""Submit a Slurm job array that drives the expert agent to collect one route each.
+
+Resubmits jobs that fail or get preempted, up to a per-job attempt cap, and
+skips routes whose result file already shows a completed run.
+"""
+
 import argparse
 import glob
 import json
 import logging
 import os
 import random
+import re
 import subprocess
 import sys
 import time
@@ -37,6 +44,28 @@ class Tee:
         return self.streams[0].isatty()
 
 
+def refresh_job_ports(job_file: str) -> None:
+    """Rewrite a job script to re-check ports at run time so a resubmitted job
+    does not retry ports that collided with another process."""
+    text = Path(job_file).read_text(encoding="utf-8")
+    text = re.sub(
+        r"export FREE_WORLD_PORT=.*",
+        "export FREE_WORLD_PORT=$(random_free_port)",
+        text,
+    )
+    text = re.sub(
+        r"export FREE_STREAMING_PORT=.*",
+        "export FREE_STREAMING_PORT=$(random_free_port)",
+        text,
+    )
+    text = re.sub(
+        r"export TM_PORT=.*",
+        "export TM_PORT=$(random_free_port)",
+        text,
+    )
+    Path(job_file).write_text(text, encoding="utf-8")
+
+
 def make_bash(
     data_save_root: str,
     code_dir: str,
@@ -61,7 +90,8 @@ def make_bash(
     # the #SBATCH directives before the shell runs, so they must be literal text
     # in the generated script.
     partition_name = read_dotenv("COLLECT_DATA_PARTITION")
-    max_sleep = read_dotenv_int("COLLECT_DATA_MAX_SLEEP")
+    carla_boot_timeout = read_dotenv_int("COLLECT_DATA_CARLA_BOOT_TIMEOUT")
+    carla_boot_attempts = read_dotenv_int("COLLECT_DATA_CARLA_BOOT_ATTEMPTS")
     cpus_per_task = read_dotenv_int("COLLECT_DATA_CPUS_PER_TASK")
     mem = read_dotenv("COLLECT_DATA_MEM")
     gres = read_dotenv("COLLECT_DATA_GRES")
@@ -74,6 +104,7 @@ def make_bash(
 #SBATCH --partition={partition_name}
 #SBATCH -o {data_save_root}/stdout/{route_file_number}.log
 #SBATCH -e {data_save_root}/stderr/{route_file_number}.log
+#SBATCH --open-mode=append
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task={cpus_per_task}
@@ -87,10 +118,6 @@ echo "SLURM_JOB_NODELIST: $SLURM_JOB_NODELIST"
 scontrol show job $SLURM_JOB_ID
 which python
 which python3
-
-export FREE_STREAMING_PORT=$(random_free_port)
-export FREE_WORLD_PORT=$(random_free_port)
-export TM_PORT=$(random_free_port)
 
 sleep 2
 
@@ -123,20 +150,73 @@ export DATAGEN=1
 export SAVE_PATH={save_pth}
 
 echo "Start python"
+nvidia-smi
 
-echo "FREE_STREAMING_PORT: $FREE_STREAMING_PORT"
-echo "FREE_WORLD_PORT: $FREE_WORLD_PORT"
-echo "TM_PORT: $TM_PORT"
+export FREE_WORLD_PORT=$(random_free_port)
+export FREE_STREAMING_PORT=$(random_free_port)
+export TM_PORT=$(random_free_port)
 echo "CARLA_ROOT: $CARLA_ROOT"
 
-bash {carla_root}/CarlaUE4.sh \
-    --world-port=$FREE_WORLD_PORT \
-    -RenderOffScreen \
-    -nosound \
-    -graphicsadapter=0 \
-    -carla-streaming-port=$FREE_STREAMING_PORT &
+trap '[ -n "$CARLA_PID" ] && kill -9 -- "-$CARLA_PID" 2>/dev/null' EXIT
 
-sleep {max_sleep}
+# Start CARLA and wait until it answers RPC calls. If a port is taken, CARLA
+# dies within seconds; the next attempt re-rolls random ports, so collisions
+# with other processes heal within the job instead of relying on a resubmit.
+CARLA_READY=0
+for attempt in $(seq 1 {carla_boot_attempts}); do
+    if [ "$attempt" -gt 1 ]; then
+        export FREE_WORLD_PORT=$(random_free_port)
+        export FREE_STREAMING_PORT=$(random_free_port)
+        export TM_PORT=$(random_free_port)
+    fi
+    echo "Attempt ${{attempt}}: FREE_WORLD_PORT=$FREE_WORLD_PORT FREE_STREAMING_PORT=$FREE_STREAMING_PORT TM_PORT=$TM_PORT"
+
+    echo "-- memory before CARLA launch --"
+    free -h
+    cat /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory.current 2>/dev/null
+    cat /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes 2>/dev/null
+
+    # Restrict Vulkan to the NVIDIA GPU: with an AMD iGPU and Mesa's software
+    # lavapipe ICD also installed, -graphicsadapter=0 can otherwise select the
+    # wrong device and CARLA renders on the CPU.
+    VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json \
+    __NV_PRIME_RENDER_OFFLOAD=1 \
+    bash {carla_root}/CarlaUE4.sh \
+        --world-port=$FREE_WORLD_PORT \
+        -RenderOffScreen \
+        -nosound \
+        -graphicsadapter=0 \
+        -carla-streaming-port=$FREE_STREAMING_PORT &
+    CARLA_PID=$!
+
+    for i in $(seq 1 {carla_boot_timeout}); do
+        sleep 1
+        if ! kill -0 $CARLA_PID 2>/dev/null; then
+            echo "CARLA died after ${{i}}s (port taken or crash)"
+            nvidia-smi
+            dmesg -T 2>/dev/null | tail -n 20
+            sleep 5
+            break
+        fi
+        if test_carla_connection $FREE_WORLD_PORT; then
+            echo "CARLA serving on port $FREE_WORLD_PORT after ${{i}}s"
+            CARLA_READY=1
+            break
+        fi
+    done
+
+    if [ "$CARLA_READY" -eq 1 ]; then
+        break
+    fi
+    kill -9 -- "-$CARLA_PID" 2>/dev/null
+    wait $CARLA_PID 2>/dev/null
+    CARLA_PID=""
+done
+
+if [ "$CARLA_READY" -ne 1 ]; then
+    echo "CARLA failed to start after {carla_boot_attempts} attempts"
+    exit 1
+fi
 
 nvidia-smi
 
@@ -165,125 +245,73 @@ python 3rd_party/leaderboard/expert/leaderboard/leaderboard/leaderboard_evaluato
 
 
 def get_running_jobs(jobname: str, user_name: str) -> tuple[int, list[str], list[str]]:
-    job_list = (
-        subprocess.check_output(
-            (
-                f"SQUEUE_FORMAT2='jobid:10,username:{len(username)},name:130' squeue --sort V | grep {user_name} | \
-                    grep {jobname} || true"
-            ),
-            shell=True,
-        )
-        .decode("utf-8")
-        .splitlines()
+    output = subprocess.check_output(
+        ["squeue", "--noheader", "--format=%i %j", "-u", user_name],
+        text=True,
     )
-    currently_num_running_jobs = len(job_list)
-    #  line is sth like "4767364   gwb791 eval_julian_4170_0   "
-    routefile_number_list = [
-        line.split("_")[-2] + "_" + line.split("_")[-1].strip() for line in job_list
+    jobs = [
+        line.split()
+        for line in output.splitlines()
+        if line.split()[-1].startswith(f"{jobname}_")
     ]
-    pid_list = [line.split(" ")[0] for line in job_list]
-    return currently_num_running_jobs, routefile_number_list, pid_list
+    #  job name is e.g. "collect_4170_0"; the route file number is "4170_0"
+    routefile_number_list = ["_".join(name.split("_")[-2:]) for _, name in jobs]
+    jobid_list = [jobid for jobid, _ in jobs]
+    return len(jobs), routefile_number_list, jobid_list
 
 
-def get_last_line_from_file(
-    filepath: str,
-) -> str:  # used to check log files for errors
-    try:
-        with open(filepath, "rb", encoding="utf-8") as f:
-            try:
-                f.seek(-2, os.SEEK_END)
-                while f.read(1) != b"\n":
-                    f.seek(-2, os.SEEK_CUR)
-            except OSError:
-                f.seek(0)
-            last_line = f.readline().decode()
-    except:
-        last_line = ""
-    return last_line
+def is_job_queued(jobid: str) -> bool:
+    result = subprocess.run(
+        ["squeue", "--noheader", "-j", jobid],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return bool(result.stdout.strip())
 
 
-def cancel_jobs_with_err_in_log(logroot: str, jobname: str, user_name: str) -> None:
-    # check if the log file contains certain error messages, then terminate the job
-    LOG.info("Checking logs for errors...")
-    _, routefile_number_list, pid_list = get_running_jobs(jobname, user_name)
-    for i, rf_num in enumerate(routefile_number_list):
-        logfile_path = os.path.join(logroot, f"run_files/logs/qsub_out{rf_num}.log")
-        last_line = get_last_line_from_file(logfile_path)
-        terminate = False
-        if "Actor" in last_line and "not found!" in last_line:
-            terminate = True
-        if "Watchdog exception - Timeout" in last_line:
-            terminate = True
-        if "Engine crash handling finished; re-raising signal 11" in last_line:
-            terminate = True
-        if terminate:
-            LOG.info(
-                f"Terminating route {rf_num} with pid {pid_list[i]} due to error in logfile.",
-            )
-            subprocess.check_output(f"scancel {pid_list[i]}", shell=True)
+def submit_job(job_file: str) -> str:
+    output = subprocess.check_output(["sbatch", job_file], text=True)
+    return output.strip().rsplit(" ", maxsplit=1)[-1]
 
 
 def wait_for_jobs_to_finish(
-    logroot: str,
+    data_save_root: str,
     jobname: str,
     user_name: str,
     max_n_parallel_jobs: int,
 ) -> None:
     currently_running_jobs, _, _ = get_running_jobs(jobname, user_name)
     LOG.info(f"{currently_running_jobs}/{max_n_parallel_jobs} jobs are running...")
-    counter = 0
     while currently_running_jobs >= max_n_parallel_jobs:
-        if counter == 0:
-            cancel_jobs_with_err_in_log(logroot, jobname, user_name)
         time.sleep(5)
         currently_running_jobs, _, _ = get_running_jobs(jobname, user_name)
-        counter = (counter + 1) % 4
 
 
-def get_num_jobs(job_name: str, username: str) -> tuple[int, int]:
-    len_usrn = len(username)
-    num_running_jobs = int(
-        subprocess.check_output(
-            f"SQUEUE_FORMAT2='username:{len_usrn},name:130' squeue --sort V | grep {username} | grep {job_name} | wc -l",
-            shell=True,
-        )
-        .decode("utf-8")
-        .replace("\n", ""),
+RERUN_STATUSES = (
+    "Started",
+    "Failed",
+    "Failed - Agent couldn't be set up",
+    "Failed - Simulation crashed",
+    "Failed - Agent crashed",
+)
+
+
+def route_needs_rerun(result_file: str) -> bool:
+    """A route must run (again) unless its result file shows a completed run
+    with a nonzero route score."""
+    if not os.path.exists(result_file):
+        return True
+    with open(result_file, encoding="utf-8") as f_result:
+        checkpoint = json.load(f_result)["_checkpoint"]
+    progress = checkpoint["progress"]
+    if len(progress) < 2 or progress[0] < progress[1]:
+        return True
+    return any(
+        record["status"] in RERUN_STATUSES
+        or record["scores"]["score_route"] <= 0.00000000001
+        for record in checkpoint["records"]
     )
-    max_num_parallel_jobs = read_dotenv_int("MAX_NUM_PARALLEL_JOBS_COLLECT_DATA")
-
-    return num_running_jobs, max_num_parallel_jobs
-
-
-def is_job_done(result_file: str) -> bool:
-    need_run_again = False
-    if os.path.exists(result_file):
-        with open(result_file, encoding="utf-8") as f_result:
-            evaluation_data = json.load(f_result)
-        progress = evaluation_data["_checkpoint"]["progress"]
-        if len(progress) < 2 or progress[0] < progress[1]:
-            need_run_again = True
-        else:
-            for record in evaluation_data["_checkpoint"]["records"]:
-                if record["scores"]["score_route"] <= 0.00000000001:
-                    need_run_again = True
-                if record["status"] == "Failed - Agent couldn't be set up":
-                    need_run_again = True
-                if record["status"] == "Failed":
-                    need_run_again = True
-                if record["status"] == "Failed - Simulation crashed":
-                    need_run_again = True
-                if record["status"] == "Failed - Agent crashed":
-                    need_run_again = True
-                if record["status"] == "Started":
-                    need_run_again = True
-
-        if not need_run_again:
-            # delete old job
-            LOG.info(f"Finished job {result_file}")
-    else:
-        need_run_again = True
-    return not need_run_again
 
 
 def arg_parse() -> argparse.Namespace:
@@ -291,8 +319,8 @@ def arg_parse() -> argparse.Namespace:
     parser.add_argument(
         "--route_folder",
         type=str,
-        default="src/lead/routes/data_routes",
-        help="Folder containing route files",
+        default=str(runtime.project_root() / "src/lead/routes/data_routes"),
+        help="Folder containing route files.",
     )
     return parser.parse_args()
 
@@ -306,7 +334,7 @@ if __name__ == "__main__":
     username = os.environ["USER"]
     code_root = str(runtime.project_root())
     carla_root = read_dotenv("CARLA_ROOT")
-    max_route_per_scenario_type = 10  # -1 means no limit
+    max_route_per_scenario_type = 5  # -1 means no limit
 
     agent = f"{code_root}/src/lead/expert/expert_agent.py"
 
@@ -317,11 +345,11 @@ if __name__ == "__main__":
         "Town13",
         "Town15",
     ]  # Empty list = all towns allowed, e.g. ["Town12", "Town13"]
-    data_save_directory = os.path.join(code_root, read_dotenv("PY123D_DATA_ROOT"))
-    log_root = f"{data_save_directory}/slurm"
+    data_save_directory = read_dotenv("PY123D_DATA_ROOT")
 
     os.makedirs(data_save_directory, exist_ok=True)
-    expert_config_dict = yaml_filtered(load_lead_config().expert.to_dict())
+    expert_config = load_lead_config().expert
+    expert_config_dict = yaml_filtered(expert_config.to_dict())
     with open(f"{data_save_directory}/config.yaml", "w", encoding="utf-8") as f:
         yaml.safe_dump(expert_config_dict, f, sort_keys=False)
     sys.stdout = Tee(
@@ -334,7 +362,46 @@ if __name__ == "__main__":
     )
     setup_logging()
 
-    route_folder = os.path.join(code_root, args.route_folder)
+    git_branch = subprocess.check_output(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        cwd=code_root,
+        text=True,
+    ).strip()
+    git_commit = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"],
+        cwd=code_root,
+        text=True,
+    ).strip()
+    git_status = subprocess.check_output(
+        ["git", "status", "--short"],
+        cwd=code_root,
+        text=True,
+    )
+    git_diff = subprocess.check_output(["git", "diff"], cwd=code_root, text=True)
+    with open(f"{data_save_directory}/git_status.txt", "w", encoding="utf-8") as f:
+        f.write(f"Git branch: {git_branch}\n")
+        f.write(f"Git commit: {git_commit}\n")
+        f.write(f"Git status:\n{git_status}\n")
+        f.write(f"Git diff:\n{git_diff}\n")
+    LOG.info(
+        f"Git branch: {git_branch}, commit: {git_commit}. Full status/diff written to {data_save_directory}/git_status.txt",
+    )
+
+    # Maps must exist before the job array starts: jobs converting them
+    # concurrently race on the shared per-town map files.
+    LOG.info("Converting 123D maps (already-converted towns are skipped)...")
+    subprocess.run(
+        [
+            sys.executable,
+            str(runtime.project_root() / "scripts/common/convert_py123d_maps.py"),
+            "--dataset",
+            expert_config.data_collection.py123d_dataset,
+        ],
+        cwd=code_root,
+        check=True,
+    )
+
+    route_folder = args.route_folder
     LOG.info("Start looking for routes...")
     routes = glob.glob(f"{route_folder}/**/*.xml", recursive=True)
     if shuffle_routes:
@@ -372,7 +439,6 @@ if __name__ == "__main__":
             f"Applied max_route_per_scenario_type={max_route_per_scenario_type}. Total routes: {len(routes)}",
         )
 
-    port_offset = 0
     job_number = 1
     meta_jobs = {}
 
@@ -432,25 +498,17 @@ if __name__ == "__main__":
             # datagen-enabled marker, so the directory is never created.
             save_path = f"{data_save_directory}/data/{scenario_type}"
 
-            if is_job_done(ckpt_endpoint):
+            if not route_needs_rerun(ckpt_endpoint):
                 LOG.info(
                     f"Job {routefile_number} already exists and is finished. Skipping...",
                 )
             else:
-                # Wait until submitting new jobs that the #jobs are at below max
-                num_running_jobs, max_num_parallel_jobs = get_num_jobs(
-                    job_name=job_name,
-                    username=username,
+                wait_for_jobs_to_finish(
+                    data_save_directory,
+                    job_name,
+                    username,
+                    read_dotenv_int("MAX_NUM_PARALLEL_JOBS_COLLECT_DATA"),
                 )
-                LOG.info(
-                    f"{num_running_jobs}/{max_num_parallel_jobs} jobs are running...",
-                )
-                while num_running_jobs >= max_num_parallel_jobs:
-                    num_running_jobs, max_num_parallel_jobs = get_num_jobs(
-                        job_name=job_name,
-                        username=username,
-                    )
-                    time.sleep(0.05)
 
                 # Generate the job script right before submitting so it picks up the
                 # latest .env values (partition and SLURM resource requests).
@@ -475,12 +533,7 @@ if __name__ == "__main__":
                     f"Submitting job {job_number}/{num_routes}: {job_name}_{routefile_number}. ",
                 )
                 time.sleep(1)
-                jobid = (
-                    subprocess.check_output(f"sbatch {job_file}", shell=True)
-                    .decode("utf-8")
-                    .strip()
-                    .rsplit(" ", maxsplit=1)[-1]
-                )
+                jobid = submit_job(job_file)
                 LOG.info(f"Jobid: {jobid}")
                 meta_jobs[jobid] = (
                     False,
@@ -491,103 +544,44 @@ if __name__ == "__main__":
             job_number += 1
 
     time.sleep(1)
-    training_finished = False
-    while not training_finished:
+    while True:
         num_running_jobs, _, _ = get_running_jobs(job_name, username)
         LOG.info(f"{num_running_jobs} jobs are running... Job: {job_name}")
-        cancel_jobs_with_err_in_log(log_root, job_name, username)
-        time.sleep(20)
+        time.sleep(5)
 
         # resubmit unfinished jobs
-        for k in list(meta_jobs.keys()):
-            job_finished, job_file, result_file, attempts = meta_jobs[k]
-            need_to_resubmit = False
-            max_attempts = read_dotenv_int("MAX_NUM_ATTEMPTS_COLLECT_DATA")
-            if not job_finished and attempts < max_attempts:
-                # check whether job is running
-                if (
-                    int(
-                        subprocess.check_output(
-                            f"squeue | grep {k} | wc -l",
-                            shell=True,
-                        )
-                        .decode("utf-8")
-                        .strip(),
-                    )
-                    == 0
-                ):
-                    # check whether result file is finished?
-                    if os.path.exists(result_file):
-                        with open(result_file, encoding="utf-8") as f_result:
-                            evaluation_data = json.load(f_result)
-                        progress = evaluation_data["_checkpoint"]["progress"]
-                        if len(progress) < 2 or progress[0] < progress[1]:
-                            need_to_resubmit = True
-                        else:
-                            for record in evaluation_data["_checkpoint"]["records"]:
-                                if record["scores"]["score_route"] <= 0.00000000001:
-                                    need_to_resubmit = True
-                                if (
-                                    record["status"]
-                                    == "Failed - Agent couldn't be set up"
-                                ):
-                                    need_to_resubmit = True
-                                if record["status"] == "Failed":
-                                    need_to_resubmit = True
-                                if record["status"] == "Failed - Simulation crashed":
-                                    need_to_resubmit = True
-                                if record["status"] == "Failed - Agent crashed":
-                                    need_to_resubmit = True
+        max_attempts = read_dotenv_int("MAX_NUM_ATTEMPTS_COLLECT_DATA")
+        for jobid in list(meta_jobs.keys()):
+            job_finished, job_file, result_file, attempts = meta_jobs[jobid]
+            if job_finished or is_job_queued(jobid):
+                continue
+            if not route_needs_rerun(result_file):
+                LOG.info(f"Finished job {job_file}")
+                meta_jobs[jobid] = (True, None, None, attempts)
+                continue
+            if attempts >= max_attempts:
+                continue
 
-                        if not need_to_resubmit:
-                            # delete old job
-                            LOG.info(f"Finished job {job_file}")
-                            meta_jobs[k] = (True, None, None, attempts)
+            routefile_number = Path(job_file).stem
+            LOG.info(
+                f"Resubmit job {routefile_number} (previous id: {jobid}). Waiting for jobs to finish...",
+            )
+            wait_for_jobs_to_finish(
+                data_save_directory,
+                job_name,
+                username,
+                read_dotenv_int("MAX_NUM_PARALLEL_JOBS_COLLECT_DATA"),
+            )
 
-                    else:
-                        need_to_resubmit = True
-
-            if need_to_resubmit:
-                # rename old error files to still access it
-                routefile_number = Path(job_file).stem
-                LOG.info(
-                    f"Resubmit job {routefile_number} (previous id: {k}). Waiting for jobs to finish...",
-                )
-
-                max_num_parallel_jobs = read_dotenv_int(
-                    "MAX_NUM_PARALLEL_JOBS_COLLECT_DATA",
-                )
-                wait_for_jobs_to_finish(
-                    log_root,
-                    job_name,
-                    username,
-                    max_num_parallel_jobs,
-                )
-
-                time_now_log = time.time()
-                os.system(
-                    f'mkdir -p "{log_root}/run_files/logs_{routefile_number}_{time_now_log}"',
-                )
-                os.system(
-                    f"cp {log_root}/run_files/logs/qsub_err{routefile_number}.log {log_root}/ \
-                          run_files/logs_{routefile_number}_{time_now_log}",
-                )
-                os.system(
-                    f"cp {log_root}/run_files/logs/qsub_out{routefile_number}.log {log_root}/ \
-                          run_files/logs_{routefile_number}_{time_now_log}",
-                )
-
-                jobid = (
-                    subprocess.check_output(f"sbatch {job_file}", shell=True)
-                    .decode("utf-8")
-                    .strip()
-                    .rsplit(" ", maxsplit=1)[-1]
-                )
-                meta_jobs[jobid] = (False, job_file, result_file, attempts + 1)
-                meta_jobs[k] = (True, None, None, attempts)
-                LOG.info(f"resubmitted job {routefile_number}. (new id: {jobid})")
+            # SLURM appends to the same stdout/stderr logs (--open-mode=append),
+            # so every attempt's output stays available.
+            refresh_job_ports(job_file)
+            new_jobid = submit_job(job_file)
+            meta_jobs[new_jobid] = (False, job_file, result_file, attempts + 1)
+            meta_jobs[jobid] = (True, None, None, attempts)
+            LOG.info(f"resubmitted job {routefile_number}. (new id: {new_jobid})")
 
         time.sleep(10)
 
         if num_running_jobs == 0:
-            training_finished = True
+            break

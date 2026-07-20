@@ -150,12 +150,21 @@ class ScenarioManager(object):
 
         self._running = True
 
-        # Thread for build_scenarios
-        t = threading.Thread(target=self.build_scenarios_loop, args=(self._debug_mode > 0,))
+        # Thread for build_scenarios. Daemon so it can never block process exit,
+        # and explicitly stopped in the finally block below so it doesn't spin
+        # calling get_location on already-destroyed actors after a crash.
+        t = threading.Thread(
+            target=self.build_scenarios_loop,
+            args=(self._debug_mode > 0,),
+            daemon=True,
+        )
         t.start()
 
-        while self._running:
-            self._tick_scenario()
+        try:
+            while self._running:
+                self._tick_scenario()
+        finally:
+            self._running = False
 
     def _tick_scenario(self):
         """

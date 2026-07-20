@@ -3,13 +3,16 @@
 # Run from the repo root, regardless of the invoking directory.
 cd "$(dirname "$(realpath "${BASH_SOURCE:-$0}")")/../.."
 
+# Root for generated outputs, from .env
+export LEAD_OUTPUT_DIR_ROOT=$(dotenv LEAD_OUTPUT_DIR_ROOT)
+
 # Checkpoints
-export CHECKPOINT_DIR=outputs/checkpoints/visiononly_resnet34
+export CHECKPOINT_DIR=$LEAD_OUTPUT_DIR_ROOT/checkpoints/visiononly_resnet34
 export ROUTES=src/lead/routes/benchmark_routes/Town13/0.xml
 
 # Set environment variables
 export BENCHMARK_ROUTE_ID=$(basename $ROUTES .xml) # Last part of the route file name, e.g., 0 for 0.xml
-export EVALUATION_OUTPUT_DIR=outputs/local_evaluation/$BENCHMARK_ROUTE_ID/
+export EVALUATION_OUTPUT_DIR=$LEAD_OUTPUT_DIR_ROOT/local_evaluation/$BENCHMARK_ROUTE_ID/
 export PYTHONPATH=3rd_party/leaderboard/standard/leaderboard:$PYTHONPATH
 export PYTHONPATH=3rd_party/leaderboard/standard/scenario_runner:$PYTHONPATH
 export SCENARIO_RUNNER_ROOT=3rd_party/leaderboard/standard/scenario_runner

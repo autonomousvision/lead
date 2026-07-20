@@ -303,11 +303,6 @@ class LeaderboardEvaluator(object):
 
         except ValueError as e:
             if "Shutting down, couldn't spawn the ego vehicle" in str(e):
-                print("=" * 100)
-                print("=" * 100)
-                print("Running $LEAD_PROJECT_ROOT/scripts/bin/reset_carla_world to fix this problem.")
-                print("=" * 100)
-                print("=" * 100)
                 raise e
         except Exception:
             # The scenario is wrong -> set the ejecution to crashed and stop

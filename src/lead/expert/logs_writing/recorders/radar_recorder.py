@@ -77,7 +77,8 @@ class RadarRecorder(BaseRecorder):
                 stored in the IMU frame).
 
         Returns:
-            A single-element list with the merged returns of all sensors.
+            A single-element list with the merged returns of all sensors, or
+            an empty list if none of the sensors returned any points.
         """
         points_per_sensor = []
         velocities_per_sensor = []
@@ -97,6 +98,9 @@ class RadarRecorder(BaseRecorder):
             ids_per_sensor.append(
                 np.full(points_3d.shape[0], int(radar_id.value), dtype=np.uint8),
             )
+
+        if sum(points.shape[0] for points in points_per_sensor) == 0:
+            return []
 
         return [
             Radar(

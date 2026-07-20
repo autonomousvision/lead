@@ -1,5 +1,6 @@
 """Recorder for the LiDAR modality stream."""
 
+import logging
 import typing
 
 import numpy as np
@@ -16,6 +17,8 @@ from lead.expert.logs_writing.recorders.base_recorder import BaseRecorder
 
 if typing.TYPE_CHECKING:
     from lead.expert.logs_writing import ExpertData
+
+logger = logging.getLogger(__name__)
 
 
 class LidarRecorder(BaseRecorder):
@@ -52,6 +55,12 @@ class LidarRecorder(BaseRecorder):
         """
         lidar_pc = input_data["lidar_sweep"].copy()
         if lidar_pc.shape[0] == 0:
+            logger.warning(
+                "Empty LiDAR sweep at timestamp %s; a 360-degree sweep should "
+                "always return at least ground-plane points, so this likely "
+                "indicates a sensor or timing bug rather than an empty scene.",
+                timestamp,
+            )
             return []
 
         # Convert to ISO 8855: invert Y, shift X by rear axle offset, adjust Z

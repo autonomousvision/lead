@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+"""Exit 0 when a CARLA server on localhost:<port> answers RPC calls."""
+
+import sys
+
+import carla
+
+
+def main() -> int:
+    port = int(sys.argv[1])
+    client = carla.Client("localhost", port)
+    client.set_timeout(5.0)
+    try:
+        client.get_server_version()
+        client.get_world().get_snapshot()
+    except RuntimeError:
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -19,6 +19,7 @@ from torch.distributed.elastic.multiprocessing.errors import record
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.utils.data import DataLoader
 
+from lead.common import runtime
 from lead.common.logging import setup_logging
 from lead.config import LeadConfig
 from lead.policy.abstract_policy import build_policy
@@ -278,7 +279,7 @@ class LeadLightningModule(pl.LightningModule):
 
         if self.config.debug_mode:
             LOG.info(f"Visualizing training sample at step {self.global_step}.")
-            save_path = os.path.join("outputs", "training_viz")
+            save_path = str(runtime.output_dir_root() / "training_viz")
             os.makedirs(save_path, exist_ok=True)
             for name, image in images.items():
                 Image.fromarray(image).save(

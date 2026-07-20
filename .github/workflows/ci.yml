@@ -2,8 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
+    branches: [ main, "dev-v*" ]
 
 jobs:
   test-and-lint:
@@ -39,7 +38,7 @@ jobs:
       # Enables the beartype+jaxtyping import hook for all of lead.*
       # (see src/lead/__init__.py).
       env:
-        LEAD_RUNTIME_TYPE_CHECKING: "1"
+        LEAD_RUNTIME_TYPE_CHECKING: "true"
       run: micromamba run -n lead pytest tests/unittests
 
     - name: Cache pre-commit environments

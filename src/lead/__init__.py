@@ -33,7 +33,7 @@ for env in ["PY123D_DATA_ROOT"]:
         except KeyError:
             pass
 
-if os.environ.get("LEAD_RUNTIME_TYPE_CHECKING", "0") == "1":
+if os.environ.get("LEAD_RUNTIME_TYPE_CHECKING", "false").lower() == "true":
     import importlib
 
     from jaxtyping import install_import_hook

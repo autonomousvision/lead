@@ -14,6 +14,8 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import ujson
 
+from lead.common import runtime
+
 scale_factor = 0.2
 PENALTY_VALUE_DICT = {
     # Traffic events that subtract a set amount of points.
@@ -43,7 +45,9 @@ def main():
     parser.add_argument(
         "--xml",
         type=str,
-        default="src/lead/routes/benchmark_routes/Town13.xml",
+        default=str(
+            runtime.project_root() / "src/lead/routes/benchmark_routes/Town13.xml",
+        ),
         help="Routes file.",
     )
     parser.add_argument(

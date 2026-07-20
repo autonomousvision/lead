@@ -41,3 +41,10 @@ def assigned_cpu_cores(default: int = 8) -> int:
 def project_root() -> Path:
     """Repository root of the running checkout, derived from the package location."""
     return Path(__file__).resolve().parents[3]
+
+
+def output_dir_root() -> Path:
+    """Root directory for generated outputs, read hot from ``LEAD_OUTPUT_DIR_ROOT`` in ``.env``."""
+    from lead.common.dotenv import read_dotenv
+
+    return Path(read_dotenv("LEAD_OUTPUT_DIR_ROOT"))

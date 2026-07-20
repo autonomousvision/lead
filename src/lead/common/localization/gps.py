@@ -3,13 +3,11 @@
 import logging
 import math
 import re
-import typing
 
 import carla
 import numpy as np
 import numpy.typing as npt
 from agents.navigation.local_planner import RoadOption
-from scipy.optimize import fsolve
 
 from lead.common.geometry import normalize_angle
 
@@ -49,48 +47,83 @@ def convert_gps_to_carla(
     return gps
 
 
-def convert_gnss_to_carla(
+def convert_tmerc_gnss_to_carla(
     gnss: npt.NDArray,
     lat_ref: float,
     lon_ref: float,
-    mirrors_latitude: bool,
 ) -> npt.NDArray:
     """
-    Converts a GNSS sensor reading into the CARLA coordinate frame.
+    Converts a transverse-Mercator GNSS reading into the CARLA coordinate frame.
 
-    Since CARLA 0.9.16 the GNSS sensor mirrors the latitude axis with respect to
-    the convention the leaderboard uses for the route plan, so the y coordinate
-    has to be flipped back; 0.9.15 and earlier do not need this.
+    Exact inverse of CARLA 0.9.16's GNSS sensor (`GeoLocation::Transform`), a
+    spherical transverse Mercator centered on the map's geo-reference with a
+    hardcoded scale factor of 0.9996 and no latitude flip.
 
     Args:
         gnss: GPS reading from the GNSS sensor.
         lat_ref: Latitude reference point of the map.
         lon_ref: Longitude reference point of the map.
-        mirrors_latitude: Whether the connected CARLA version mirrors the GNSS
-            latitude axis (true from 0.9.16 onwards). See `gnss_mirrors_latitude`.
     Returns:
         npt.NDArray: CARLA coordinates of the specific map in meters.
     """
-    position = convert_gps_to_carla(gnss, lat_ref, lon_ref)
-    if mirrors_latitude:
-        position[1] *= -1.0
+    EARTH_RADIUS_EQUA = 6378137.0  # Constant from CARLA leaderboard GPS simulation
+    K0 = 0.9996  # Scale factor hardcoded in CARLA's GeoLocation
 
-    return position
+    lat, lon, _ = gnss
+    phi = math.radians(lat)
+    delta_lambda = math.radians(lon - lon_ref)
+    b = math.cos(phi) * math.sin(delta_lambda)
+    x = 0.5 * K0 * EARTH_RADIUS_EQUA * math.log((1 + b) / (1 - b))
+    y = (
+        K0
+        * EARTH_RADIUS_EQUA
+        * (math.atan(math.tan(phi) / math.cos(delta_lambda)) - math.radians(lat_ref))
+    )
+
+    return np.array([x, y, gnss[2]])
 
 
-_GNSS_MIRRORS_LATITUDE_BY_VERSION = {
+def convert_gnss_to_carla(
+    gnss: npt.NDArray,
+    lat_ref: float,
+    lon_ref: float,
+    uses_transverse_mercator: bool,
+) -> npt.NDArray:
+    """
+    Converts a GNSS sensor reading into the CARLA coordinate frame.
+
+    CARLA 0.9.15's GNSS sensor applies the equatorial Mercator projection the
+    leaderboard also uses for the route plan; CARLA 0.9.16's applies a
+    transverse Mercator, so each reading is inverted with its own projection.
+
+    Args:
+        gnss: GPS reading from the GNSS sensor.
+        lat_ref: Latitude reference point of the map.
+        lon_ref: Longitude reference point of the map.
+        uses_transverse_mercator: Whether the connected CARLA version projects
+            with a transverse Mercator (true from 0.9.16 onwards). See
+            `gnss_uses_transverse_mercator`.
+    Returns:
+        npt.NDArray: CARLA coordinates of the specific map in meters.
+    """
+    if uses_transverse_mercator:
+        return convert_tmerc_gnss_to_carla(gnss, lat_ref, lon_ref)
+    return convert_gps_to_carla(gnss, lat_ref, lon_ref)
+
+
+_GNSS_USES_TRANSVERSE_MERCATOR_BY_VERSION = {
     "0.9.15": False,
     "0.9.16": True,
 }
 
 
-def gnss_mirrors_latitude(client: carla.Client) -> bool:
+def gnss_uses_transverse_mercator(client: carla.Client) -> bool:
     """
-    Whether the connected CARLA server's GNSS sensor mirrors the latitude axis.
+    Whether the connected CARLA server's GNSS sensor projects with a transverse Mercator.
 
-    The behavior changed in CARLA 0.9.16; see `convert_gnss_to_carla`. Only the
-    versions this codebase is validated against are recognized; anything else
-    raises rather than silently guessing.
+    The projection changed in CARLA 0.9.16; see `convert_gnss_to_carla`. Only
+    the versions this codebase is validated against are recognized; anything
+    else raises rather than silently guessing.
 
     Args:
         client: Connected CARLA client, used to query the server version.
@@ -102,12 +135,12 @@ def gnss_mirrors_latitude(client: carla.Client) -> bool:
     version = client.get_server_version()
     match = re.match(r"\d+\.\d+\.\d+", version)
     version_key = match.group() if match else version
-    if version_key not in _GNSS_MIRRORS_LATITUDE_BY_VERSION:
+    if version_key not in _GNSS_USES_TRANSVERSE_MERCATOR_BY_VERSION:
         raise ValueError(
             f"Unsupported CARLA server version {version!r}; expected one of "
-            f"{sorted(_GNSS_MIRRORS_LATITUDE_BY_VERSION)}.",
+            f"{sorted(_GNSS_USES_TRANSVERSE_MERCATOR_BY_VERSION)}.",
         )
-    return _GNSS_MIRRORS_LATITUDE_BY_VERSION[version_key]
+    return _GNSS_USES_TRANSVERSE_MERCATOR_BY_VERSION[version_key]
 
 
 def find_gps_ref(
@@ -134,29 +167,22 @@ def find_gps_ref(
         lon, lat = global_plan[0][0]["lon"], global_plan[0][0]["lat"]
         earth_radius_equa = 6378137.0  # Constant from CARLA leaderboard GPS simulation
 
-        def equations(variables):
-            x, y = variables
-            eq1 = (
-                lon * math.cos(x * math.pi / 180.0)
-                - (locx * 180.0) / (math.pi * earth_radius_equa)
-                - math.cos(x * math.pi / 180.0) * y
-            )
-            eq2 = (
-                math.log(math.tan((lat + 90.0) * math.pi / 360.0))
-                * earth_radius_equa
-                * math.cos(x * math.pi / 180.0)
-                + locy
-                - math.cos(x * math.pi / 180.0)
-                * earth_radius_equa
-                * math.log(math.tan((90.0 + x) * math.pi / 360.0))
-            )
-            return [eq1, eq2]
+        def mercator_ordinate(lat_deg: float) -> float:
+            return math.log(math.tan((90.0 + lat_deg) * math.pi / 360.0))
 
-        initial_guess = [0.0, 0.0]
-        # scipy's fsolve overloads can't see through the `equations` closure to
-        # infer a plain ndarray result; the runtime return is always one.
-        solution = typing.cast("npt.NDArray", fsolve(equations, initial_guess))
-        return float(solution[0]), float(solution[1])
+        # The projection satisfies ordinate(lat_ref) = ordinate(lat) +
+        # locy / (R * cos(lat_ref)); the fixed-point iteration contracts by
+        # ~locy/R per step, so a few steps reach machine precision.
+        lat_ref = lat
+        for _ in range(20):
+            ordinate = mercator_ordinate(lat) + locy / (
+                earth_radius_equa * math.cos(math.radians(lat_ref))
+            )
+            lat_ref = 360.0 * math.atan(math.exp(ordinate)) / math.pi - 90.0
+        lon_ref = lon - locx * 180.0 / (
+            math.pi * earth_radius_equa * math.cos(math.radians(lat_ref))
+        )
+        return lat_ref, lon_ref
     except Exception as e:
         LOG.warning(e)
         return 0.0, 0.0

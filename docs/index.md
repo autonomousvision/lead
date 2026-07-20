@@ -23,7 +23,7 @@ closed-loop evaluation both flow through the same model-specific loader, so they
 can't drift apart:
 
 ```
-offline:      py123d logs    ─► generic loader ─┐
+offline:      py123d logs    ─► generic loader  ─┐
                                                  ├─► model-specific loader ─► tensors ─► policy
 closed-loop:  CARLA sensors  ─► inference API   ─┘
 ```
@@ -35,7 +35,7 @@ on any specific policy —
 
 ```
 train.py ─► AbstractPolicy ─┬─► TransfuserPolicy
-                             └─► <your policy, loader, visualizer, loss functions>
+                            └─► <your policy, loader, visualizer, loss functions>
 ```
 
 — so adding a new policy means implementing that contract, not modifying the training loop.
@@ -45,5 +45,5 @@ train.py ─► AbstractPolicy ─┬─► TransfuserPolicy
 - [Data access](data_access.md): reading py123d logs directly, or via `Py123DDataLoader`.
 - [Setup for development](setup.md): environment, CARLA, tests.
 - [Data collection](data_generation.md): running the expert to generate a dataset.
-- [Training](training.md): perception pre-training and planning post-training.
-- [Evaluation](eval.md): standard, Bench2Drive, and Fail2Drive benchmarks.
+- [Training](training.md): Work in progress.
+- [Evaluation](eval.md): Work in progress.

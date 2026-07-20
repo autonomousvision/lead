@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -10,10 +11,27 @@ from flask import Flask, jsonify, render_template, request, send_from_directory
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
+
+def output_dir_root() -> Path:
+    """Root for generated outputs: LEAD_OUTPUT_DIR_ROOT from the environment or the root .env.
+
+    Standalone mirror of lead.common.runtime.output_dir_root (this app does not import lead).
+    """
+    if os.environ.get("LEAD_OUTPUT_DIR_ROOT"):
+        return Path(os.environ["LEAD_OUTPUT_DIR_ROOT"])
+    for env_file in (PROJECT_ROOT / ".env", PROJECT_ROOT / ".env.example"):
+        if env_file.exists():
+            for line in env_file.read_text(encoding="utf-8").splitlines():
+                if line.startswith("LEAD_OUTPUT_DIR_ROOT="):
+                    return Path(line.partition("=")[2].strip().strip("'\""))
+            break
+    return PROJECT_ROOT / "outputs"
+
+
 app = Flask(__name__)
 
 # Default evaluation output directory
-DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "outputs" / "local_evaluation"
+DEFAULT_OUTPUT_DIR = output_dir_root() / "local_evaluation"
 
 # Read-only mode (disable file operations like open folder, cut video)
 READ_ONLY_MODE = False
@@ -58,8 +76,8 @@ def index(output_dir=None):
 
 @app.route("/api/output_directories")
 def list_output_directories():
-    """List all output directories from outputs/evaluation."""
-    base_path = PROJECT_ROOT / "outputs" / "evaluation"
+    """List all output directories from evaluation/ under the output root."""
+    base_path = output_dir_root() / "evaluation"
 
     if not base_path.exists():
         return jsonify(

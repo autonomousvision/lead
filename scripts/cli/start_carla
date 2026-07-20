@@ -17,7 +17,6 @@ fi
 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json \
 __NV_PRIME_RENDER_OFFLOAD=1 \
 $(dotenv CARLA_ROOT)/CarlaUE4.sh \
-    -quality-level=Poor \
     -world-port=$port \
     -resx=800 \
     -resy=600 \

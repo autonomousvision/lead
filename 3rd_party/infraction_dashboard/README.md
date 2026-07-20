@@ -14,7 +14,8 @@ listens.
 
 ## Usage
 
-1. **Click "Load Routes"** to scan the default output directory (`outputs/local_evaluation/`).
+1. **Click "Load Routes"** to scan the default output directory
+   (`<LEAD_OUTPUT_DIR_ROOT>/local_evaluation/`, with the root from `.env`).
    To read a different one, type its path into the header input first.
 1. **Select a route** in the sidebar to see its infractions.
 1. **Click an infraction** to jump to that timestamp in the video.

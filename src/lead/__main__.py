@@ -252,10 +252,10 @@ class LeaderboardWrapper:
 
         if self.args.expert:
             # Expert evaluation: debug directory
-            return self.workspace_root / "outputs/expert_evaluation/"
+            return runtime.output_dir_root() / "expert_evaluation/"
         else:
             # Model evaluation: organize by scenario and route
-            return self.workspace_root / f"outputs/local_evaluation/{self.route_id}"
+            return runtime.output_dir_root() / f"local_evaluation/{self.route_id}"
 
     def _setup_leaderboard_environment(
         self,

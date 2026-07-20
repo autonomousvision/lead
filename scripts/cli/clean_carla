@@ -1,0 +1,23 @@
+#!/usr/bin/bash
+
+# $1, if given, is the PID of the `bash CarlaUE4.sh &` wrapper (e.g.
+# $CARLA_PID) for the CARLA instance this job started; its whole process
+# group is killed since CarlaUE4.sh does not exec into the Shipping binary,
+# so the wrapper's PID alone would leave the actual engine process running.
+#
+# With no argument, this kills ANY CARLA instance on the GPU visible to this
+# shell's process table, which can be a different job's on a shared node.
+# Safe for manual local debugging; scripted callers must always pass a PID.
+pid="$1"
+
+if [ -z "$pid" ]; then
+	nvidia-smi
+	pid=$(pgrep -f 'CarlaUE4-Linux-Shipping.*-graphicsadapter=0' | head -n 1)
+fi
+
+if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+	kill -9 -- "-$pid"
+	echo "CARLA instance (PID: $pid) killed."
+else
+	echo "No CARLA instance to kill for PID: $pid"
+fi
