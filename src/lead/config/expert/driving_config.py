@@ -71,15 +71,15 @@ class ExpertDrivingConfig(ConfigNode):
     idm_pedestrian_desired_time_headway: float = 0.125
     # IDM minimum distance for bicycles
     idm_bicycle_minimum_distance: float = 6.0
-    # IDM desrired time headway for bicycles
+    # IDM desired time headway for bicycles
     idm_bicycle_desired_time_headway: float = 0.5
     # IDM minimum distance for leading vehicles
     idm_leading_vehicle_minimum_distance: float = 4.0
-    # IDM desrired time headway for leading vehicles
+    # IDM desired time headway for leading vehicles
     idm_leading_vehicle_time_headway: float = 0.25
     # IDM minimum distance for two way scenarios
     idm_two_way_scenarios_minimum_distance: float = 2.0
-    # IDM desrired time headway for two way scenarios
+    # IDM desired time headway for two way scenarios
     idm_two_way_scenarios_time_headway: float = 0.1
     # Boundary time - the integration won't continue beyond it.
     idm_t_bound: float = 0.05

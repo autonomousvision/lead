@@ -1640,7 +1640,7 @@ wheels = [
 
 [[package]]
 name = "lead"
-version = "1.0.0"
+version = "1.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "beartype" },
@@ -2860,7 +2860,7 @@ wheels = [
 [[package]]
 name = "py123d"
 version = "0.7.0"
-source = { git = "https://github.com/kesai-labs/py123d?rev=dev_v0.7.0#24ffc1e53c88f4039736ef68cd540c40ace13431" }
+source = { git = "https://github.com/kesai-labs/py123d?rev=dev_v0.7.0#3ae5c79842d7e9d2b091db2630138c0d5cf4985f" }
 dependencies = [
     { name = "cachetools" },
     { name = "dracopy" },

@@ -12,6 +12,14 @@ LEAD_RUNTIME_TYPE_CHECKING=true pytest tests/unittests
 pre-commit run --all-files
 ```
 
+The end-to-end tests assert the invariants of a collected dataset — collect at
+least one route first (see [data collection](data_generation.md)), then point
+them at the dataset root. Without it they skip:
+
+```bash
+LEAD_TEST_DATA_ROOT=<data root, e.g. $PY123D_DATA_ROOT> pytest tests/e2e_tests
+```
+
 ## `setup.py`
 
 Runs on `uv sync`:

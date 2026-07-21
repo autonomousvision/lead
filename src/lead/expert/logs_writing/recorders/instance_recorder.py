@@ -8,7 +8,8 @@ from py123d.datatypes.sensors.base_camera import Camera, CameraChannelType, Came
 from py123d.datatypes.sensors.segmentation_camera import SegmentationCameraMetadata
 from py123d.geometry.transform import rel_to_abs_se3
 
-from lead.expert.logs_writing import carla_to_123d
+from lead.api import py123d_log_api
+from lead.common import carla_to_123d
 from lead.expert.logs_writing.recorders.base_recorder import BaseRecorder
 
 if typing.TYPE_CHECKING:
@@ -37,7 +38,7 @@ class InstanceRecorder(BaseRecorder):
             store_freq: Storage period of the stream in simulator steps.
         """
         super().__init__(expert, perturbated, store_freq=store_freq)
-        ego_metadata = carla_to_123d.get_carla_lincoln_mkz_2020_metadata()
+        ego_metadata = py123d_log_api.get_carla_lincoln_mkz_2020_metadata()
         pinhole_metadatas = carla_to_123d.build_pinhole_camera_metadatas(
             expert.config_expert,
             ego_metadata,
@@ -51,7 +52,7 @@ class InstanceRecorder(BaseRecorder):
             return {
                 camera_id: SegmentationCameraMetadata(
                     camera_metadata=pinhole_metadata,
-                    segmentation_label_class=carla_to_123d.CarlaCameraSegmentationLabel,
+                    segmentation_label_class=py123d_log_api.CarlaCameraSegmentationLabel,
                     channel_type=channel_type,
                 )
                 for camera_id, pinhole_metadata in pinhole_metadatas.items()
@@ -79,7 +80,7 @@ class InstanceRecorder(BaseRecorder):
         """
         cameras: list[BaseModality] = []
         for cam_key in range(1, self.expert.config_expert.sensor_rig.num_cameras + 1):
-            camera_id = carla_to_123d.CAMERA_ID_MAPPING[cam_key]
+            camera_id = py123d_log_api.CAMERA_ID_MAPPING[cam_key]
             semantic_and_instance = input_data[
                 f"converted_instance_{cam_key}{self.key_suffix}"
             ]

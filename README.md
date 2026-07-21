@@ -1,17 +1,24 @@
 <h1>LEAD: Minimizing Learner-Expert Asymmetry in End-to-End Driving</h1>
 
+[![Unit Tests](https://github.com/kesai-labs/lead/actions/workflows/ci.yml/badge.svg)](https://github.com/kesai-labs/lead/actions/workflows/ci.yml) [![E2E Test](https://github.com/kesai-labs/lead/actions/workflows/ci_e2e.yml/badge.svg)](https://github.com/kesai-labs/lead/actions/workflows/ci_e2e.yml)
+
 LEAD is an end-to-end driving stack for the CARLA Leaderboard 2.0, covering the data generation pipeline, a TransFuser-style driving policy, and popular driving benchmarks like Bench2Drive and Fail2Drive. We build upon py123d and focus only on CARLA research.
 
-**Latest update `v1.2.0`** (2026.07.20):
+**Latest update `v1.3.0`** (2026.07.21):
 
-- Fix GNSS localization for CARLA 0.9.16, which projects GNSS with a transverse Mercator.
-- Reduce failure rate on Slurm when collecting data.
+- Increase the data sampling frequency from 4 Hz to the native 20 Hz simulator rate; only the camera streams remain on the 4 Hz save ticks.
+- Fix bugs in the data loader and slim the driving-meta format.
+- Add unit and end-to-end CI pipelines with new data-loader invariant tests.
+- Add example Jupyter notebooks.
+- Add `api` module to highlight contracts.
+- Extend the data-access documentation.
 
 <details>
 <summary>Older changelog entries</summary>
 
 | Version | Date       | Content                                                                                                                                                                                                   |
 | :------ | :--------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| v1.2.0  | 2026.07.20 | <ul><li>Fix GNSS localization for CARLA 0.9.16, which projects GNSS with a transverse Mercator.</li><li>Reduce failure rate on Slurm when collecting data.</li></ul>                                      |
 | v1.1.0  | 2026.07.15 | <ul><li>Added [basic documentation](https://github.com/kesai-labs/lead/docs/index.md).</li><li>Introduce abstraction for training and evaluation.</li><li>Bugs fixes and verification pipeline.</li></ul> |
 | v1.0.0  | 2026.07.12 | <ul><li>Integrated py123d as first-class data format.</li><li>Modernised code base.</li><li>Expert run time increased by up to 10x.</li></ul>                                                             |
 
@@ -66,7 +73,7 @@ To collect one single route for testing:
 python -m lead --expert --routes lead/src/lead/routes/data_routes/lead/Accident/route_001761.xml
 ```
 
-See [data collection](docs/data_generation.md) for details.
+The expert is expected to produce data at a rate of 10Hz. See [data collection](docs/data_generation.md) for details.
 
 ## Read data
 
@@ -79,18 +86,37 @@ from py123d.common.execution.thread_pool_executor import ThreadPoolExecutor
 
 # Build scenes
 scenes = ArrowSceneBuilder(
-    logs_root="</path/to/lead-data>/logs",
-    maps_root="</path/to/lead-data>/maps",
-).get_scenes(SceneFilter(future_num_iterations=8), ThreadPoolExecutor())
-
-# Access first scene
-scene = scenes[0]
+    logs_root="<path/to/lead-data>/logs",
+    maps_root="<path/to/lead-data>/maps",
+).get_scenes(
+    SceneFilter(
+        split_names=["normal_view"],
+        future_num_iterations=40,  # 2 s at the 20 Hz tick rate
+        # The camera streams only exist on save ticks; anchor the scenes there.
+        required_scene_modalities=["camera:all@initial"],
+    ),
+    ThreadPoolExecutor(),
+)
 
 # Access data of first frame
-ego = scene.get_ego_state_se3_at_iteration(0)  # py123d.datatypes.EgoStateSE3
+ego = scenes[0].get_ego_state_se3_at_iteration(0)  # py123d.datatypes.EgoStateSE3
 ```
 
-See [data access](docs/data_access.md) for further documentation on the data.
+See [data access](docs/data_access.md) for further documentation on the data. We also provide a [notebook](lead/notebooks/data_access.ipynb).
+
+## Visualize data
+
+The dataset can be visualized by the standard py123d viser tool:
+
+```bash
+# Either view every log
+PY123D_DATA_ROOT=/path/to/lead-data py123d-viser 'scene_filter.split_names=[normal_view]'
+
+# Or view a particular log
+scripts/cli/viser </path/to/lead-data>/logs/normal_view/<scenario_type>/<log_name>
+```
+
+For the TransFuser visualizer see [notebooks/data_visualization.ipynb](notebooks/data_visualization.ipynb).
 
 ## Citation
 

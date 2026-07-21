@@ -1,4 +1,4 @@
-"""CARLA → py123d conversion helpers shared by the modality recorders.
+"""CARLA → py123d conversion helpers.
 
 Converts between CARLA (Unreal Engine, left-handed, +y right) and ISO 8855
 (py123d, right-handed, +y left), and provides the static sensor and vehicle metadata.
@@ -37,17 +37,9 @@ from py123d.parser.utils.sensor_utils.camera_conventions import (
     convert_camera_convention,
 )
 
+from lead.api import py123d_log_api
+from lead.common.sensors.av_sensor_setup import perturbated_pose
 from lead.config import ExpertConfig
-from lead.dataloader import log_format
-from lead.expert.logs_writing.sensor_processing import perturbated_sensor_cfg
-
-# The log layout is the reader's contract; the writer follows it. The label
-# classes' module path is serialized into the log (py123d's default), so
-# reading them back needs neither the simulator nor lead pre-imported.
-CAMERA_ID_MAPPING = log_format.CAMERA_ID_MAPPING
-CarlaBoxDetectionLabel = log_format.CarlaBoxDetectionLabel
-CarlaCameraSegmentationLabel = log_format.CarlaCameraSegmentationLabel
-get_carla_lincoln_mkz_2020_metadata = log_format.get_carla_lincoln_mkz_2020_metadata
 
 
 def quaternion_from_carla_rotation(rotation: carla.Rotation) -> Quaternion:
@@ -285,7 +277,7 @@ def build_pinhole_camera_metadatas(
     """
     camera_metadatas: dict[CameraID, PinholeCameraMetadata] = {}
     for cam_key in range(1, config_expert.sensor_rig.num_cameras + 1):
-        camera_id = CAMERA_ID_MAPPING[cam_key]
+        camera_id = py123d_log_api.CAMERA_ID_MAPPING[cam_key]
         calibration = config_expert.sensor_rig.cameras[cam_key - 1]
         width = calibration["width"]
         height = calibration["height"]
@@ -293,7 +285,7 @@ def build_pinhole_camera_metadatas(
         camera_pos = calibration["pos"]
         camera_rot = calibration["rot"]
         if perturbation_translation != 0.0 or perturbation_rotation != 0.0:
-            perturbated = perturbated_sensor_cfg(
+            perturbated = perturbated_pose(
                 {
                     "x": camera_pos[0],
                     "y": camera_pos[1],
@@ -350,7 +342,7 @@ def build_radar_metadatas(
         The per-radar metadata keyed by 123D radar ID, and the metadata of the
         merged stream the logs store all radars in.
     """
-    ego_metadata = log_format.get_carla_lincoln_mkz_2020_metadata()
+    ego_metadata = py123d_log_api.get_carla_lincoln_mkz_2020_metadata()
     radar_metadatas: dict[RadarID, RadarMetadata] = {}
     for sensor_index, calibration in enumerate(
         config_expert.sensor_rig.radars,
@@ -359,7 +351,7 @@ def build_radar_metadatas(
         pos = calibration["pos"]
         rot = calibration["rot"]
         if perturbation_translation or perturbation_rotation:
-            pose = perturbated_sensor_cfg(
+            pose = perturbated_pose(
                 {
                     "x": pos[0],
                     "y": pos[1],
@@ -377,7 +369,7 @@ def build_radar_metadatas(
         quaternion = quaternion_from_carla_rotation(
             carla.Rotation(roll=rot[0], pitch=rot[1], yaw=rot[2]),
         )
-        radar_id = log_format.RADAR_ID_MAPPING[sensor_index]
+        radar_id = py123d_log_api.RADAR_ID_MAPPING[sensor_index]
         radar_metadatas[radar_id] = RadarMetadata(
             radar_name=str(radar_id),
             radar_id=radar_id,

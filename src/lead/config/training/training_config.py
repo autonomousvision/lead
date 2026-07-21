@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-from lead.common import runtime
+from lead.common import runtime_variables
 from lead.config.node import ConfigNode, child_node, overridable_property
 from lead.config.training.data_config import TrainingDataConfig
 from lead.config.training.experiment_config import ExperimentConfig
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     import torch
 
 # Process-specific values excluded from serialized configs: they describe the
-# machine/job, not the experiment (see src/lead/common/runtime.py).
+# machine/job, not the experiment (see src/lead/common/runtime_variables.py).
 RUNTIME_KEYS: frozenset[str] = frozenset({"device", "assigned_cpu_cores"})
 
 
@@ -32,9 +32,9 @@ class TrainingConfig(ConfigNode):
     @property
     def device(self) -> "torch.device":
         """PyTorch device to use for training."""
-        return runtime.device()
+        return runtime_variables.device()
 
     @overridable_property
     def assigned_cpu_cores(self) -> int:
         """Number of CPU cores assigned to this job."""
-        return runtime.assigned_cpu_cores()
+        return runtime_variables.assigned_cpu_cores()

@@ -56,15 +56,14 @@ class AbstractPolicy(nn.Module, abc.ABC):
 
         The one featurization path of the policy: the training dataset calls it
         on frames read from the logs, the driving agent on frames assembled from
-        the simulator, and privileged fields (labels, futures, the map) are read
-        only when :attr:`~lead.dataloader.frame.Frame.is_privileged` holds.
+        the simulator. Labels are not built here — the training dataset builds
+        them separately from the privileged fields.
 
         Args:
             frame: One tick of raw driving data in the ego view frame.
 
         Returns:
-            The model inputs of one unbatched sample, plus the training labels
-            when the frame is privileged.
+            The model inputs of one unbatched sample.
         """
 
     @abc.abstractmethod

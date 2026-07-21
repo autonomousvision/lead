@@ -6,6 +6,13 @@ repos:
       - id: check-added-large-files # prevents giant files from being committed.
       - id: check-case-conflict # checks for files that would conflict in case-insensitive filesystems.
       - id: check-merge-conflict # checks for files that contain merge conflict strings.
+        args: [--assume-in-merge]
+      - id: check-symlinks # checks for symlinks which do not point to anything.
+      - id: destroyed-symlinks # detects symlinks which are changed to regular files.
+      - id: detect-private-key # detects the presence of private keys.
+      - id: check-toml # checks toml files for parseable syntax.
+      - id: check-vcs-permalinks # ensures that links to vcs websites are permalinks.
+      - id: debug-statements # checks for debugger imports and breakpoint() calls.
       - id: check-yaml # checks yaml files for parseable syntax.
       - id: end-of-file-fixer # ensures that a file is either empty, or ends with one newline.
       - id: fix-byte-order-marker # removes utf-8 byte order marker.
@@ -16,6 +23,19 @@ repos:
       - id: pretty-format-json
         exclude: /README\.rst$|\.pot?$|\.ipynb$
         args: [--no-sort-keys, --autofix]
+
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+      - id: python-check-blanket-noqa # requires noqa comments to name the silenced rule.
+      - id: python-check-blanket-type-ignore # requires type ignores to name the silenced error.
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        additional_dependencies: [tomli]
+        args: [-L, "perturbate,unperturbated,statics,deques,ue,lightening"]
 
   - repo: https://github.com/kynan/nbstripout
     rev: 0.8.2
@@ -69,20 +89,15 @@ repos:
 
   - repo: local
     hooks:
-      - id: make-scripts-executable
-        name: Make scripts executable
-        entry: chmod +x
-        language: system
-        files: ^scripts/
+      - id: forbid-merge-leftovers
+        name: Forbid merge/rebase leftover files
+        entry: git merge/rebase leftover file committed
+        language: fail
+        files: '\.(orig|rej)$|\.(BACKUP|BASE|LOCAL|REMOTE)\.\d+$'
       - id: basedpyright
         name: basedpyright
-        entry: basedpyright
+        entry: basedpyright --project .
         language: system
         types: [python]
-        files: |-
-          (?x)
-          ^(
-            src/lead
-            |scripts
-          )/
+        files: ^src/lead/
         exclude: ^src/lead/expert/

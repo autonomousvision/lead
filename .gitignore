@@ -146,6 +146,7 @@ cython_debug/
 !scripts/slurm/**/*.sh
 /*.csv
 /*.mp4
+/notebooks/*.mp4
 /*.json
 /*.sif
 /*.png

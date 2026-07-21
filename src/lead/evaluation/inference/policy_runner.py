@@ -9,8 +9,8 @@ import typing
 import torch
 from torch.amp.autocast_mode import autocast
 
+from lead.api.abstract_policy import AbstractPolicy, build_policy
 from lead.config import LeadConfig
-from lead.policy.abstract_policy import AbstractPolicy, build_policy
 
 LOG = logging.getLogger(__name__)
 

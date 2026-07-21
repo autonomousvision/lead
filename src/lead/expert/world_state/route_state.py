@@ -9,9 +9,12 @@ import numpy.typing as npt
 from agents.navigation.local_planner import RoadOption
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
+from lead.common.runtime_property_caching import (
+    cached_property_by,
+    step_cached_property,
+)
 from lead.expert.driving.privileged_route_planner import PrivilegedRoutePlanner
 from lead.expert.utils import roadgraph
-from lead.expert.utils.caching import cached_property_by, step_cached_property
 
 
 class RouteStateMixin:

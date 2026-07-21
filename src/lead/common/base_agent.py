@@ -9,9 +9,9 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from lead.common.localization import gps
 from lead.common.localization.kalman_filter import KalmanFilter
 from lead.common.planning import RoutePlanner
+from lead.common.runtime_property_caching import step_cached_property
 from lead.common.sensors import point_clouds
 from lead.config import LeadConfig
-from lead.expert.utils.caching import step_cached_property
 
 LOG = logging.getLogger(__name__)
 

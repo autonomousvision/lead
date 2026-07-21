@@ -2,7 +2,6 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DOTENV_PATH = REPO_ROOT / ".env"
-DOTENV_EXAMPLE_PATH = REPO_ROOT / ".env.example"
 
 
 def read_dotenv(key: str, default: str | None = None) -> str:
@@ -18,10 +17,9 @@ def read_dotenv(key: str, default: str | None = None) -> str:
     Raises:
         KeyError: If the key is missing and no default is given.
     """
-    path = DOTENV_PATH if DOTENV_PATH.exists() else DOTENV_EXAMPLE_PATH
     values: dict[str, str] = {}
-    if path.exists():
-        for line in path.read_text(encoding="utf-8").splitlines():
+    if DOTENV_PATH.exists():
+        for line in DOTENV_PATH.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
@@ -31,7 +29,7 @@ def read_dotenv(key: str, default: str | None = None) -> str:
         return values[key]
     if default is not None:
         return default
-    raise KeyError(f"{key} not found in {path}")
+    raise KeyError(f"{key} not found in {DOTENV_PATH}")
 
 
 def read_dotenv_int(key: str, default: int | None = None) -> int:

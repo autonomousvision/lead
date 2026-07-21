@@ -19,15 +19,19 @@ if typing.TYPE_CHECKING:
     from imgaug.augmenters import Sequential
 
 import lead.common.geometry as geometry
+from lead.api.abstract_policy import SizedDataset
+from lead.api.py123d_log_api import (
+    BOX_ATTRIBUTES_KEY,
+    LOCALIZED_EGO_STATE_KEY,
+    localized_position_yaw,
+)
 from lead.common import constants
 from lead.config import LeadConfig
 from lead.dataloader import Frame, box_decoding, view_geometry
-from lead.dataloader.log_format import BOX_ATTRIBUTES_KEY
 from lead.dataloader.py123d_data_loader import Py123DDataLoader
-from lead.policy.abstract_policy import SizedDataset
 from lead.policy.transfuser.dataloader import route_smoothing
 from lead.policy.transfuser.dataloader.features import build_features
-from lead.policy.transfuser.dataloader.labels import image_augmenter
+from lead.policy.transfuser.dataloader.labels import build_labels
 
 if typing.TYPE_CHECKING:
     from py123d.api.scene.scene_api import SceneAPI
@@ -46,7 +50,6 @@ _STRING_META_KEYS = [
     "light_hazard",
     "vehicle_hazard",
     "lane_type_str",
-    "is_intersection",
     "does_emergency_brake_for_pedestrians",
     "construction_obstacle_two_ways_stuck",
     "accident_two_ways_stuck",
@@ -95,9 +98,75 @@ _NUMERIC_META_KEYS = [
     "distance_ego_to_route",
     "target_speed_limit",
     "target_speed",
-    "theta",
     "traffic_light_height",
 ]
+
+
+def _localized_yaw(meta: dict) -> float:
+    """The tick's localized ego yaw, read from its SE(3) pose matrix.
+
+    Args:
+        meta: Driving meta of the tick.
+
+    Returns:
+        The yaw angle in radians, wrapped to [-pi, pi].
+    """
+    _, yaw = localized_position_yaw(
+        np.asarray(meta[LOCALIZED_EGO_STATE_KEY], dtype=np.float64),
+    )
+    return yaw
+
+
+def _image_augmenter(lead_config: LeadConfig, prob: float = 0.2):
+    """Create an image augmenter for data perturbation.
+
+    Args:
+        lead_config: Root config tree.
+        prob: Probability of applying each perturbation.
+
+    Returns:
+        Image augmenter.
+    """
+    import imgaug
+    from imgaug import augmenters as ia
+
+    imgaug.imgaug.seed(lead_config.training.experiment.seed)
+    # imgaug's stubs declare per_channel as bool, but a float probability is a
+    # documented and intended usage.
+    perturbations = [
+        ia.Sometimes(prob, ia.GaussianBlur((0, 1.0))),
+        ia.Sometimes(
+            prob,
+            ia.AdditiveGaussianNoise(
+                loc=0,
+                scale=(0.0, 0.05 * 255),
+                per_channel=0.5,  # pyright: ignore[reportArgumentType]
+            ),
+        ),
+        ia.Sometimes(
+            prob,
+            ia.Dropout(
+                (0.01, 0.1),
+                per_channel=0.5,  # pyright: ignore[reportArgumentType]
+            ),
+        ),  # Strong
+        ia.Sometimes(
+            prob,
+            ia.Multiply(
+                (1 / 1.2, 1.2),
+                per_channel=0.5,  # pyright: ignore[reportArgumentType]
+            ),
+        ),
+        ia.Sometimes(
+            prob,
+            ia.LinearContrast(
+                (1 / 1.2, 1.2),
+                per_channel=0.5,  # pyright: ignore[reportArgumentType]
+            ),
+        ),
+        ia.Sometimes(prob, ia.ElasticTransformation(alpha=(0.5, 1.5), sigma=0.25)),
+    ]
+    return ia.Sequential(perturbations, random_order=True)
 
 
 def _not_town13(scene: "SceneAPI") -> bool:
@@ -183,7 +252,7 @@ class TransfuserDataset(SizedDataset):
             lead_config: Root config tree.
         """
         self.lead_config = lead_config
-        self.image_augmenter_func: Sequential = image_augmenter(
+        self.image_augmenter_func: Sequential = _image_augmenter(
             lead_config,
             lead_config.training.data.use_color_aug_prob,
         )
@@ -211,9 +280,9 @@ class TransfuserDataset(SizedDataset):
                     if self.lead_config.training.data.use_color_aug
                     else None
                 ),
-                boxes=boxes,
             ),
         )
+        data.update(build_labels(frame, boxes, self.lead_config))
 
         data["loading_time"] = time.time() - start_loading_time
         return data
@@ -360,7 +429,7 @@ class TransfuserDataset(SizedDataset):
         """
         assert frame.ego_state is not None
         ego_position, _ = box_decoding.carla_ego_pose(frame.ego_state)
-        ego_yaw: float = meta["theta"]
+        ego_yaw = _localized_yaw(meta)
 
         future_waypoints: list[jt.Float[npt.NDArray, " 2"]] = []
         future_yaws: list[float] = []
@@ -374,7 +443,7 @@ class TransfuserDataset(SizedDataset):
                 geometry.inverse_conversion_2d(future_position, ego_position, ego_yaw),
             )
             future_yaws.append(
-                geometry.normalize_angle(future_meta["theta"] - ego_yaw),
+                geometry.normalize_angle(_localized_yaw(future_meta) - ego_yaw),
             )
         if not future_waypoints:
             return
@@ -416,12 +485,13 @@ class TransfuserDataset(SizedDataset):
         # The route is stored in the global frame; convert to the ego frame.
         assert frame.ego_state is not None
         ego_position, _ = box_decoding.carla_ego_pose(frame.ego_state)
+        ego_yaw = _localized_yaw(meta)
         route: jt.Float[npt.NDArray, "n 2"] = np.array(
             [
                 geometry.inverse_conversion_2d(
                     np.array(point),
                     ego_position,
-                    meta["theta"],
+                    ego_yaw,
                 )
                 for point in meta["route"][: transfuser.num_route_points_smoothing]
             ],
@@ -464,7 +534,7 @@ class TransfuserDataset(SizedDataset):
         """
         assert frame.ego_state is not None
         ego_position, _ = box_decoding.carla_ego_pose(frame.ego_state)
-        ego_yaw: float = meta["theta"]
+        ego_yaw = _localized_yaw(meta)
 
         def to_view_frame(
             position: jt.Float[npt.NDArray, " 2"],

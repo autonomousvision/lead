@@ -10,12 +10,11 @@ import numpy as np
 import numpy.typing as npt
 
 from lead.common.localization import gps as gps_utils
-from lead.dataloader.log_format import ordered_target_points
 
 if typing.TYPE_CHECKING:
     import carla
 
-__all__ = ["RoutePlanner", "ordered_target_points"]
+__all__ = ["RoutePlanner"]
 
 
 class RoutePlanner:

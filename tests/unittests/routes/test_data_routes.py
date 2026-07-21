@@ -5,10 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from lead.common import runtime
+from lead.common import runtime_variables
 from lead.common.constants.towns import ALL_TOWNS
 
-DATA_ROUTES_ROOT = runtime.project_root() / "src" / "lead" / "routes" / "data_routes"
+DATA_ROUTES_ROOT = (
+    runtime_variables.project_root() / "src" / "lead" / "routes" / "data_routes"
+)
 
 
 @pytest.fixture(scope="module")

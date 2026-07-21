@@ -2,7 +2,7 @@ name: E2E
 
 on:
   push:
-    branches: [ main, "dev-v*", stage ]
+    branches: [ main, pre-release ]
   workflow_dispatch:
 
 jobs:
@@ -56,51 +56,23 @@ jobs:
         [ -x "$HOME/CARLA/standard_0916/CarlaUE4.sh" ] || \
           bash scripts/common/setup_carla.sh "$HOME/CARLA/standard_0916"
 
-    - name: Pick random free ports
-      run: |
-        CARLA_PORT=$(random_free_port)
-        TM_PORT=$(random_free_port)
-        # CARLA also binds CARLA_PORT+1 for streaming; keep TM clear of both.
-        while [ "$TM_PORT" = "$CARLA_PORT" ] || [ "$TM_PORT" = "$((CARLA_PORT + 1))" ]; do
-          TM_PORT=$(random_free_port)
-        done
-        echo "CARLA_PORT=$CARLA_PORT" >> "$GITHUB_ENV"
-        echo "TM_PORT=$TM_PORT" >> "$GITHUB_ENV"
-
-    - name: Start CARLA server
-      run: |
-        clean_carla || true
-        start_carla "$CARLA_PORT" > carla_server.log 2>&1 &
-        for _ in $(seq 1 90); do
-          ss -ltn | grep -q ":$CARLA_PORT " && break
-          sleep 2
-        done
-        ss -ltn | grep -q ":$CARLA_PORT " || { cat carla_server.log; exit 1; }
-        sleep 10
-
-    - name: Run data collection (single route)
-      # Enables the beartype+jaxtyping import hook for all of lead.*
-      # (see src/lead/__init__.py).
+    - name: Run data collection
       env:
         LEAD_RUNTIME_TYPE_CHECKING: "true"
       run: |
-        micromamba run -n lead python -u -m lead --expert \
-            --routes=src/lead/routes/data_routes/leaderboard1/BlockedIntersection/Town06_13.xml \
-            --port="$CARLA_PORT" \
-            --traffic-manager-port="$TM_PORT" \
-            --timeout=600
+        case "$GITHUB_REF_NAME" in
+          pre-release) bash .github/scripts/collect_data_pre_release.sh ;;
+          *)           bash .github/scripts/collect_data_main.sh ;;
+        esac
 
-    - name: Verify collected data
+    - name: Run E2E tests
+      # PY123D_DATA_ROOT lives in the generated .env, not the workflow env.
       run: |
-        cat "$(dotenv PY123D_DATA_ROOT)/results/BlockedIntersection/Town06_13.json"
-        ! grep -q Failed "$(dotenv PY123D_DATA_ROOT)/results/BlockedIntersection/Town06_13.json"
-        ls -R "$(dotenv PY123D_DATA_ROOT)/logs"
-        [ -n "$(ls -A "$(dotenv PY123D_DATA_ROOT)/logs")" ]
+        export LEAD_TEST_DATA_ROOT="$(grep '^PY123D_DATA_ROOT=' .env | cut -d= -f2-)"
+        micromamba run -n lead python -m pytest tests/e2e_tests/ -v
 
-    - name: Verify logs are readable
-      run: |
-        micromamba run -n lead python scripts/common/check_logs_readable.py \
-          "$(dotenv PY123D_DATA_ROOT)"
+    - name: Run notebooks
+      run: micromamba run -n lead jupyter execute notebooks/*.ipynb
 
     - name: Stop CARLA server
       if: always()

@@ -20,27 +20,126 @@ it exercises:
     └── <ScenarioType>/<route>.json  # leaderboard route record of the run
 ```
 
+## Reading raw py123d modalities
+
+Point py123d directly at the logs to read any
+modality, at any iteration (0 = anchor), no LEAD import needed:
+
+```python
+from py123d.api.scene.arrow.arrow_scene_builder import ArrowSceneBuilder
+from py123d.api.scene.scene_filter import SceneFilter
+from py123d.common.execution.thread_pool_executor import ThreadPoolExecutor
+from py123d.datatypes import LidarID
+
+# "normal_view" is the nominal sensor rig; the perturbated rig is a separate,
+# opt-in split "perturbated_view", specific for CARLA Leaderboard.
+scenes = ArrowSceneBuilder(
+    logs_root="/path/to/lead-data/logs",
+    maps_root="/path/to/lead-data/maps",
+).get_scenes(
+    SceneFilter(
+        split_names=["normal_view"],
+        future_num_iterations=40,
+        # The camera streams only exist on save ticks; anchor the scenes there.
+        required_scene_modalities=["camera:all@initial"],
+    ),
+    ThreadPoolExecutor(),
+)
+
+scene = scenes[0]
+
+ego = scene.get_ego_state_se3_at_iteration(0)  # EgoStateSE3
+boxes = scene.get_box_detections_se3_at_iteration(0)  # BoxDetectionsSE3
+lights = scene.get_traffic_light_detections_at_iteration(0)  # TrafficLightDetections
+lidar = scene.get_lidar_at_iteration(0, LidarID.LIDAR_TOP)  # Lidar
+camera_ids = scene.get_camera_metadatas()  # {CameraID: metadata}
+camera = scene.get_camera_at_iteration(0, next(iter(camera_ids)))  # Camera
+map_api = scene.get_map_api()  # MapAPI
+
+# LEAD's expert state is just a py123d custom modality, read as a raw dict:
+meta = scene.get_custom_modality_at_iteration(0, "driving_meta").data
+```
+
+## Data-loader for CARLA Leaderboard
+
+For E2E driving policy, we provide `Py123DDataLoader`, which assembles temporal and novel view features into a `Frame`:
+
+```python
+from py123d.api.scene.scene_filter import SceneFilter
+
+from lead.dataloader import Py123DDataLoader
+
+loader = Py123DDataLoader(
+    "/path/to/lead-data",
+    SceneFilter(future_num_iterations=40),
+    perturbation_prob=0.0,  # chance of the perturbated rig instead of the nominal one
+)
+
+frame = loader[0]  # len(loader) frames, indexed like a sequence
+```
+
+The sensor lists are in LEAD camera order (left to right, 1..n); the 123D
+modalities are py123d-native and in its ISO 8855 conventions, everything else
+is in the chosen view's CARLA ego frame:
+
+| Attribute                                                    | Type                                      | Description                                                                                                                                                                                                                           |
+| :----------------------------------------------------------- | :---------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `cameras`                                                    | `list[Camera]`                            | The anchor tick's RGB cameras; each carries its image, calibration and pose                                                                                                                                                           |
+| `depths`                                                     | `list[Camera] \| None`                    | Depth cameras, same order; `metadata.decode_depth(image)` turns the stored encoding into metric depth                                                                                                                                 |
+| `semantics`                                                  | `list[Camera] \| None`                    | Semantic cameras, same order; each pixel holds the raw CARLA class                                                                                                                                                                    |
+| `instances`                                                  | `list[Camera] \| None`                    | Instance cameras, same order; each pixel holds the CARLA actor id the box track tokens index into                                                                                                                                     |
+| `lidar_sweeps`                                               | `dict[int, Lidar] \| None`                | Lidar history; key `i` is the sweep captured `i` ticks (50 ms each) before the anchor, in the IMU frame of its own tick; ages without a stored sweep are absent                                                                       |
+| `radar_sweeps`                                               | `dict[int, Radar] \| None`                | Merged radar returns with the same age keying; per-point features carry the sensor id and the radial velocity                                                                                                                         |
+| `ego_state`                                                  | `EgoStateSE3 \| None`                     | Ground-truth ego pose and dynamic state in the global frame                                                                                                                                                                           |
+| `box_detections`                                             | `BoxDetectionsSE3 \| None`                | Boxes in the global frame with 123D labels and track tokens; the extra per-box fields live in `meta["box_attributes"]`                                                                                                                |
+| `traffic_lights`                                             | `TrafficLightDetections \| None`          | The tick's per-lane traffic-light states                                                                                                                                                                                              |
+| `map_api`                                                    | `MapAPI \| None`                          | Map of the town, for BEV rasterization                                                                                                                                                                                                |
+| `log_metadata`, `scene_metadata`                             | `LogMetadata`, `SceneMetadata`            | Which log the frame comes from (dataset, split, log name, town) and where its scene sits in that log; only filled when reading from logs, not at inference                                                                            |
+| `target_point_previous`, `target_point`, `target_point_next` | `numpy.typing.NDArray (2,)`               | The route planner's target points in the view frame                                                                                                                                                                                   |
+| `past_positions`                                             | `numpy.typing.NDArray (t, 2)`             | Localized ego position history in the anchor frame, one entry per tick (20 Hz); index `i` is `i` ticks ago                                                                                                                            |
+| `past_yaws`                                                  | `numpy.typing.NDArray (t,)`               | Localized ego yaw history, one entry per tick (20 Hz), same indexing                                                                                                                                                                  |
+| `perturbation`                                               | `lead.dataloader.RigPerturbation \| None` | Rig offset the sensors were captured with; None for the normal view                                                                                                                                                                   |
+| `meta`                                                       | `dict \| None`                            | The anchor tick's `driving_meta` dict, documented below. Only frames read from logs have it; frames built live in the simulator carry None, since the expert's state does not exist there — `frame.is_privileged` tells the two apart |
+
+The frame carries no future — at inference there is none, and the frame is the
+one input contract training and inference share. Labels are built by asking
+the same `Py123DDataLoader` (the `loader` above) for a modality at future
+ticks of a sample: pass the sample index and the iterations past the anchor
+(up to the filter's `future_num_iterations`), and get the modality back keyed
+by iteration:
+
+```python
+# Future ego states 0.25 s apart over 2 s — e.g. waypoint labels.
+states = loader.future_ego_states(0, iterations=[5, 10, 15, 20, 25, 30, 35, 40])
+states[40]  # EgoStateSE3 2 s after the anchor of sample 0
+
+metas = loader.future_metas(0, iterations=[5, 10])  # future driving_meta dicts
+boxes = loader.future_box_detections(0, iterations=[5, 10])  # future actor boxes
+```
+
 ## Storage frequencies
 
 The simulator runs in [synchronous mode](https://carla.readthedocs.io/en/latest/adv_synchrony_timestep/)
-at 20 fps (fixed 0.05 s step). State and range sensors are stored every tick;
-the render-heavy camera streams and the driving meta are stored on every fifth
-tick (4 Hz), the *save ticks*. Scene iterations count save ticks, so
-`SceneFilter(future_num_iterations=8)` spans 2 s of future.
+at 20 fps (fixed 0.05 s step). Every stream is stored on every tick, except
+the render-heavy camera streams, which are stored on every fifth tick (4 Hz),
+the *save ticks*. Scene iterations count simulator ticks, so
+`SceneFilter(future_num_iterations=40)` spans 2 s of future. Camera reads
+return None between save ticks; requiring `camera:all@initial` anchors scenes
+on the save ticks (LEAD's loader always does).
 
-| Stream                     | Content                                                                                                                                                                     | Rate  |
-| :------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---- |
-| `ego_state_se3`            | Ground-truth ego pose and dynamics (ISO 8855)                                                                                                                               | 20 Hz |
-| `box_detections_se3`       | Ground-truth boxes of all actors                                                                                                                                            | 20 Hz |
-| `lidar.lidar_top`          | Merged sweep of the two roof [lidars](https://carla.readthedocs.io/en/latest/ref_sensors/#lidar-sensor)                                                                     | 20 Hz |
-| `radar.radar_merged`       | Merged points of the four [radars](https://carla.readthedocs.io/en/latest/ref_sensors/#radar-sensor), with radial velocity                                                  | 20 Hz |
-| `camera.pcam_*`            | Six [RGB cameras](https://carla.readthedocs.io/en/latest/ref_sensors/#rgb-camera), JPEG-encoded                                                                             | 4 Hz  |
-| `camera_depth.pcam_*`      | [Depth cameras](https://carla.readthedocs.io/en/latest/ref_sensors/#depth-camera), 8-bit linear quantization saturating at 50 m                                             | 4 Hz  |
-| `camera_semantic.pcam_*`   | Semantic class channel of the [instance segmentation cameras](https://carla.readthedocs.io/en/latest/ref_sensors/#instance-segmentation-camera) (raw 29-class CARLA labels) | 4 Hz  |
-| `camera_instance.pcam_*`   | Instance id channel of the same cameras                                                                                                                                     | 4 Hz  |
-| `traffic_light_detections` | Traffic-light states, linked to map lanes                                                                                                                                   | 4 Hz  |
-| `custom.driving_meta`      | CARLA-specific meta information, see below                                                                                                                                  | 4 Hz  |
-| `sync`                     | One row per save tick; defines the scene iterations                                                                                                                         | 4 Hz  |
+| Stream                     | Content                                                                                                                                         | Rate  |
+| :------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------- | :---- |
+| `ego_state_se3`            | Ground-truth ego pose and dynamics (ISO 8855)                                                                                                   | 20 Hz |
+| `box_detections_se3`       | Ground-truth boxes of all actors                                                                                                                | 20 Hz |
+| `lidar.lidar_top`          | Merged sweep of the two roof [lidars](https://carla.readthedocs.io/en/latest/ref_sensors/#lidar-sensor)                                         | 20 Hz |
+| `radar.radar_merged`       | Merged points of the four [radars](https://carla.readthedocs.io/en/latest/ref_sensors/#radar-sensor), with radial velocity                      | 20 Hz |
+| `camera.pcam_*`            | Six [RGB cameras](https://carla.readthedocs.io/en/latest/ref_sensors/#rgb-camera), JPEG-encoded                                                 | 4 Hz  |
+| `camera_depth.pcam_*`      | [Depth cameras](https://carla.readthedocs.io/en/latest/ref_sensors/#depth-camera), 8-bit linear quantization saturating at 50 m                 | 4 Hz  |
+| `camera_semantic.pcam_*`   | Semantic class channel of the [instance segmentation cameras](https://carla.readthedocs.io/en/latest/ref_sensors/#instance-segmentation-camera) | 4 Hz  |
+| `camera_instance.pcam_*`   | Instance id channel of the same cameras                                                                                                         | 4 Hz  |
+| `traffic_light_detections` | Traffic-light states, linked to map lanes                                                                                                       | 20 Hz |
+| `custom.driving_meta`      | CARLA-specific meta information, see below                                                                                                      | 20 Hz |
+| `sync`                     | One row per tick; defines the scene iterations                                                                                                  | 20 Hz |
 
 There are two ego poses. `ego_state_se3` is the exact pose from the simulator.
 For end-to-end driving, policies only have access to the noisy
@@ -70,96 +169,169 @@ outputs such as the target points, and reports the rig offset as
 ## The `driving_meta` stream
 
 `custom.driving_meta` is a py123d custom modality holding the CARLA-specific
-state as a plain dict per save tick. Each tick carries:
+state as a plain dict per tick. The core fields are what LEAD's loader and the
+label pipelines consume; the diagnostic fields are the expert's internal state,
+kept for analysis and visualization.
 
-- **Localization**: `localized_pos_global` and `theta`, the GNSS+IMU pose the
-  ego drives by, plus `past_positions`/`past_yaws` in the current ego frame.
-- **Route**: `target_point_indices` (current target point per pop distance),
-  the dense future `route` the expert follows, and route progress fields.
-- **Driving decisions**: `target_speed`, `speed_limit`, the executed `steer`/
-  `throttle`/`brake`, and what reduced the speed (`speed_reduced_by_obj_*`).
-- **Hazards**: `vehicle_hazard`, `light_hazard`, `walker_hazard`,
-  `stop_sign_hazard` with the affecting actor ids.
-- **Scenario and map context**: active scenario type and its actor ids,
-  distances to scenario obstacles, road/lane/junction ids, lane markings,
-  weather, and traffic-light style flags (`europe_traffic_light`,
-  `over_head_traffic_light`).
-- **`box_attributes`**: per-box fields the box stream has no native slot for
-  (occlusion pixel counts, `affects_ego`, traffic-light state), keyed by the
-  box's track token.
+### Core fields
 
-## Reading raw py123d modalities
+#### Localization
 
-The logs are ordinary py123d logs: point py123d directly at them to read any
-modality, at any iteration (0 = anchor). No LEAD import needed:
+| Property                  | Type                          | Description                                                                                                         |
+| :------------------------ | :---------------------------- | :------------------------------------------------------------------------------------------------------------------ |
+| `localized_ego_state_se3` | `numpy.typing.NDArray (4, 4)` | SE(3) pose from GNSS+IMU fusion in the global frame — the noisy pose the policy observes (yaw-only rotation, z = 0) |
 
-```python
-from py123d.api.scene.arrow.arrow_scene_builder import ArrowSceneBuilder
-from py123d.api.scene.scene_filter import SceneFilter
-from py123d.common.execution.thread_pool_executor import ThreadPoolExecutor
-from py123d.datatypes import LidarID
+#### Route & Navigation
 
-# "normal_view" is the nominal sensor rig; the perturbated rig is a separate,
-# opt-in split "perturbated_view", specific for CARLA Leaderboard.
-scenes = ArrowSceneBuilder(
-    logs_root="/path/to/lead-data/logs",
-    maps_root="/path/to/lead-data/maps",
-).get_scenes(
-    SceneFilter(split_names=["normal_view"], future_num_iterations=8),
-    ThreadPoolExecutor(),
-)
+| Property               | Type                          | Description                                                                                 |
+| :--------------------- | :---------------------------- | :------------------------------------------------------------------------------------------ |
+| `target_point_indices` | `dict[str, int]`              | Current target waypoint index per distance; keys are distance strings (e.g., "5.0", "10.0") |
+| `route`                | `numpy.typing.NDArray (M, 2)` | Dense future route waypoints in global coordinates (M waypoints)                            |
+| `route_original`       | `numpy.typing.NDArray (M, 2)` | Original output of A\* before any modification (static obstacles)                           |
+| `changed_route`        | `bool`                        | True if route was modified from the original                                                |
 
-scene = scenes[0]
+#### Speed & Control
 
-ego = scene.get_ego_state_se3_at_iteration(0)  # EgoStateSE3
-boxes = scene.get_box_detections_se3_at_iteration(0)  # BoxDetectionsSE3
-lights = scene.get_traffic_light_detections_at_iteration(0)  # TrafficLightDetections
-lidar = scene.get_lidar_at_iteration(0, LidarID.LIDAR_TOP)  # Lidar
-camera_ids = scene.get_camera_metadatas()  # {CameraID: metadata}
-camera = scene.get_camera_at_iteration(0, next(iter(camera_ids)))  # Camera
-map_api = scene.get_map_api()  # MapAPI
+| Property                            | Type    | Description                                        |
+| :---------------------------------- | :------ | :------------------------------------------------- |
+| `target_speed`                      | `float` | Desired speed (m/s)                                |
+| `speed_limit`                       | `float` | Road speed limit (m/s)                             |
+| `target_speed_limit`                | `float` | Target speed limit for upcoming road segment (m/s) |
+| `last_encountered_speed_limit_sign` | `float` | Speed limit from the most recent sign (m/s)        |
+| `steer`                             | `float` | Steering angle executed this tick (radians)        |
+| `throttle`                          | `float` | Throttle pedal value (0–1)                         |
+| `brake`                             | `bool`  | True if brake was applied                          |
 
-# LEAD's expert state is just a py123d custom modality, read as a raw dict:
-meta = scene.get_custom_modality_at_iteration(0, "driving_meta").data
-```
+#### Scenario
 
-## Reading a CARLA-ready `Frame` with LEAD's loader
+| Property                        | Type  | Description                                                              |
+| :------------------------------ | :---- | :----------------------------------------------------------------------- |
+| `scenario`                      | `str` | CARLA Leaderboard scenario type (e.g., "Accident", "PedestrianCrossing") |
+| `current_active_scenario_type`  | `str` | Currently active scenario type                                           |
+| `previous_active_scenario_type` | `str` | Previously active scenario type                                          |
 
-py123d doesn't know about perturbated sensor rigs, lidar sweep-window
-accumulation, or navigation target points, but a CARLA policy needs all three.
-`Py123DDataLoader` assembles them per tick into a `Frame`:
+#### Metadata
 
-```python
-from py123d.api.scene.scene_filter import SceneFilter
+| Property                 | Type              | Description                                                                                            |
+| :----------------------- | :---------------- | :----------------------------------------------------------------------------------------------------- |
+| `jpeg_storage_quality`   | `int`             | JPEG compression quality (0–100)                                                                       |
+| `box_attributes`         | `dict[str, dict]` | Per-box metadata keyed by py123d track token (the stringified CARLA actor id)                          |
+| ├─ (user-defined fields) | Various           | Any non-native fields from box detections (occlusion counts, `affects_ego`, traffic-light state, etc.) |
 
-from lead.dataloader import Py123DDataLoader
+### Diagnostic fields
 
-loader = Py123DDataLoader(
-    "/path/to/lead-data",
-    SceneFilter(future_num_iterations=8),
-    perturbation_prob=0.0,  # chance of the perturbated rig instead of the nominal one
-)
+#### Hazards & Safety
 
-frame = loader[0]  # len(loader) frames, indexed like a sequence
+| Property                               | Type            | Description                                                        |
+| :------------------------------------- | :-------------- | :----------------------------------------------------------------- |
+| `vehicle_hazard`                       | `bool`          | True if a vehicle poses an immediate hazard                        |
+| `vehicle_affecting_id`                 | `int`           | Actor ID of the affecting vehicle (or -1 if none)                  |
+| `light_hazard`                         | `bool`          | True if a traffic light requires action                            |
+| `walker_hazard`                        | `bool`          | True if a pedestrian poses an immediate hazard                     |
+| `walker_affecting_id`                  | `int`           | Actor ID of the affecting pedestrian                               |
+| `walker_close`                         | `bool`          | True if a pedestrian is nearby (not necessarily hazard)            |
+| `walker_close_id`                      | `int`           | Actor ID of the nearby pedestrian                                  |
+| `stop_sign_hazard`                     | `bool`          | True if a stop sign requires action                                |
+| `stop_sign_close`                      | `bool`          | True if a stop sign is within proximity                            |
+| `emergency_brake_for_special_vehicle`  | `bool`          | True if emergency brake triggered for special vehicles             |
+| `does_emergency_brake_for_pedestrians` | `bool`          | True if emergency brake was applied for pedestrians                |
+| `rear_danger_8`                        | `bool`          | True if rear collision risk within 8 m                             |
+| `rear_danger_16`                       | `bool`          | True if rear collision risk within 16 m                            |
+| `rear_adversarial_id`                  | `int`           | Actor ID of rear-following vehicle (or -1 if none)                 |
+| `brake_cutin`                          | `bool`          | True if braking for a cut-in vehicle                               |
+| `speed_reduced_by_obj_type`            | `str \| None`   | Type of object causing speed reduction ("vehicle", "walker", etc.) |
+| `speed_reduced_by_obj_id`              | `int \| None`   | Actor ID of object causing speed reduction                         |
+| `speed_reduced_by_obj_distance`        | `float \| None` | Distance to object causing speed reduction (m)                     |
 
-# Sensors, in LEAD order (left to right, 1..n); every field is py123d-native.
-frame.cameras  # list[Camera]
-frame.depths  # list[Camera]
-frame.semantics  # list[Camera]
-frame.instances  # list[Camera]
-frame.lidar_sweeps  # dict[int, Lidar], keyed by frame age (0 = now)
-frame.radar_sweeps  # dict[int, Radar], keyed by frame age (0 = now)
+#### Route Progress
 
-# Perception and the world; also py123d-native.
-frame.ego_state  # EgoStateSE3
-frame.box_detections  # BoxDetectionsSE3
-frame.traffic_lights  # TrafficLightDetections
-frame.map_api  # MapAPI
-frame.log_metadata  # LogMetadata
-frame.scene_metadata  # SceneMetadata
+| Property                | Type    | Description                                        |
+| :---------------------- | :------ | :------------------------------------------------- |
+| `route_left_length`     | `float` | Distance remaining along the route (m)             |
+| `distance_ego_to_route` | `float` | Lateral distance from ego to the planned route (m) |
 
-# LEAD-specific fields with no py123d slot, so they live on the frame directly.
-frame.meta  # dict
-frame.target_point  # NDArray (2,), next navigation goal in the ego frame
-frame.perturbation  # RigPerturbation | None
-```
+#### Road & Lane Context
+
+| Property                             | Type            | Description                                                      |
+| :----------------------------------- | :-------------- | :--------------------------------------------------------------- |
+| `road_id`                            | `int`           | Current road ID from the map                                     |
+| `lane_id`                            | `int`           | Current lane ID from the map                                     |
+| `ego_lane_id`                        | `int`           | Ego's lane ID                                                    |
+| `is_junction`                        | `bool`          | True if ego is in a junction                                     |
+| `junction_id`                        | `int`           | Junction ID if in a junction                                     |
+| `next_road_ids`                      | `list[int]`     | Road IDs of the next lanes                                       |
+| `next_next_road_ids_ego`             | `list[int]`     | Road IDs of lanes after next                                     |
+| `lane_change_str`                    | `str`           | Lane change availability (e.g., "BOTH", "LEFT", "RIGHT", "NONE") |
+| `lane_type_str`                      | `str`           | Lane type (e.g., "Driving", "Shoulder", "Sidewalk")              |
+| `left_lane_marking_type_str`         | `str`           | Left lane marking type (e.g., "SOLID", "DASHED", "NONE")         |
+| `left_lane_marking_color_str`        | `str`           | Left lane marking color (e.g., "White", "Yellow")                |
+| `right_lane_marking_type_str`        | `str`           | Right lane marking type                                          |
+| `right_lane_marking_color_str`       | `str`           | Right lane marking color                                         |
+| `ego_lane_width`                     | `float`         | Width of the current lane (m)                                    |
+| `target_lane_width`                  | `float`         | Width of the target lane (m)                                     |
+| `distance_to_junction`               | `float \| None` | Distance to next junction (m)                                    |
+| `distance_to_intersection_index_ego` | `int`           | Index of the next intersection along the route                   |
+
+#### Scenario Internals
+
+| Property                         | Type        | Description                               |
+| :------------------------------- | :---------- | :---------------------------------------- |
+| `scenario_actors_ids`            | `list[int]` | Actor IDs involved in the active scenario |
+| `scenario_obstacles_ids`         | `list[int]` | Obstacle actor IDs from the scenario      |
+| `scenario_obstacles_convex_hull` | `list`      | Convex hull of scenario obstacles         |
+
+#### Obstacle Distances
+
+| Property                     | Type        | Description                                |
+| :--------------------------- | :---------- | :----------------------------------------- |
+| `dist_to_construction_site`  | `float`     | Distance to construction site obstacle (m) |
+| `dist_to_accident_site`      | `float`     | Distance to accident site obstacle (m)     |
+| `dist_to_parked_obstacle`    | `float`     | Distance to parked vehicle (m)             |
+| `dist_to_vehicle_opens_door` | `float`     | Distance to vehicle with open door (m)     |
+| `dist_to_cutin_vehicle`      | `float`     | Distance to cut-in vehicle (m)             |
+| `dist_to_pedestrian`         | `float`     | Distance to pedestrian (m)                 |
+| `dist_to_biker`              | `float`     | Distance to cyclist (m)                    |
+| `cut_in_actors_ids`          | `list[int]` | Actor IDs of vehicles that cut in          |
+
+#### Stuck-State Flags
+
+| Property                               | Type   | Description                            |
+| :------------------------------------- | :----- | :------------------------------------- |
+| `construction_obstacle_two_ways_stuck` | `bool` | True if stuck by construction obstacle |
+| `accident_two_ways_stuck`              | `bool` | True if stuck by accident obstacle     |
+| `parked_obstacle_two_ways_stuck`       | `bool` | True if stuck by parked obstacle       |
+| `vehicle_opens_door_two_ways_stuck`    | `bool` | True if stuck by door-opening vehicle  |
+
+#### Visibility & Adversarial
+
+| Property                    | Type   | Description                                                                              |
+| :-------------------------- | :----- | :--------------------------------------------------------------------------------------- |
+| `visual_visibility`         | `int`  | Weather visibility class (`WeatherVisibility`: 0 clear, 1 ok, 2 limited, 3 very limited) |
+| `slower_bad_visibility`     | `bool` | True if ego slowed down due to low visibility                                            |
+| `slower_clutterness`        | `bool` | True if ego slowed down due to scene clutter                                             |
+| `num_dangerous_adversarial` | `int`  | Count of dangerous adversarial actors                                                    |
+| `num_safe_adversarial`      | `int`  | Count of safe adversarial actors                                                         |
+| `num_ignored_adversarial`   | `int`  | Count of ignored adversarial actors                                                      |
+
+#### Traffic Lights & Environment
+
+| Property                  | Type   | Description                                                      |
+| :------------------------ | :----- | :--------------------------------------------------------------- |
+| `europe_traffic_light`    | `bool` | True if traffic lights follow European convention                |
+| `over_head_traffic_light` | `bool` | True if traffic lights are overhead-mounted                      |
+| `weather_setting`         | `dict` | Weather preset name and parameters                               |
+| `weather_parameters`      | `dict` | Detailed weather values (precipitation, clouds, wind, fog, etc.) |
+
+#### Vehicle Door
+
+| Property                            | Type   | Description                                               |
+| :---------------------------------- | :----- | :-------------------------------------------------------- |
+| `vehicle_opened_door`               | `bool` | True if a vehicle opened a door                           |
+| `vehicle_door_side`                 | `str`  | Which side door opened ("left", "right", "both", or None) |
+| `num_parking_vehicles_in_proximity` | `int`  | Count of parked vehicles nearby                           |
+
+#### Lane Change & Ego State
+
+| Property                     | Type    | Description                                   |
+| :--------------------------- | :------ | :-------------------------------------------- |
+| `signed_dist_to_lane_change` | `float` | Signed distance to next lane change point (m) |

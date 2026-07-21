@@ -2,7 +2,7 @@
 log collection and reads each into a :class:`~lead.dataloader.frame.Frame`."""
 
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import jaxtyping as jt
@@ -10,20 +10,22 @@ import numpy as np
 import numpy.typing as npt
 from py123d.api.scene.scene_api import SceneAPI
 from py123d.api.scene.scene_filter import SceneFilter
-from py123d.datatypes import Lidar, ModalityType
+from py123d.datatypes import CustomModality, Lidar, ModalityType
 from py123d.datatypes.sensors.base_camera import Camera, CameraID
 from py123d.datatypes.sensors.lidar import LidarID
 from py123d.datatypes.sensors.radar import Radar, RadarID
 
+from lead.api.py123d_log_api import (
+    CAMERA_ID_MAPPING,
+    DRIVING_META_MODALITY_ID,
+    LOCALIZED_EGO_STATE_KEY,
+    TARGET_POINTS_KEY,
+    localized_position_yaw,
+    ordered_target_points,
+)
 from lead.common import geometry
 from lead.dataloader import scene_index, view_geometry
 from lead.dataloader.frame import Frame, RigPerturbation
-from lead.dataloader.log_format import (
-    CAMERA_ID_MAPPING,
-    DRIVING_META_MODALITY_ID,
-    TARGET_POINTS_KEY,
-    ordered_target_points,
-)
 
 T = typing.TypeVar("T")
 
@@ -45,6 +47,15 @@ def require_not_none(value: T | None) -> T:
     return value
 
 
+# Modalities every frame reads; anchoring on ``camera:all@initial`` keeps the
+# scenes on the save ticks, where the camera streams exist.
+REQUIRED_SCENE_MODALITIES = [
+    "ego_state_se3",
+    "custom.driving_meta@initial",
+    "camera:all@initial",
+]
+
+
 def default_scene_filter() -> SceneFilter:
     """The scenes of a LEAD log collection: one per save tick, no margins.
 
@@ -54,12 +65,25 @@ def default_scene_filter() -> SceneFilter:
     return SceneFilter(
         history_num_iterations=0,
         future_num_iterations=0,
-        required_scene_modalities=[
-            "ego_state_se3",
-            "custom.driving_meta@initial",
-            "camera:all@initial",
-        ],
+        required_scene_modalities=list(REQUIRED_SCENE_MODALITIES),
     )
+
+
+def _require_frame_modalities(scene_filter: SceneFilter) -> SceneFilter:
+    """Union the modalities every frame reads into a filter's requirements.
+
+    Args:
+        scene_filter: The filter to complete.
+
+    Returns:
+        The filter, requiring at least :data:`REQUIRED_SCENE_MODALITIES`.
+    """
+    required = list(
+        dict.fromkeys(
+            (scene_filter.required_scene_modalities or []) + REQUIRED_SCENE_MODALITIES,
+        ),
+    )
+    return replace(scene_filter, required_scene_modalities=required)
 
 
 @dataclass
@@ -122,8 +146,8 @@ class Py123DDataLoader:
             depths: Whether to read the depth cameras.
             map: Whether to read the map API.
         """
-        self.scene_filter: SceneFilter = (
-            scene_filter if scene_filter is not None else default_scene_filter()
+        self.scene_filter: SceneFilter = _require_frame_modalities(
+            scene_filter if scene_filter is not None else default_scene_filter(),
         )
         self.perturbation_prob = perturbation_prob
         self.tp_pop_distance = tp_pop_distance
@@ -194,6 +218,7 @@ class Py123DDataLoader:
         map_api = scene.get_map_api() if self._read_map else None
 
         target_points = self._target_points_in_view(scene, meta, view)
+        past_positions, past_yaws = self._past_motion(scene, meta)
 
         return Frame(
             cameras=self._load_cameras(view.sensor_scene),
@@ -211,15 +236,15 @@ class Py123DDataLoader:
             target_point_previous=target_points[0],
             target_point=target_points[1],
             target_point_next=target_points[2],
-            past_positions=np.asarray(meta["past_positions"], dtype=np.float64),
-            past_yaws=np.asarray(meta["past_yaws"], dtype=np.float64),
+            past_positions=past_positions,
+            past_yaws=past_yaws,
             perturbation=view.perturbation,
             meta=meta,
         )
 
     @property
     def future_num_iterations(self) -> int:
-        """Save ticks of future every scene provides."""
+        """Simulator ticks of future every scene provides."""
         return self.scene_filter.future_num_iterations or 0
 
     def driving_meta(self, scene: SceneAPI, iteration: int) -> dict | None:
@@ -310,7 +335,7 @@ class Py123DDataLoader:
         """
         scene: SceneAPI = self.scenes[index]
         perturbated_scene: SceneAPI | None = self.perturbated_scenes.get(
-            (scene.log_name, scene.get_scene_metadata().initial_idx),
+            (scene.log_name, scene.get_timestamp_at_iteration(0).time_us),
         )
         if perturbated_scene is not None and np.random.rand() < self.perturbation_prob:
             return _SceneView(
@@ -342,10 +367,9 @@ class Py123DDataLoader:
         Returns:
             The previous, current and next target point.
         """
-        ego_position: jt.Float[npt.NDArray, " 2"] = np.array(
-            meta["localized_pos_global"][:2],
+        ego_position, ego_yaw = localized_position_yaw(
+            np.asarray(meta[LOCALIZED_EGO_STATE_KEY], dtype=np.float64),
         )
-        ego_yaw: float = meta["theta"]
 
         def to_view(
             point: jt.Float[npt.NDArray, " 3"],
@@ -487,6 +511,57 @@ class Py123DDataLoader:
             assert isinstance(radar, Radar)
             sweeps[round((anchor_us - radar.timestamp.time_us) / tick_us)] = radar
         return sweeps
+
+    def _past_motion(
+        self,
+        scene: SceneAPI,
+        meta: dict,
+    ) -> tuple[jt.Float[npt.NDArray, "t 2"], jt.Float[npt.NDArray, " t"]]:
+        """Localized ego pose history over the sweep window, in the anchor's frame.
+
+        Derived from the per-tick localized ego states of the driving-meta
+        stream, matching what the ego knows about its own motion online.
+
+        Args:
+            scene: The scene providing the driving-meta stream.
+            meta: Driving meta of the anchor tick.
+
+        Returns:
+            Positions and yaws relative to the anchor's localized pose, index
+            ``i`` is ``i`` ticks ago; cut short where the log starts.
+        """
+        tick_us = self.tick_duration_us
+        anchor_us = scene.get_timestamp_at_iteration(0).time_us
+        anchor_position, anchor_yaw = localized_position_yaw(
+            np.asarray(meta[LOCALIZED_EGO_STATE_KEY], dtype=np.float64),
+        )
+
+        poses: dict[int, tuple[jt.Float[npt.NDArray, " 2"], float]] = {}
+        for modality in scene.get_modality_between_timestamps(
+            anchor_us - (self.sweep_window_ticks - 1) * tick_us,
+            anchor_us,
+            ModalityType.CUSTOM,
+            DRIVING_META_MODALITY_ID,
+            inclusive="both",
+        ):
+            assert isinstance(modality, CustomModality)
+            age = round((anchor_us - modality.timestamp.time_us) / tick_us)
+            poses[age] = localized_position_yaw(
+                np.asarray(modality.data[LOCALIZED_EGO_STATE_KEY], dtype=np.float64),
+            )
+
+        cos, sin = np.cos(anchor_yaw), np.sin(anchor_yaw)
+        to_anchor = np.array([[cos, sin], [-sin, cos]])
+        positions: list[jt.Float[npt.NDArray, " 2"]] = []
+        yaws: list[float] = []
+        for age in range(self.sweep_window_ticks):
+            pose = poses.get(age)
+            if pose is None:
+                break
+            position, yaw = pose
+            positions.append(to_anchor @ (position - anchor_position))
+            yaws.append(geometry.normalize_angle(yaw - anchor_yaw))
+        return np.array(positions).reshape(-1, 2), np.array(yaws)
 
     def _load_cameras(self, sensor_scene: SceneAPI) -> list[Camera]:
         """Read the anchor tick's cameras in LEAD camera order.

@@ -88,8 +88,8 @@ class Py123dLoggingMixin:
             radar_store_option="binary",
             radar_codec="draco",
         )
-        # Sync rows are built at close, one per driving-meta (save tick)
-        # timestamp; scene iterations stay in save-tick units.
+        # Sync rows are built at close, one per driving-meta timestamp — every
+        # simulator tick; the camera streams are null outside the save ticks.
         self.py123d_log_writer = ArrowLogWriter(
             log_writer_config=log_writer_config,
             logs_root=self.py123d_logs_root,
@@ -173,8 +173,6 @@ class Py123dLoggingMixin:
                 self,
                 store_freq=data_config.box_detections_store_freq,
             ),
-        ]
-        self.save_tick_state_recorders = [
             TrafficLightRecorder(
                 self,
                 map_arrow_path=self.py123d_maps_root
@@ -196,7 +194,7 @@ class Py123dLoggingMixin:
             self.save_tick_array_recorders.append(
                 DepthRecorder(self, store_freq=data_config.depth_store_freq),
             )
-        for recorder in self.save_tick_state_recorders + self.save_tick_array_recorders:
+        for recorder in self.save_tick_array_recorders:
             assert recorder.store_freq % data_config.data_save_freq == 0, (
                 f"{type(recorder).__name__}: store_freq {recorder.store_freq} is not "
                 f"a multiple of data_save_freq {data_config.data_save_freq}"
@@ -246,8 +244,8 @@ class Py123dLoggingMixin:
         """Capture the current tick's state and queue it for background writing.
 
         Called every tick; each modality is recorded whenever its storage
-        frequency is met, save-tick-only modalities (cameras, driving meta,
-        traffic lights) additionally only when ``self.is_save_tick``.
+        frequency is met, the camera streams additionally only when
+        ``self.is_save_tick``.
 
         Args:
             tick_data: Post-tick sensor data from CARLA.
@@ -265,17 +263,13 @@ class Py123dLoggingMixin:
         for recorder in self.tick_state_recorders:
             if self._tick_store_due(recorder):
                 modalities.extend(recorder.record(tick_data, timestamp, ego_state))
-        if self.is_save_tick:
-            for recorder in self.save_tick_state_recorders:
-                if self._save_tick_store_due(recorder):
-                    modalities.extend(recorder.record(tick_data, timestamp, ego_state))
-            modalities.append(
-                self.driving_meta_recorder.record_meta(
-                    self.driving_meta,
-                    tick_data,
-                    timestamp,
-                ),
-            )
+        modalities.append(
+            self.driving_meta_recorder.record_meta(
+                self.driving_meta,
+                tick_data,
+                timestamp,
+            ),
+        )
 
         # The write thread must not read the counters, so the due array
         # recorders are resolved here on the driving thread.

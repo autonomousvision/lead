@@ -15,7 +15,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 def output_dir_root() -> Path:
     """Root for generated outputs: LEAD_OUTPUT_DIR_ROOT from the environment or the root .env.
 
-    Standalone mirror of lead.common.runtime.output_dir_root (this app does not import lead).
+    Standalone mirror of lead.common.runtime_variables.output_dir_root (this app does not import lead).
     """
     if os.environ.get("LEAD_OUTPUT_DIR_ROOT"):
         return Path(os.environ["LEAD_OUTPUT_DIR_ROOT"])

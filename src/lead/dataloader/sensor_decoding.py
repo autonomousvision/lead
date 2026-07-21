@@ -10,9 +10,9 @@ from py123d.datatypes import Lidar
 from py123d.datatypes.sensors.lidar import LidarMetadata
 from py123d.datatypes.sensors.radar import Radar
 
+from lead.api import py123d_log_api
+from lead.api.py123d_log_api import RADIAL_VELOCITY_FEATURE
 from lead.config import LeadConfig
-from lead.dataloader import log_format
-from lead.dataloader.log_format import RADIAL_VELOCITY_FEATURE
 
 
 def lidar_sweep_from_carla_ego_frame(
@@ -31,7 +31,7 @@ def lidar_sweep_from_carla_ego_frame(
     Returns:
         The sweep in the 123D IMU frame.
     """
-    ego_metadata = log_format.get_carla_lincoln_mkz_2020_metadata()
+    ego_metadata = py123d_log_api.get_carla_lincoln_mkz_2020_metadata()
     converted = points.astype(np.float64).copy()
     converted[:, 1] = -converted[:, 1]
     converted[:, 0] += ego_metadata.rear_axle_to_center_longitudinal
@@ -55,7 +55,7 @@ def radar_from_carla_ego_frame(
     Returns:
         The returns in the 123D IMU frame.
     """
-    ego_metadata = log_format.get_carla_lincoln_mkz_2020_metadata()
+    ego_metadata = py123d_log_api.get_carla_lincoln_mkz_2020_metadata()
     converted = points.astype(np.float64).copy()
     converted[:, 1] = -converted[:, 1]
     converted[:, 0] += ego_metadata.rear_axle_to_center_longitudinal
@@ -77,7 +77,7 @@ def lidar_sweep_to_carla_ego_frame(
     Returns:
         Point cloud of shape (N, 3) in the CARLA ego frame.
     """
-    ego_metadata = log_format.get_carla_lincoln_mkz_2020_metadata()
+    ego_metadata = py123d_log_api.get_carla_lincoln_mkz_2020_metadata()
     assert isinstance(lidar.metadata, LidarMetadata)
     points = lidar.point_cloud_3d.astype(np.float64).copy()
     points[:, 0] -= ego_metadata.rear_axle_to_center_longitudinal
@@ -106,7 +106,7 @@ def split_radar_by_sensor(
     assert ids is not None
     return [
         points[ids == int(radar_id.value)]
-        for _, radar_id in sorted(log_format.RADAR_ID_MAPPING.items())
+        for _, radar_id in sorted(py123d_log_api.RADAR_ID_MAPPING.items())
     ]
 
 
@@ -125,7 +125,7 @@ def radar_to_carla_ego_frame(
         CARLA ego frame.
     """
     assert radar.point_cloud_features is not None
-    ego_metadata = log_format.get_carla_lincoln_mkz_2020_metadata()
+    ego_metadata = py123d_log_api.get_carla_lincoln_mkz_2020_metadata()
     points = radar.point_cloud_3d.astype(np.float32).copy()
     points[:, 0] -= ego_metadata.rear_axle_to_center_longitudinal
     points[:, 1] = -points[:, 1]

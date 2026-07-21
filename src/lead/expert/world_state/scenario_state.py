@@ -8,8 +8,8 @@ import numpy as np
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 import lead.common.geometry as geometry
+from lead.common.runtime_property_caching import step_cached_property
 from lead.expert.utils import roadgraph
-from lead.expert.utils.caching import step_cached_property
 
 LOG = logging.getLogger(__name__)
 

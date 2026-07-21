@@ -42,6 +42,7 @@ train.py ─► AbstractPolicy ─┬─► TransfuserPolicy
 
 ## Further guides
 
+- [Project structure](project_structure.md): the top-level modules and their dependencies.
 - [Data access](data_access.md): reading py123d logs directly, or via `Py123DDataLoader`.
 - [Setup for development](setup.md): environment, CARLA, tests.
 - [Data collection](data_generation.md): running the expert to generate a dataset.

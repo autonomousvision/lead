@@ -15,7 +15,7 @@ import xml.etree.ElementTree as ET
 from enum import Enum
 from pathlib import Path
 
-from lead.common import runtime
+from lead.common import runtime_variables
 from lead.common.dotenv import read_dotenv
 from lead.common.logging import setup_logging
 
@@ -36,7 +36,7 @@ def _resolve_repo_relative(path: str) -> str:
     p = Path(path)
     if p.is_absolute() or p.exists():
         return path
-    return str(runtime.project_root() / p)
+    return str(runtime_variables.project_root() / p)
 
 
 class LeaderboardType(Enum):
@@ -118,7 +118,7 @@ class LeaderboardWrapper:
         self.args = args
         self.routes = Path(args.routes)
 
-        self.workspace_root = runtime.project_root()
+        self.workspace_root = runtime_variables.project_root()
 
         # Parse scenario type from routes XML file and extract route ID
         self.scenario_type = self._parse_scenario_type_from_routes()
@@ -252,10 +252,13 @@ class LeaderboardWrapper:
 
         if self.args.expert:
             # Expert evaluation: debug directory
-            return runtime.output_dir_root() / "expert_evaluation/"
+            return runtime_variables.output_dir_root() / "expert_evaluation/"
         else:
             # Model evaluation: organize by scenario and route
-            return runtime.output_dir_root() / f"local_evaluation/{self.route_id}"
+            return (
+                runtime_variables.output_dir_root()
+                / f"local_evaluation/{self.route_id}"
+            )
 
     def _setup_leaderboard_environment(
         self,

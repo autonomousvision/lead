@@ -607,7 +607,7 @@ def gaussian_radius(det_size: list[float], min_overlap: float) -> int:
 
     The radius is the smallest root over three corner-placement cases; each case's
     quadratic coefficients (a, b, c) are Vieta's-formula terms for its IoU bound.
-    From CornerNet-Lite: https://github.com/princeton-vl/CornerNet-Lite/blob/master/core/sample/utils.py#L65
+    From CornerNet-Lite: https://github.com/princeton-vl/CornerNet-Lite/blob/6a54505d830a9d6afe26e99f0864b5d06d0bbbaf/core/sample/utils.py#L65
     """
     height, width = det_size
 

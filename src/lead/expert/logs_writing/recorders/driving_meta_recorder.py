@@ -10,16 +10,16 @@ from py123d.datatypes import (
     Timestamp,
 )
 
-from lead.dataloader import log_format
+from lead.api import py123d_log_api
 
 if typing.TYPE_CHECKING:
     from lead.expert.logs_writing import ExpertData
 
 LOG = logging.getLogger(__name__)
 
-DRIVING_META_MODALITY_ID = log_format.DRIVING_META_MODALITY_ID
-TARGET_POINTS_KEY = log_format.TARGET_POINTS_KEY
-BOX_ATTRIBUTES_KEY = log_format.BOX_ATTRIBUTES_KEY
+DRIVING_META_MODALITY_ID = py123d_log_api.DRIVING_META_MODALITY_ID
+TARGET_POINTS_KEY = py123d_log_api.TARGET_POINTS_KEY
+BOX_ATTRIBUTES_KEY = py123d_log_api.BOX_ATTRIBUTES_KEY
 
 
 def _box_attributes(bounding_boxes: list[dict]) -> dict[str, dict]:
@@ -35,7 +35,7 @@ def _box_attributes(bounding_boxes: list[dict]) -> dict[str, dict]:
         str(bb["id"]): {
             key: value
             for key, value in bb.items()
-            if key not in log_format.NATIVE_BOX_KEYS
+            if key not in py123d_log_api.NATIVE_BOX_KEYS
         }
         for bb in bounding_boxes
         if bb["class"] != "ego_car"

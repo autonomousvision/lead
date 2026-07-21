@@ -5,7 +5,7 @@ import jaxtyping as jt
 import numpy as np
 import numpy.typing as npt
 
-from lead.expert.utils.caching import step_cached_property
+from lead.common.runtime_property_caching import step_cached_property
 
 
 class EgoStateMixin:

@@ -4,7 +4,7 @@ import carla
 
 from lead.common import constants
 from lead.common.constants import LeadSemanticSegmentationClass
-from lead.expert.utils.caching import step_cached_property
+from lead.common.runtime_property_caching import step_cached_property
 
 
 class ActorsStateMixin:

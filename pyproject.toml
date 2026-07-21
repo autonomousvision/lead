@@ -4,7 +4,7 @@ requires = [ "setuptools==81" ]
 
 [project]
 name = "lead"
-version = "1.2.2"
+version = "1.3.0"
 description = "LEAD: Minimizing Learner-Expert Asymmetry in End-to-End Driving"
 readme = "README.md"
 license-files = [ "LICENSE" ]
@@ -119,6 +119,11 @@ format.quote-style = "double"
 lint.select = [ "B", "E", "F", "I", "UP" ]
 lint.ignore = [ "E501", "E722", "F722" ]
 
+[tool.pytest]
+ini_options.markers = [
+  "e2e: end-to-end tests over a collected dataset",
+]
+
 [tool.basedpyright]
 # Static type checking is rolled out per package; widen as code gets annotated.
 include = [
@@ -143,6 +148,7 @@ executionEnvironments = [
   { root = "src/lead/policy/transfuser/visualization", extraPaths = [ "src" ], reportAttributeAccessIssue = "hint" },
   { root = "src/lead/evaluation/recorder", extraPaths = [ "src" ], reportAttributeAccessIssue = "hint" },
   { root = "src/lead/evaluation/agents", extraPaths = [ "src" ], reportAttributeAccessIssue = "hint", reportMissingImports = "hint" },
+  { root = "src/lead/api/abstract_driving_agent.py", extraPaths = [ "src" ], reportAttributeAccessIssue = "hint", reportMissingImports = "hint" },
   { root = "src/lead/common", extraPaths = [ "src" ], reportMissingImports = "hint" },
   # pandas has no bundled/installed type stubs; groupby/agg chains resolve to
   # bogus ndarray types without pandas-stubs.

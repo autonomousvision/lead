@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main, "dev-v*", stage ]
+    branches: [ main, pre-release ]
   workflow_dispatch:
 
 jobs:
@@ -16,8 +16,7 @@ jobs:
     - name: Configure .env
       run: |
         cp .env.example .env
-        sed -i "s|^CARLA_ROOT=.*|CARLA_ROOT=${GITHUB_WORKSPACE}/3rd_party/CARLA/standard_0916|" .env
-        sed -i "s|^PY123D_DATA_ROOT=.*|PY123D_DATA_ROOT=${GITHUB_WORKSPACE}/data/expert_debug|" .env
+        sed -i "s|^CARLA_ROOT=.*|CARLA_ROOT=${GITHUB_WORKSPACE}/lead/3rd_party/CARLA/standard_0916|" .env
 
     - name: Install micromamba
       # Creates & caches the `lead` env in one step (env contents keyed on this
@@ -46,7 +45,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.cache/pre-commit
-        key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+        key: pre-commit-${{ runner.os }}-${{ hashFiles('lead/.pre-commit-config.yaml') }}
 
     - name: Run pre-commit
       run: micromamba run -n lead pre-commit run --all-files

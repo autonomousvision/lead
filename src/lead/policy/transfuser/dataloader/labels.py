@@ -1,4 +1,4 @@
-"""Label builders and input preprocessing for the TransFuser sample dict.
+"""Label builders for the TransFuser sample dict.
 
 All geometry consumed here is already expressed in the sample's view frame.
 """
@@ -6,7 +6,7 @@ All geometry consumed here is already expressed in the sample's view frame.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+import typing
 
 import cv2
 import jaxtyping as jt
@@ -20,11 +20,13 @@ from lead.common.constants import (
     LeadSemanticSegmentationClass,
     RadarLabels,
 )
-from lead.common.sensors import ransac
 from lead.config import LeadConfig, TransfuserConfig
+from lead.dataloader import Frame, view_geometry
+from lead.policy.transfuser.dataloader import bev_raster
 from lead.policy.transfuser.decoder import center_net_decoder as g_t
 from lead.policy.transfuser.labels import (
     BEVOccupancyClass,
+    BEVSemanticClass,
     BoundingBoxClass,
     BoundingBoxIndex,
 )
@@ -46,7 +48,148 @@ _CARLA_TO_LEAD_SEMANTIC_LUT = np.array(
 )
 
 
-def semantics_from_instances(
+def build_labels(
+    frame: Frame,
+    view_boxes: list[dict] | None,
+    lead_config: LeadConfig,
+) -> dict[str, typing.Any]:
+    """Build the training targets read from the privileged fields of the frame.
+
+    The future-dependent labels (ego waypoints, per-box futures) are not built
+    here: they need the log's future ticks, which ``view_boxes`` already
+    carries grafted per box.
+
+    Args:
+        frame: The privileged frame to build the labels from.
+        view_boxes: The tick's view-frame box dicts, unfiltered, with the
+            per-box future poses grafted on.
+        lead_config: Root config tree.
+
+    Returns:
+        The label entries of one unbatched sample.
+    """
+    config = lead_config.policy.transfuser
+    data_config = lead_config.expert.data_collection
+    meta = frame.meta
+    assert meta is not None
+    data: dict[str, typing.Any] = {}
+
+    current_active_scenario_type = meta.get("current_active_scenario_type")
+    previous_active_scenario_type = meta.get("previous_active_scenario_type")
+    if current_active_scenario_type is not None:
+        data["scenario_type"] = current_active_scenario_type
+    elif previous_active_scenario_type is not None:
+        data["scenario_type"] = previous_active_scenario_type
+    else:
+        data["scenario_type"] = "NA"
+
+    # Bounding boxes
+    boxes = None
+    if config.detect_boxes or config.use_bev_semantic:
+        assert view_boxes is not None
+        boxes, _, _ = _get_bbox_labels(
+            data,
+            lead_config,
+            view_boxes,
+            meta,
+        )
+
+    # Radar detections
+    if frame.radar_sweeps is not None:
+        data["radar_detections"] = _parse_radar_detection_labels(lead_config, boxes)
+
+    # Semantic segmentation, reduced from the frame's class and actor ids and
+    # the tick's boxes (raw CARLA classes into the LEAD label space).
+    if frame.semantics is not None and frame.instances is not None:
+        assert view_boxes is not None
+        instances = [
+            np.stack(
+                [
+                    semantic_camera.image.astype(np.int32),
+                    instance_camera.image.astype(np.int32),
+                ],
+                axis=-1,
+            )
+            for semantic_camera, instance_camera in zip(
+                frame.semantics,
+                frame.instances,
+                strict=True,
+            )
+        ]
+        semantics = _semantics_from_instances(instances, view_boxes)
+        semantic = np.concatenate(semantics, axis=1)
+        data["semantic"] = semantic[
+            :: config.perspective_downsample_factor,
+            :: config.perspective_downsample_factor,
+        ]
+
+    # Depth, decoded into metric depth by the camera's own metadata.
+    if frame.depths is not None:
+        depth = np.concatenate(
+            [
+                camera.metadata.decode_depth(camera.image).astype(np.float32)
+                for camera in frame.depths
+            ],
+            axis=1,
+        )
+        if config.perspective_downsample_factor > 1:
+            depth = cv2.resize(
+                depth,
+                dsize=(
+                    depth.shape[1] // config.perspective_downsample_factor,
+                    depth.shape[0] // config.perspective_downsample_factor,
+                ),
+                interpolation=cv2.INTER_LINEAR,
+            )
+        data["depth"] = depth
+
+    # BEV semantic: static map raster + dynamic occupancy overlay
+    if config.use_bev_semantic:
+        assert config.detect_boxes
+        assert view_boxes is not None
+        assert frame.map_api is not None
+        assert frame.ego_state is not None
+        view_center_se2 = view_geometry.view_center_se2(
+            frame.ego_state.center_se2,
+            frame.perturbation.translation if frame.perturbation else 0.0,
+            frame.perturbation.rotation if frame.perturbation else 0.0,
+        )
+        loaded_hdmap = bev_raster.rasterize_bev_semantic_map(
+            frame.map_api,
+            view_center_se2,
+            stop_sign_hazard=bool(meta["stop_sign_hazard"]),
+            lead_config=lead_config,
+        )
+        data["hdmap"] = loaded_hdmap
+
+        bev_occupancy = _build_bev_occupancy(data, meta, view_boxes, lead_config)
+        assert bev_occupancy.shape[0] == bev_occupancy.shape[1]
+        bev_occupancy_center = bev_occupancy.shape[0] / 2
+        x_cut = (
+            bev_occupancy_center
+            + np.array([data_config.min_x_meter, data_config.max_x_meter]) * 4
+        ).astype(int)
+        y_cut = (
+            bev_occupancy_center
+            + np.array([data_config.min_y_meter, data_config.max_y_meter]) * 4
+        ).astype(int)
+        loaded_bev_occupancy = bev_occupancy[y_cut[0] : y_cut[1], x_cut[0] : x_cut[1]]
+        mask = loaded_bev_occupancy != BEVOccupancyClass.UNLABELED
+        loaded_hdmap = loaded_hdmap.copy()
+        loaded_hdmap[mask] = loaded_bev_occupancy[mask] + (
+            len(BEVSemanticClass) - len(BEVOccupancyClass)
+        )
+        data["bev_semantic"] = loaded_hdmap
+
+    # 2D bounding boxes for CenterNet
+    if config.detect_boxes:
+        assert boxes is not None
+        data.update(_get_centernet_labels(boxes, lead_config, config.num_bb_classes))
+
+    return data
+
+
+def _semantics_from_instances(
     instances: list[jt.Int32[npt.NDArray, "h w 2"]],
     boxes: list[dict],
 ) -> list[jt.UInt8[npt.NDArray, "h w"]]:
@@ -91,136 +234,7 @@ def semantics_from_instances(
     return semantics
 
 
-@dataclass
-class SensorData:
-    """A sample's loaded sensor data — the shared shape between the dataset and the label builders."""
-
-    image: jt.UInt8[npt.NDArray, "img_height img_width 3"] | None
-    rasterized_lidar: jt.Float32[npt.NDArray, "bev_height bev_width"] | None
-    semantic: jt.UInt8[npt.NDArray, "img_height img_width"] | None
-    hdmap: jt.UInt8[npt.NDArray, "bev_semantic_height bev_semantic_width"] | None
-    depth: jt.Float32[npt.NDArray, "depth_img_height depth_img_width"] | None
-    boxes: jt.Float32[npt.NDArray, "num_boxes features"] | None
-    boxes_waypoints: jt.Float32[npt.NDArray, "num_boxes timesteps 2"] | None
-    boxes_num_waypoints: jt.Int32[npt.NDArray, " num_boxes"] | None
-    bev_occupancy: (
-        jt.UInt8[npt.NDArray, "bev_occupancy_height bev_occupancy_width"] | None
-    )
-    # One entry per radar sensor (1..num_radar_sensors).
-    radars: tuple[jt.Float16[npt.NDArray, "num_points 4"], ...] | None
-    radar_detections: jt.Float32[npt.NDArray, "num_radar_queries radar_features"] | None
-
-
-def rasterize_lidar(
-    lead_config: LeadConfig,
-    lidar: jt.Float[npt.NDArray, "N 3"],
-    remove_ground_plane: bool = False,
-) -> jt.Float[npt.NDArray, "H W"]:
-    """
-    Convert LiDAR point cloud into pseudo-image.
-
-    Args:
-        lead_config: Root config tree.
-        lidar: LiDAR point cloud.
-        remove_ground_plane: whether to remove ground plane points.
-    Returns:
-        Sparse pseudo-image.
-    """
-    data_config = lead_config.expert.data_collection
-
-    def splat_points(point_cloud):
-        # 256 x 256 grid
-        xbins = np.linspace(
-            data_config.min_x_meter,
-            data_config.max_x_meter,
-            (data_config.max_x_meter - data_config.min_x_meter)
-            * int(data_config.pixels_per_meter)
-            + 1,
-        )
-        ybins = np.linspace(
-            data_config.min_y_meter,
-            data_config.max_y_meter,
-            (data_config.max_y_meter - data_config.min_y_meter)
-            * int(data_config.pixels_per_meter)
-            + 1,
-        )
-        hist = np.histogramdd(point_cloud[:, :2], bins=(xbins, ybins))[0]
-        hist[hist > lead_config.training.data.hist_max_per_pixel] = (
-            lead_config.training.data.hist_max_per_pixel
-        )
-        overhead_splat = hist / lead_config.training.data.hist_max_per_pixel
-        # Transpose swaps axes: carla is x front, y right, whereas the image is
-        # y front, x right (x height channel, y width channel).
-        return overhead_splat.T
-
-    # Remove points above the vehicle
-    features = splat_points(lidar)
-    lidar = lidar[
-        (lidar[..., 2] <= lead_config.policy.transfuser.max_height_lidar)
-        & (lead_config.policy.transfuser.min_height_lidar <= lidar[..., 2])
-    ]
-    if remove_ground_plane:
-        is_ground_mask = ransac.remove_ground(lidar, lead_config.expert)
-        above = lidar[~is_ground_mask]
-        features = splat_points(above)
-    else:
-        features = np.stack([splat_points(point_cloud=lidar)], axis=-1)
-    return (features).squeeze().astype(np.float32)
-
-
-def image_augmenter(lead_config: LeadConfig, prob: float = 0.2):
-    """Create an image augmenter for data perturbation.
-
-    Args:
-        lead_config: Root config tree.
-        prob: Probability of applying each perturbation.
-
-    Returns:
-        Image augmenter.
-    """
-    import imgaug
-    from imgaug import augmenters as ia
-
-    imgaug.imgaug.seed(lead_config.training.experiment.seed)
-    # imgaug's stubs declare per_channel as bool, but a float probability is a
-    # documented and intended usage.
-    perturbations = [
-        ia.Sometimes(prob, ia.GaussianBlur((0, 1.0))),
-        ia.Sometimes(
-            prob,
-            ia.AdditiveGaussianNoise(
-                loc=0,
-                scale=(0.0, 0.05 * 255),
-                per_channel=0.5,  # pyright: ignore[reportArgumentType]
-            ),
-        ),
-        ia.Sometimes(
-            prob,
-            ia.Dropout(
-                (0.01, 0.1),
-                per_channel=0.5,  # pyright: ignore[reportArgumentType]
-            ),
-        ),  # Strong
-        ia.Sometimes(
-            prob,
-            ia.Multiply(
-                (1 / 1.2, 1.2),
-                per_channel=0.5,  # pyright: ignore[reportArgumentType]
-            ),
-        ),
-        ia.Sometimes(
-            prob,
-            ia.LinearContrast(
-                (1 / 1.2, 1.2),
-                per_channel=0.5,  # pyright: ignore[reportArgumentType]
-            ),
-        ),
-        ia.Sometimes(prob, ia.ElasticTransformation(alpha=(0.5, 1.5), sigma=0.25)),
-    ]
-    return ia.Sequential(perturbations, random_order=True)
-
-
-def bbox_json2array(
+def _bbox_json2array(
     bbox_dict: dict,
     config: TransfuserConfig,
 ) -> tuple[jt.Float[npt.NDArray, " 9"], jt.Float[npt.NDArray, " timesteps 2"], int]:
@@ -232,7 +246,7 @@ def bbox_json2array(
         config: Transfuser architecture configuration.
 
     Returns:
-        Array with bounding boxs. Each row is a bounding box.
+        Array with bounding boxes. Each row is a bounding box.
         Array with waypoints for each bounding box in the view frame.
         Number of valid waypoints.
     """
@@ -346,7 +360,7 @@ def bbox_json2array(
     return bbox, waypoints, num_waypoints
 
 
-def get_bbox_labels(
+def _get_bbox_labels(
     data: dict,
     lead_config: LeadConfig,
     boxes: list[dict],
@@ -375,7 +389,7 @@ def get_bbox_labels(
         if current_box["class"] in PHYSICAL_BOX_CLASSES:
             continue
 
-        bbox, waypoint, num_waypoint = bbox_json2array(
+        bbox, waypoint, num_waypoint = _bbox_json2array(
             current_box,
             config,
         )
@@ -588,7 +602,7 @@ def get_bbox_labels(
     )
 
 
-def get_centernet_labels(
+def _get_centernet_labels(
     gt_bboxes: jt.Float[npt.NDArray, "N 9"],
     lead_config: LeadConfig,
     num_bb_classes: int,
@@ -671,7 +685,7 @@ def get_centernet_labels(
             j,
             BoundingBoxIndex.VELOCITY,
         ]
-        # Brakes can potentially be continous but we classify them now.
+        # Brakes can potentially be continuous but we classify them now.
         # Using mathematical rounding the split is applied at 0.5
         brake_target[0, cty_int, ctx_int] = int(
             round(gt_bboxes[j, BoundingBoxIndex.BRAKE]),
@@ -698,7 +712,7 @@ def get_centernet_labels(
     }
 
 
-def build_bev_occupancy(
+def _build_bev_occupancy(
     data: dict,
     current_measurement: dict,
     json_boxes: list,
@@ -1007,63 +1021,11 @@ def bb_image_to_vehicle_system(
     return box
 
 
-def preprocess_radar_input(
+def _parse_radar_detection_labels(
     lead_config: LeadConfig,
-    radar_data_dict: dict,
-) -> list[jt.Float[npt.NDArray, "N 5"]]:
-    """Preprocess radar input data for model inference.
-
-    Args:
-        lead_config: Root config tree.
-        radar_data_dict: Dictionary containing radar data from sensors (e.g., {"radar1": array, "radar2": array, ...}).
-
-    Returns:
-        List of preprocessed radar data with sensor ID as last column.
-    """
-    if not lead_config.expert.sensor_rig.use_radars:
-        return []
-
-    config = lead_config.policy.transfuser
-    data_config = lead_config.expert.data_collection
-
-    def filter_and_pad_radars(arr):
-        # Filter points within spatial bounds
-        x_mask = (arr[:, 0] >= data_config.min_x_meter) & (
-            arr[:, 0] <= data_config.max_x_meter
-        )
-        y_mask = (arr[:, 1] >= data_config.min_y_meter) & (
-            arr[:, 1] <= data_config.max_y_meter
-        )
-        valid_mask = x_mask & y_mask
-        filtered_arr = arr[valid_mask]
-
-        # Pad the filtered array
-        n = filtered_arr.shape[0]
-        if n >= config.num_radar_points_per_sensor:
-            return filtered_arr[: config.num_radar_points_per_sensor]
-        out = np.zeros(
-            (config.num_radar_points_per_sensor, filtered_arr.shape[1]),
-            dtype=np.float32,
-        )
-        out[:n] = filtered_arr.astype(np.float32)
-        return out
-
-    radar_list = []
-    for i in range(1, lead_config.expert.sensor_rig.num_radar_sensors + 1):
-        padded_radar = filter_and_pad_radars(radar_data_dict[f"radar{i}"])
-
-        # Add sensor identity column (0-indexed)
-        sensor_id = np.full((padded_radar.shape[0], 1), float(i - 1), dtype=np.float32)
-        radar_with_id = np.concatenate([padded_radar, sensor_id], axis=1)
-        radar_list.append(radar_with_id)
-    return radar_list
-
-
-def parse_radar_detection_labels(
-    lead_config: LeadConfig,
-    sensor_data: SensorData,
+    boxes: jt.Float32[npt.NDArray, "num_boxes features"] | None,
 ) -> jt.Float32[npt.NDArray, "num_queries features"]:
-    """Parse and filter radar detection labels from sensor data for model training.
+    """Parse and filter radar detection labels from the tick's box labels.
 
     Converts detections to vehicle coordinates and fills a fixed-size array,
     prioritizing higher velocity, class importance (SPECIAL > VEHICLE > WALKER >
@@ -1071,8 +1033,7 @@ def parse_radar_detection_labels(
 
     Args:
         lead_config: Root config tree with the radar query and BEV geometry knobs.
-        sensor_data: Sensor data container with bounding boxes, waypoints, and metadata.
-            Must have non-None boxes attribute if radar processing is enabled.
+        boxes: The tick's box label array in the image system, or None.
 
     Returns:
         Array of shape (num_radar_queries, num_features) containing radar detection labels.
@@ -1090,11 +1051,9 @@ def parse_radar_detection_labels(
 
     if (
         lead_config.expert.sensor_rig.use_radars
-        and sensor_data.boxes is not None
-        and sensor_data.boxes.shape[0] > 0
+        and boxes is not None
+        and boxes.shape[0] > 0
     ):
-        assert sensor_data.boxes_waypoints is not None
-        assert sensor_data.boxes_num_waypoints is not None
         priority_classes = [
             BoundingBoxClass.SPECIAL,
             BoundingBoxClass.VEHICLE,
@@ -1102,12 +1061,8 @@ def parse_radar_detection_labels(
             BoundingBoxClass.OBSTACLE,
         ]
 
-        # Copy data
-        loaded_boxes_image_system = sensor_data.boxes.copy()
-        loaded_waypoints = sensor_data.boxes_waypoints.copy()
-        loaded_num_waypoints = sensor_data.boxes_num_waypoints.copy()
         loaded_boxes_vehicle_system = bb_image_to_vehicle_system(
-            loaded_boxes_image_system,
+            boxes.copy(),
             data_config.pixels_per_meter,
             data_config.min_x_meter,
             data_config.min_y_meter,
@@ -1118,16 +1073,12 @@ def parse_radar_detection_labels(
             loaded_boxes_vehicle_system[:, BoundingBoxIndex.Y] != 0.0
         )
         loaded_boxes_vehicle_system = loaded_boxes_vehicle_system[non_zero_mask]
-        loaded_waypoints = loaded_waypoints[non_zero_mask]
-        loaded_num_waypoints = loaded_num_waypoints[non_zero_mask]
 
         # Filter data with minimally one radar point
         radar_mask = (
             loaded_boxes_vehicle_system[:, BoundingBoxIndex.NUM_RADAR_POINTS] > 0
         )
         loaded_boxes_vehicle_system = loaded_boxes_vehicle_system[radar_mask]
-        loaded_waypoints = loaded_waypoints[radar_mask]
-        loaded_num_waypoints = loaded_num_waypoints[radar_mask]
 
         selected_boxes: jt.Float[npt.NDArray, "n 9"] = np.zeros(
             (0, loaded_boxes_vehicle_system.shape[1]),

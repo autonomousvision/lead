@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from lead.config import load_lead_config
-from lead.policy.transfuser.dataloader.labels import rasterize_lidar
+from lead.policy.transfuser.dataloader.features import _rasterize_lidar
 
 
 @pytest.fixture
@@ -17,7 +17,7 @@ class TestRasterizeLidar:
     def test_rasterize_empty_point_cloud(self, config):
         """Test rasterization with empty point cloud."""
         lidar = np.array([]).reshape(0, 3)
-        result = rasterize_lidar(config, lidar, remove_ground_plane=False)
+        result = _rasterize_lidar(config, lidar, remove_ground_plane=False)
 
         # Should return a valid grid even with no points
         expected_height = int(
@@ -41,7 +41,7 @@ class TestRasterizeLidar:
         """Test rasterization with single point in center."""
         # Point at origin, within height bounds
         lidar = np.array([[0.0, 0.0, 0.0]])
-        result = rasterize_lidar(config, lidar, remove_ground_plane=False)
+        result = _rasterize_lidar(config, lidar, remove_ground_plane=False)
 
         expected_height = int(
             (
@@ -83,7 +83,7 @@ class TestRasterizeLidar:
         )
         lidar = np.column_stack([x, y, z])
 
-        result = rasterize_lidar(config, lidar, remove_ground_plane=False)
+        result = _rasterize_lidar(config, lidar, remove_ground_plane=False)
 
         # Should produce non-zero output
         assert np.sum(result) > 0.0
@@ -111,7 +111,7 @@ class TestRasterizeLidar:
             ],
         )
 
-        result = rasterize_lidar(config, lidar, remove_ground_plane=False)
+        result = _rasterize_lidar(config, lidar, remove_ground_plane=False)
 
         # Only points within height bounds should contribute
         # Points outside bounds should be filtered
@@ -124,7 +124,7 @@ class TestRasterizeLidar:
         n_points = config.training.data.hist_max_per_pixel * 3
         lidar = np.tile([[0.0, 0.0, 0.0]], (n_points, 1))
 
-        result = rasterize_lidar(config, lidar, remove_ground_plane=False)
+        result = _rasterize_lidar(config, lidar, remove_ground_plane=False)
 
         # Maximum value should be clamped to 1.0 (normalized hist_max_per_pixel)
         assert np.max(result) <= 1.0
@@ -133,7 +133,7 @@ class TestRasterizeLidar:
         """Test that output shape matches configuration parameters."""
         lidar = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 0.5]])
 
-        result = rasterize_lidar(config, lidar, remove_ground_plane=False)
+        result = _rasterize_lidar(config, lidar, remove_ground_plane=False)
 
         expected_height = int(
             (
@@ -154,7 +154,7 @@ class TestRasterizeLidar:
     def test_output_dtype(self, config):
         """Test that output has correct dtype (float32)."""
         lidar = np.array([[0.0, 0.0, 0.0]])
-        result = rasterize_lidar(config, lidar, remove_ground_plane=False)
+        result = _rasterize_lidar(config, lidar, remove_ground_plane=False)
 
         assert result.dtype == np.float32
 
@@ -187,7 +187,7 @@ class TestRasterizeLidar:
         )
 
         # Should not crash, points outside bins are ignored by histogramdd
-        result = rasterize_lidar(config, lidar, remove_ground_plane=False)
+        result = _rasterize_lidar(config, lidar, remove_ground_plane=False)
         assert result.shape[0] > 0
         assert result.shape[1] > 0
 
@@ -219,10 +219,14 @@ class TestRasterizeLidar:
         lidar = np.vstack([ground_points, elevated_points])
 
         # Rasterize without ground removal
-        result_with_ground = rasterize_lidar(config, lidar, remove_ground_plane=False)
+        result_with_ground = _rasterize_lidar(config, lidar, remove_ground_plane=False)
 
         # Rasterize with ground removal
-        result_without_ground = rasterize_lidar(config, lidar, remove_ground_plane=True)
+        result_without_ground = _rasterize_lidar(
+            config,
+            lidar,
+            remove_ground_plane=True,
+        )
 
         # Both should produce valid outputs
         assert result_with_ground.shape == result_without_ground.shape
@@ -236,7 +240,7 @@ class TestRasterizeLidar:
         y_coord = 3.0
         lidar = np.array([[x_coord, y_coord, 0.0]])
 
-        result = rasterize_lidar(config, lidar, remove_ground_plane=False)
+        result = _rasterize_lidar(config, lidar, remove_ground_plane=False)
 
         # The function transposes because CARLA uses x-front, y-right
         # while image uses y-front (height), x-right (width)
@@ -269,7 +273,7 @@ class TestRasterizeLidar:
             ],
         )
 
-        result = rasterize_lidar(config, lidar, remove_ground_plane=False)
+        result = _rasterize_lidar(config, lidar, remove_ground_plane=False)
 
         # All values should be in [0, 1] range
         assert np.all(result >= 0.0), f"Found negative values: {result[result < 0.0]}"
@@ -279,8 +283,8 @@ class TestRasterizeLidar:
         """Test that same input produces same output (deterministic)."""
         lidar = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 0.5], [2.0, -1.0, 1.0]])
 
-        result1 = rasterize_lidar(config, lidar, remove_ground_plane=False)
-        result2 = rasterize_lidar(config, lidar, remove_ground_plane=False)
+        result1 = _rasterize_lidar(config, lidar, remove_ground_plane=False)
+        result2 = _rasterize_lidar(config, lidar, remove_ground_plane=False)
 
         np.testing.assert_array_equal(result1, result2)
 
@@ -308,7 +312,7 @@ class TestRasterizeLidar:
             ],
         )
 
-        result = rasterize_lidar(config, lidar, remove_ground_plane=False)
+        result = _rasterize_lidar(config, lidar, remove_ground_plane=False)
 
         # With dense point cloud, most bins should have some points
         non_zero_ratio = np.sum(result > 0) / result.size

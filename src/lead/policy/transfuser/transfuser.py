@@ -7,9 +7,9 @@ import jaxtyping as jt
 import numpy as np
 import torch
 
+from lead.api.abstract_policy import AbstractPolicy, SizedDataset
 from lead.config import LeadConfig
 from lead.dataloader import Frame
-from lead.policy.abstract_policy import AbstractPolicy, SizedDataset
 from lead.policy.transfuser import precision
 from lead.policy.transfuser.decoder.bev_decoder import BEVDecoder
 from lead.policy.transfuser.decoder.center_net_decoder import (

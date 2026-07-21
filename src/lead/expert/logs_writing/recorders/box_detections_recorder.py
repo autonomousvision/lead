@@ -13,8 +13,8 @@ from py123d.datatypes import (
 )
 from py123d.geometry import Vector3D
 
-from lead.expert.logs_writing import carla_to_123d
-from lead.expert.logs_writing.carla_to_123d import CarlaBoxDetectionLabel
+from lead.api.py123d_log_api import CarlaBoxDetectionLabel
+from lead.common import carla_to_123d
 from lead.expert.logs_writing.recorders.base_recorder import BaseRecorder
 
 if typing.TYPE_CHECKING:

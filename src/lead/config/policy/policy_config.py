@@ -8,7 +8,7 @@ class PolicyConfig(ConfigNode):
     """Configuration of the learned driving policy (model architecture).
 
     The policy implementation is swappable: ``target`` names the
-    :class:`~lead.policy.abstract_policy.AbstractPolicy` subclass to
+    :class:`~lead.api.abstract_policy.AbstractPolicy` subclass to
     instantiate for training and evaluation, and a policy config profile
     (``config/profiles/policy/``) can change it together with its
     hyperparameters.

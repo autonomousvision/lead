@@ -6,8 +6,8 @@ import matplotlib
 import numpy as np
 import torch
 
+from lead.api.abstract_driving_agent import AbstractDrivingAgent
 from lead.common.logging import setup_logging
-from lead.evaluation.agents.abstract_driving_agent import AbstractDrivingAgent
 from lead.evaluation.inference.trackers import PathSpeedTracker, WaypointTracker
 from lead.policy.transfuser.transfuser import AgentPrediction, Prediction
 from lead.policy.transfuser.visualization.agent_prediction_visualizer import (

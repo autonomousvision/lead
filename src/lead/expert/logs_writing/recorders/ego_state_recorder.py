@@ -5,7 +5,8 @@ import typing
 from py123d.datatypes import DynamicStateSE3, EgoStateSE3, Timestamp
 from py123d.geometry import Vector3D
 
-from lead.expert.logs_writing import carla_to_123d
+from lead.api import py123d_log_api
+from lead.common import carla_to_123d
 
 if typing.TYPE_CHECKING:
     from lead.expert.logs_writing import ExpertData
@@ -25,7 +26,7 @@ class EgoStateRecorder:
             expert: The expert agent owning the CARLA state to record.
         """
         self.expert = expert
-        self.ego_metadata = carla_to_123d.get_carla_lincoln_mkz_2020_metadata()
+        self.ego_metadata = py123d_log_api.get_carla_lincoln_mkz_2020_metadata()
 
     def extract(self, timestamp: Timestamp) -> EgoStateSE3:
         """Extract the current ego state from CARLA.

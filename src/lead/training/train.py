@@ -19,10 +19,10 @@ from torch.distributed.elastic.multiprocessing.errors import record
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.utils.data import DataLoader
 
-from lead.common import runtime
+from lead.api.abstract_policy import build_policy
+from lead.common import runtime_variables
 from lead.common.logging import setup_logging
 from lead.config import LeadConfig
-from lead.policy.abstract_policy import build_policy
 from lead.training import config_io
 
 matplotlib.use("Agg")  # non-GUI backend for headless servers
@@ -61,7 +61,7 @@ torch.set_float32_matmul_precision("high")
 
 
 class LeadLightningModule(pl.LightningModule):
-    """Training wrapper around the configured :class:`~lead.policy.abstract_policy.AbstractPolicy`.
+    """Training wrapper around the configured :class:`~lead.api.abstract_policy.AbstractPolicy`.
 
     Owns loss weighting, optimizer/scheduler construction, scalar and image
     logging, and the raw ``model_{epoch:04d}.pth`` checkpoints consumed by the
@@ -279,7 +279,7 @@ class LeadLightningModule(pl.LightningModule):
 
         if self.config.debug_mode:
             LOG.info(f"Visualizing training sample at step {self.global_step}.")
-            save_path = str(runtime.output_dir_root() / "training_viz")
+            save_path = str(runtime_variables.output_dir_root() / "training_viz")
             os.makedirs(save_path, exist_ok=True)
             for name, image in images.items():
                 Image.fromarray(image).save(

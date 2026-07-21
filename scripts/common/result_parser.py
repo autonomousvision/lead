@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import ujson
 
-from lead.common import runtime
+from lead.common import runtime_variables
 
 scale_factor = 0.2
 PENALTY_VALUE_DICT = {
@@ -46,7 +46,8 @@ def main():
         "--xml",
         type=str,
         default=str(
-            runtime.project_root() / "src/lead/routes/benchmark_routes/Town13.xml",
+            runtime_variables.project_root()
+            / "src/lead/routes/benchmark_routes/Town13.xml",
         ),
         help="Routes file.",
     )

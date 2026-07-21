@@ -24,17 +24,21 @@ from py123d.datatypes.sensors.radar import Radar, RadarFeature
 from py123d.geometry import PoseSE3, Vector3D
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
-from lead.common import geometry
-from lead.common.base_agent import BaseAgent
-from lead.common.planning import RoutePlanner, ordered_target_points
-from lead.common.sensors import ransac
-from lead.config import load_lead_config
-from lead.dataloader import Frame
-from lead.dataloader.log_format import (
+from lead.api.abstract_policy import AbstractPolicy
+from lead.api.py123d_log_api import (
     CAMERA_ID_MAPPING,
     RADAR_ID_MAPPING,
     RADIAL_VELOCITY_FEATURE,
+    get_carla_lincoln_mkz_2020_metadata,
+    ordered_target_points,
 )
+from lead.common import carla_to_123d, geometry
+from lead.common.base_agent import BaseAgent
+from lead.common.planning import RoutePlanner
+from lead.common.sensors import ransac
+from lead.common.sensors.av_sensor_setup import av_sensor_setup
+from lead.config import load_lead_config
+from lead.dataloader import Frame
 from lead.dataloader.sensor_decoding import (
     lidar_sweep_from_carla_ego_frame,
     radar_from_carla_ego_frame,
@@ -42,9 +46,6 @@ from lead.dataloader.sensor_decoding import (
 from lead.evaluation.inference.policy_runner import PolicyRunner
 from lead.evaluation.recorder.infraction_recorder import InfractionRecorder
 from lead.evaluation.recorder.video_recorder import VideoRecorder
-from lead.expert.logs_writing import carla_to_123d
-from lead.expert.logs_writing.sensor_processing import av_sensor_setup
-from lead.policy.abstract_policy import AbstractPolicy
 
 LOG = logging.getLogger(__name__)
 
@@ -96,7 +97,7 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
         # The rig's calibration, identical to what the logs are written with.
         self._camera_metadatas = carla_to_123d.build_pinhole_camera_metadatas(
             lead_config.expert,
-            carla_to_123d.get_carla_lincoln_mkz_2020_metadata(),
+            get_carla_lincoln_mkz_2020_metadata(),
             perturbation_translation=0.0,
             perturbation_rotation=0.0,
         )
@@ -292,7 +293,7 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
         """
         return EgoStateSE3.from_center(
             center_se3=PoseSE3.identity(),
-            metadata=carla_to_123d.get_carla_lincoln_mkz_2020_metadata(),
+            metadata=get_carla_lincoln_mkz_2020_metadata(),
             timestamp=self._timestamp(),
             dynamic_state_se3=DynamicStateSE3(
                 velocity=Vector3D(x=float(input_data["speed"]), y=0.0, z=0.0),

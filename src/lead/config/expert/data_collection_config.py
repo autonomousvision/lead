@@ -26,9 +26,8 @@ class DataCollectionConfig(ConfigNode):
     # --- Data saving configuration for LiDAR ---
     # How many steps to stack LiDAR point clouds
     lidar_stack_size: int = 5
-    # Period (in simulator steps) of the anchor save ticks: the cameras render
-    # at this cadence and the driving meta — which anchors the training scene
-    # sampling — is stored on exactly those ticks (5 = 4 Hz at 20 fps).
+    # Period (in simulator steps) of the save ticks: the render-heavy camera
+    # streams are rendered and stored at this cadence (5 = 4 Hz at 20 fps).
     data_save_freq: int = 5
 
     # --- Per-modality storage periods (in simulator steps) ---
@@ -38,6 +37,7 @@ class DataCollectionConfig(ConfigNode):
     lidar_store_freq: int = 1
     radar_store_freq: int = 1
     box_detections_store_freq: int = 1
+    traffic_light_store_freq: int = 1
 
     # Anchor-locked modalities can only be stored on save ticks: their period
     # must be a multiple of ``data_save_freq``.
@@ -54,11 +54,6 @@ class DataCollectionConfig(ConfigNode):
     @overridable_property
     def instance_store_freq(self) -> int:
         """Storage period of the instance segmentation; defaults to every save tick."""
-        return self.data_save_freq
-
-    @overridable_property
-    def traffic_light_store_freq(self) -> int:
-        """Storage period of the traffic-light states; defaults to every save tick."""
         return self.data_save_freq
 
     @property

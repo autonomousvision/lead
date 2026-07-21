@@ -19,7 +19,7 @@ from pathlib import Path
 
 import yaml
 
-from lead.common import runtime
+from lead.common import runtime_variables
 from lead.common.dotenv import read_dotenv, read_dotenv_int
 from lead.common.logging import setup_logging
 from lead.config import load_lead_config, yaml_filtered
@@ -319,7 +319,7 @@ def arg_parse() -> argparse.Namespace:
     parser.add_argument(
         "--route_folder",
         type=str,
-        default=str(runtime.project_root() / "src/lead/routes/data_routes"),
+        default=str(runtime_variables.project_root() / "src/lead/routes/data_routes"),
         help="Folder containing route files.",
     )
     return parser.parse_args()
@@ -332,7 +332,7 @@ if __name__ == "__main__":
     shuffle_routes = True
     job_name = "collect"
     username = os.environ["USER"]
-    code_root = str(runtime.project_root())
+    code_root = str(runtime_variables.project_root())
     carla_root = read_dotenv("CARLA_ROOT")
     max_route_per_scenario_type = 5  # -1 means no limit
 
@@ -393,7 +393,10 @@ if __name__ == "__main__":
     subprocess.run(
         [
             sys.executable,
-            str(runtime.project_root() / "scripts/common/convert_py123d_maps.py"),
+            str(
+                runtime_variables.project_root()
+                / "scripts/common/convert_py123d_maps.py",
+            ),
             "--dataset",
             expert_config.data_collection.py123d_dataset,
         ],

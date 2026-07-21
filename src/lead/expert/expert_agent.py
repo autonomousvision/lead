@@ -13,6 +13,7 @@ import carla
 import matplotlib
 import numpy as np
 
+from lead.api import py123d_log_api
 from lead.common.logging import setup_logging
 from lead.common.pid import LateralPIDController
 from lead.expert.driving.path_planning import PathPlanningMixin
@@ -341,10 +342,10 @@ class Expert(PathPlanningMixin, SpeedPlanningMixin, ExpertData):
             "rear_adversarial_id": -1
             if self.rear_adversarial_actor is None
             else self.rear_adversarial_actor.id,
-            "past_positions": np.array(self.ego_past_positions, dtype=np.float32)[::-1],
-            "past_yaws": np.array(self.ego_past_yaws, dtype=np.float32)[::-1],
-            "localized_pos_global": tick_data["localized_position"].tolist(),
-            "theta": self.ego_orientation_rad,
+            "localized_ego_state_se3": py123d_log_api.localized_ego_state_se3(
+                tick_data["localized_position"],
+                self.ego_orientation_rad,
+            ),
             "target_speed": target_speed,
             "speed_limit": self.speed_limit,
             "last_encountered_speed_limit_sign": self.last_encountered_speed_limit_sign,
@@ -357,15 +358,12 @@ class Expert(PathPlanningMixin, SpeedPlanningMixin, ExpertData):
             "steer": control.steer,
             "throttle": control.throttle,
             "brake": bool(control.brake),
-            "perturbation_translation": self.perturbation_translation,
-            "perturbation_rotation": self.perturbation_rotation,
             "scenario": self.scenario_name,
             "distance_to_next_junction": self.distance_to_next_junction,
             "ego_lane_id": self.ego_lane_id,
             "road_id": ego_wp.road_id,
             "lane_id": ego_wp.lane_id,
             "is_junction": ego_wp.is_junction,
-            "is_intersection": ego_wp.is_intersection,
             "junction_id": ego_wp.junction_id,
             "next_road_ids": next_road_ids_ego,
             "next_next_road_ids_ego": next_next_road_ids_ego,
