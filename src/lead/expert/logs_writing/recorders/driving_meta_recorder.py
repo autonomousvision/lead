@@ -18,7 +18,7 @@ if typing.TYPE_CHECKING:
 LOG = logging.getLogger(__name__)
 
 DRIVING_META_MODALITY_ID = py123d_log_api.DRIVING_META_MODALITY_ID
-TARGET_POINTS_KEY = py123d_log_api.TARGET_POINTS_KEY
+TARGET_POINTS_METADATA_KEY = py123d_log_api.TARGET_POINTS_METADATA_KEY
 BOX_ATTRIBUTES_KEY = py123d_log_api.BOX_ATTRIBUTES_KEY
 
 
@@ -35,7 +35,7 @@ def _box_attributes(bounding_boxes: list[dict]) -> dict[str, dict]:
         str(bb["id"]): {
             key: value
             for key, value in bb.items()
-            if key not in py123d_log_api.NATIVE_BOX_KEYS
+            if key not in py123d_log_api.NATIVE_BOX_DETECTION_FIELDS
         }
         for bb in bounding_boxes
         if bb["class"] != "ego_car"
@@ -106,7 +106,7 @@ class DrivingMetaRecorder:
         self.metadata = CustomModalityMetadata(
             modality_id=DRIVING_META_MODALITY_ID,
             metadata={
-                TARGET_POINTS_KEY: route_planner.target_points.tolist(),
+                TARGET_POINTS_METADATA_KEY: route_planner.target_points.tolist(),
             },
         )
 

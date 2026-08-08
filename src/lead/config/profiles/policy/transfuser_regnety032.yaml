@@ -1,6 +1,0 @@
-# TransFuser with RegNetY-032 image and LiDAR backbones.
-target: lead.policy.transfuser.transfuser:Transfuser
-
-transfuser:
-  image_architecture: regnety_032
-  lidar_architecture: regnety_032

@@ -15,9 +15,7 @@ it exercises:
 │   │           └── *.arrow          # one file per modality stream, see table below
 │   └── perturbated_view/            # same tree, sensors re-rendered from a perturbated rig
 ├── maps/
-│   └── carla/carla_<town>.arrow     # converted OpenDRIVE map, one per town
-└── results/
-    └── <ScenarioType>/<route>.json  # leaderboard route record of the run
+    └── carla/carla_<town>.arrow     # converted OpenDRIVE map, one per town
 ```
 
 ## Reading raw py123d modalities
@@ -62,59 +60,63 @@ meta = scene.get_custom_modality_at_iteration(0, "driving_meta").data
 
 ## Data-loader for CARLA Leaderboard
 
-For E2E driving policy, we provide `Py123DDataLoader`, which assembles temporal and novel view features into a `Frame`:
+For E2E driving policy, we provide `SceneLoader`, which assembles temporal and
+novel view features into a `SceneData`:
 
 ```python
 from py123d.api.scene.scene_filter import SceneFilter
 
-from lead.dataloader import Py123DDataLoader
+from lead.log_reader import SceneLoader
 
-loader = Py123DDataLoader(
+loader = SceneLoader(
     "/path/to/lead-data",
     SceneFilter(future_num_iterations=40),
-    perturbation_prob=0.0,  # chance of the perturbated rig instead of the nominal one
+    perturbation_probability=0.0,  # chance of the perturbated rig instead of the nominal one
 )
 
-frame = loader[0]  # len(loader) frames, indexed like a sequence
+scene_data = loader[0]  # len(loader) scenes, indexed like a sequence
 ```
 
 The sensor lists are in LEAD camera order (left to right, 1..n); the 123D
 modalities are py123d-native and in its ISO 8855 conventions, everything else
 is in the chosen view's CARLA ego frame:
 
-| Attribute                                                    | Type                                      | Description                                                                                                                                                                                                                           |
-| :----------------------------------------------------------- | :---------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `cameras`                                                    | `list[Camera]`                            | The anchor tick's RGB cameras; each carries its image, calibration and pose                                                                                                                                                           |
-| `depths`                                                     | `list[Camera] \| None`                    | Depth cameras, same order; `metadata.decode_depth(image)` turns the stored encoding into metric depth                                                                                                                                 |
-| `semantics`                                                  | `list[Camera] \| None`                    | Semantic cameras, same order; each pixel holds the raw CARLA class                                                                                                                                                                    |
-| `instances`                                                  | `list[Camera] \| None`                    | Instance cameras, same order; each pixel holds the CARLA actor id the box track tokens index into                                                                                                                                     |
-| `lidar_sweeps`                                               | `dict[int, Lidar] \| None`                | Lidar history; key `i` is the sweep captured `i` ticks (50 ms each) before the anchor, in the IMU frame of its own tick; ages without a stored sweep are absent                                                                       |
-| `radar_sweeps`                                               | `dict[int, Radar] \| None`                | Merged radar returns with the same age keying; per-point features carry the sensor id and the radial velocity                                                                                                                         |
-| `ego_state`                                                  | `EgoStateSE3 \| None`                     | Ground-truth ego pose and dynamic state in the global frame                                                                                                                                                                           |
-| `box_detections`                                             | `BoxDetectionsSE3 \| None`                | Boxes in the global frame with 123D labels and track tokens; the extra per-box fields live in `meta["box_attributes"]`                                                                                                                |
-| `traffic_lights`                                             | `TrafficLightDetections \| None`          | The tick's per-lane traffic-light states                                                                                                                                                                                              |
-| `map_api`                                                    | `MapAPI \| None`                          | Map of the town, for BEV rasterization                                                                                                                                                                                                |
-| `log_metadata`, `scene_metadata`                             | `LogMetadata`, `SceneMetadata`            | Which log the frame comes from (dataset, split, log name, town) and where its scene sits in that log; only filled when reading from logs, not at inference                                                                            |
-| `target_point_previous`, `target_point`, `target_point_next` | `numpy.typing.NDArray (2,)`               | The route planner's target points in the view frame                                                                                                                                                                                   |
-| `past_positions`                                             | `numpy.typing.NDArray (t, 2)`             | Localized ego position history in the anchor frame, one entry per tick (20 Hz); index `i` is `i` ticks ago                                                                                                                            |
-| `past_yaws`                                                  | `numpy.typing.NDArray (t,)`               | Localized ego yaw history, one entry per tick (20 Hz), same indexing                                                                                                                                                                  |
-| `perturbation`                                               | `lead.dataloader.RigPerturbation \| None` | Rig offset the sensors were captured with; None for the normal view                                                                                                                                                                   |
-| `meta`                                                       | `dict \| None`                            | The anchor tick's `driving_meta` dict, documented below. Only frames read from logs have it; frames built live in the simulator carry None, since the expert's state does not exist there — `frame.is_privileged` tells the two apart |
+| Attribute                                                    | Type                                      | Description                                                                                                                                                                                                                                      |
+| :----------------------------------------------------------- | :---------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cameras`                                                    | `list[Camera]`                            | The anchor tick's RGB cameras; each carries its image, calibration and pose                                                                                                                                                                      |
+| `depth_cameras`                                              | `list[Camera] \| None`                    | Depth cameras, same order; `metadata.decode_depth(image)` turns the stored encoding into metric depth                                                                                                                                            |
+| `semantic_cameras`                                           | `list[Camera] \| None`                    | Semantic cameras, same order; each pixel holds the raw CARLA class                                                                                                                                                                               |
+| `instance_cameras`                                           | `list[Camera] \| None`                    | Instance cameras, same order; each pixel holds the CARLA actor id the box track tokens index into                                                                                                                                                |
+| `lidar_sweeps`                                               | `dict[int, Lidar] \| None`                | Lidar history; key `i` is the sweep captured `i` ticks (50 ms each) before the anchor, in the IMU frame of its own tick; ages without a stored sweep are absent                                                                                  |
+| `radar_sweeps`                                               | `dict[int, Radar] \| None`                | Merged radar returns with the same age keying; per-point features carry the sensor id and the radial velocity                                                                                                                                    |
+| `ego_state`                                                  | `EgoStateSE3 \| None`                     | Ground-truth ego pose and dynamic state in the global frame                                                                                                                                                                                      |
+| `box_detections`                                             | `BoxDetectionsSE3 \| None`                | Boxes in the global frame with 123D labels and track tokens; the extra per-box fields live in `driving_meta["box_attributes"]`                                                                                                                   |
+| `traffic_lights`                                             | `TrafficLightDetections \| None`          | The tick's per-lane traffic-light states                                                                                                                                                                                                         |
+| `map_api`                                                    | `MapAPI \| None`                          | Map of the town, for BEV rasterization                                                                                                                                                                                                           |
+| `log_metadata`, `scene_metadata`                             | `LogMetadata`, `SceneMetadata`            | Which log the scene comes from (dataset, split, log name, town) and where its scene sits in that log; only filled when reading from logs, not at inference                                                                                       |
+| `previous_target_point`, `target_point`, `next_target_point` | `numpy.typing.NDArray (2,)`               | The route planner's target points in the view frame                                                                                                                                                                                              |
+| `past_ego_positions`                                         | `numpy.typing.NDArray (t, 2)`             | Localized ego position history in the anchor frame, one entry per tick (20 Hz); index `i` is `i` ticks ago                                                                                                                                       |
+| `past_ego_yaws`                                              | `numpy.typing.NDArray (t,)`               | Localized ego yaw history, one entry per tick (20 Hz), same indexing                                                                                                                                                                             |
+| `rig_perturbation`                                           | `lead.log_reader.RigPerturbation \| None` | Rig offset the sensors were captured with; None for the normal view                                                                                                                                                                              |
+| `driving_meta`                                               | `dict \| None`                            | The anchor tick's `driving_meta` dict, documented below. Only scenes read from logs have it; scene data built live in the simulator carries None, since the expert's state does not exist there — `scene_data.is_privileged` tells the two apart |
+| `future_ego_states`                                          | `dict[int, EgoStateSE3 \| None] \| None`  | Ego states at the iterations the loading spec asked for, keyed by iteration; None at inference, where there is no future                                                                                                                         |
+| `future_driving_metas`                                       | `dict[int, dict \| None] \| None`         | The `driving_meta` dicts at those same iterations, same keying                                                                                                                                                                                   |
 
-The frame carries no future — at inference there is none, and the frame is the
-one input contract training and inference share. Labels are built by asking
-the same `Py123DDataLoader` (the `loader` above) for a modality at future
-ticks of a sample: pass the sample index and the iterations past the anchor
-(up to the filter's `future_num_iterations`), and get the modality back keyed
-by iteration:
+The attributes above are the inputs, and the same ones inference builds live
+from the simulator. The future exists only when reading from logs, and only
+when asked for: a `SceneLoadingSpec(future_iterations=...)` passed to
+`loader.read()` fills `future_ego_states` and `future_driving_metas`, keyed by
+iteration past the anchor (up to the filter's `future_num_iterations`). The
+same reads are also available directly on the loader, by sample index:
 
 ```python
 # Future ego states 0.25 s apart over 2 s — e.g. waypoint labels.
-states = loader.future_ego_states(0, iterations=[5, 10, 15, 20, 25, 30, 35, 40])
+states = loader.read_future_ego_states(0, iterations=[5, 10, 15, 20, 25, 30, 35, 40])
 states[40]  # EgoStateSE3 2 s after the anchor of sample 0
 
-metas = loader.future_metas(0, iterations=[5, 10])  # future driving_meta dicts
-boxes = loader.future_box_detections(0, iterations=[5, 10])  # future actor boxes
+metas = loader.read_future_driving_metas(
+    0, iterations=[5, 10]
+)  # future driving_meta dicts
 ```
 
 ## Storage frequencies
@@ -161,10 +163,10 @@ under the same log name. It holds only the view-dependent streams (RGB, depth,
 segmentation, radar) plus ego states; everything else lives in `normal_view`.
 
 `normal_view` alone is a self-contained py123d dataset. The perturbated view
-is read through LEAD's `Py123DDataLoader`: it pairs both views per scene,
-picks the perturbated sensors with `perturbation_prob`, re-projects ego-frame
+is read through LEAD's `SceneLoader`: it pairs both views per scene,
+picks the perturbated sensors with `perturbation_probability`, re-projects ego-frame
 outputs such as the target points, and reports the rig offset as
-`frame.perturbation`.
+`scene_data.rig_perturbation`.
 
 ## The `driving_meta` stream
 
@@ -252,25 +254,26 @@ kept for analysis and visualization.
 
 #### Road & Lane Context
 
-| Property                             | Type            | Description                                                      |
-| :----------------------------------- | :-------------- | :--------------------------------------------------------------- |
-| `road_id`                            | `int`           | Current road ID from the map                                     |
-| `lane_id`                            | `int`           | Current lane ID from the map                                     |
-| `ego_lane_id`                        | `int`           | Ego's lane ID                                                    |
-| `is_junction`                        | `bool`          | True if ego is in a junction                                     |
-| `junction_id`                        | `int`           | Junction ID if in a junction                                     |
-| `next_road_ids`                      | `list[int]`     | Road IDs of the next lanes                                       |
-| `next_next_road_ids_ego`             | `list[int]`     | Road IDs of lanes after next                                     |
-| `lane_change_str`                    | `str`           | Lane change availability (e.g., "BOTH", "LEFT", "RIGHT", "NONE") |
-| `lane_type_str`                      | `str`           | Lane type (e.g., "Driving", "Shoulder", "Sidewalk")              |
-| `left_lane_marking_type_str`         | `str`           | Left lane marking type (e.g., "SOLID", "DASHED", "NONE")         |
-| `left_lane_marking_color_str`        | `str`           | Left lane marking color (e.g., "White", "Yellow")                |
-| `right_lane_marking_type_str`        | `str`           | Right lane marking type                                          |
-| `right_lane_marking_color_str`       | `str`           | Right lane marking color                                         |
-| `ego_lane_width`                     | `float`         | Width of the current lane (m)                                    |
-| `target_lane_width`                  | `float`         | Width of the target lane (m)                                     |
-| `distance_to_junction`               | `float \| None` | Distance to next junction (m)                                    |
-| `distance_to_intersection_index_ego` | `int`           | Index of the next intersection along the route                   |
+| Property                             | Type            | Description                                                                                                          |
+| :----------------------------------- | :-------------- | :------------------------------------------------------------------------------------------------------------------- |
+| `road_id`                            | `int`           | Current road ID from the map                                                                                         |
+| `lane_id`                            | `int`           | Current lane ID from the map                                                                                         |
+| `ego_lane_id`                        | `int`           | Ego's lane ID                                                                                                        |
+| `is_junction`                        | `bool`          | True if ego is in a junction                                                                                         |
+| `junction_id`                        | `int`           | Junction ID if in a junction                                                                                         |
+| `next_road_ids`                      | `list[int]`     | Road IDs of the next lanes                                                                                           |
+| `next_next_road_ids_ego`             | `list[int]`     | Road IDs of lanes after next                                                                                         |
+| `lane_change_str`                    | `str`           | Lane change availability (e.g., "BOTH", "LEFT", "RIGHT", "NONE")                                                     |
+| `lane_type_str`                      | `str`           | Lane type (e.g., "Driving", "Shoulder", "Sidewalk")                                                                  |
+| `left_lane_marking_type_str`         | `str`           | Left lane marking type (e.g., "SOLID", "DASHED", "NONE")                                                             |
+| `left_lane_marking_color_str`        | `str`           | Left lane marking color (e.g., "White", "Yellow")                                                                    |
+| `right_lane_marking_type_str`        | `str`           | Right lane marking type                                                                                              |
+| `right_lane_marking_color_str`       | `str`           | Right lane marking color                                                                                             |
+| `ego_lane_width`                     | `float`         | Width of the current lane (m)                                                                                        |
+| `target_lane_width`                  | `float`         | Width of the target lane (m)                                                                                         |
+| `dist_to_junction`                   | `float \| None` | Distance to the junction at the end of the current lane (m); 0 inside a junction, None when the next lane is not one |
+| `distance_to_next_junction`          | `float \| None` | Distance to the next junction along the lane the ego drives (m)                                                      |
+| `distance_to_intersection_index_ego` | `float`         | Distance to the intersection point of the active junction scenario (m); `inf` outside such a scenario                |
 
 #### Scenario Internals
 
@@ -319,7 +322,7 @@ kept for analysis and visualization.
 | :------------------------ | :----- | :--------------------------------------------------------------- |
 | `europe_traffic_light`    | `bool` | True if traffic lights follow European convention                |
 | `over_head_traffic_light` | `bool` | True if traffic lights are overhead-mounted                      |
-| `weather_setting`         | `dict` | Weather preset name and parameters                               |
+| `weather_setting`         | `str`  | Name of the CARLA weather preset (e.g. "ClearNoon")              |
 | `weather_parameters`      | `dict` | Detailed weather values (precipitation, clouds, wind, fog, etc.) |
 
 #### Vehicle Door

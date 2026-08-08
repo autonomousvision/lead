@@ -1,134 +1,61 @@
-# Byte-compiled / optimized / DLL files
+# Python build & bytecode
 **/__pycache__/
-*.py[cod]
 *$py.class
-
-# C extensions
+*.egg
+*.egg-info/
+*.py[cod]
 *.so
-
-# Distribution / packaging
+.eggs/
 .Python
 build/
-develop-eggs/
 dist/
-downloads/
 eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
 
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
+# Tool caches
 .coverage
 .coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
+.import_linter_cache
+.mypy_cache/
 .pytest_cache/
-cover/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-docs/build/
-
-# PyBuilder
-.pybuilder/
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pdm
-.pdm.toml
-
-# PEP 582
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
+.ruff_cache
+coverage.xml
+dmypy.json
+htmlcov/
 
 # Environments
 .venv
+ENV/
 env/
 venv/
-ENV/
-env.bak/
-venv.bak/
 
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
+# Editor & OS
 .DS_Store
-.ruff_cache
-.mypy_cache
+.idea
+.ipynb_checkpoints
+
+# Run artifacts
+*.log
+.env
+/notebooks/*.mp4
+
+# Cluster & NFS artifacts
+.nfs*
+core.*
+
+# Agent and sandbox artifacts. Duplicated from the private root .gitignore on purpose:
+# published standalone this repo has no parent file to inherit them from.
+*/**/.claude
+**/.cc-writes/
+.bash_profile
+.bashrc
+.claude/
+.gitconfig
+.gitmodules
+.mcp.json
+.profile
+.ripgreprc
+.zprofile
+.zshrc
 
 # CARLA's agents/ navigation helpers (basic/behavior agent, planners) aren't part of the
 # `carla` pip package, so check them in instead of re-downloading the whole simulator build.
@@ -142,16 +69,14 @@ cython_debug/
 !3rd_party/CARLA/standard_0916/PythonAPI/carla/agents/
 3rd_party/CARLA/standard_0916/PythonAPI/carla/agents/**/__pycache__/
 
-!scripts/slurm/
-!scripts/slurm/**/*.sh
+# Repo-root catch-alls: a new script or data file dropped at the top level is untracked
+# unless it is named here. `setup.py` is the only current exception.
 /*.csv
-/*.mp4
-/notebooks/*.mp4
 /*.json
-/*.sif
+/*.mp4
 /*.png
-/*.sh
-/*.py
 /*.prof
-.env
+/*.py
+/*.sh
+/*.sif
 !/setup.py

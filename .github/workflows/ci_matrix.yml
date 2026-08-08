@@ -1,0 +1,67 @@
+name: Compat Matrix
+
+on:
+  push:
+    branches: [ main, pre-release ]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-matrix-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    runs-on: ${{ matrix.ubuntu }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: [ ubuntu-22.04, ubuntu-24.04, ubuntu-26.04 ]
+        python: [ "3.10", "3.11", "3.12" ]
+        # numpy 2.2 is the newest 2.x the pinned stack accepts: numba 0.61
+        # caps at 2.2, scipy 1.14 at <2.3.
+        numpy: [ "1.26", "2.2" ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Configure .env
+      run: |
+        cp .env.example .env
+        sed -i "s|^CARLA_ROOT=.*|CARLA_ROOT=${GITHUB_WORKSPACE}/3rd_party/CARLA/standard_0916|" .env
+
+    - name: Install micromamba
+      # The env cache is keyed on this workflow file; it determines the tool list.
+      uses: mamba-org/setup-micromamba@v2
+      with:
+        environment-name: lead
+        create-args: python=${{ matrix.python }} -c conda-forge ffmpeg gcc git-lfs uv
+        cache-environment: true
+        cache-environment-key: matrix-${{ matrix.ubuntu }}-py${{ matrix.python }}-${{ hashFiles('.github/workflows/ci_matrix.yml') }}
+
+    - name: Install project
+      run: micromamba run -n lead uv pip install -e "." --reinstall-package lead
+
+    - name: Force the matrix numpy
+      # Deliberately overrides the pyproject pin; the cell proves (or disproves)
+      # that the installed stack works under this numpy.
+      run: micromamba run -n lead uv pip install "numpy==${{ matrix.numpy }}.*"
+
+    - name: Report resolved versions
+      run: |
+        micromamba run -n lead python - <<'EOF' | tee -a "$GITHUB_STEP_SUMMARY"
+        import sys
+        print(f"- python {sys.version.split()[0]}")
+        for mod in ("numpy", "torch", "cv2", "scipy", "lightning"):
+            try:
+                m = __import__(mod)
+                print(f"- {mod} {m.__version__}")
+            except Exception as error:
+                print(f"- {mod} UNIMPORTABLE: {type(error).__name__}: {error}")
+        EOF
+
+    - name: Run unit tests
+      env:
+        LEAD_RUNTIME_TYPE_CHECKING: "true"
+      run: micromamba run -n lead pytest tests/unittests

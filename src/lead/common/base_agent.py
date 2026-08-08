@@ -15,6 +15,11 @@ from lead.config import LeadConfig
 
 LOG = logging.getLogger(__name__)
 
+# The leaderboard's per-tick sensor map, keyed by sensor id. :meth:`BaseAgent.tick`
+# rewrites it in place — raw ``(frame, payload)`` pairs go in, decoded arrays and
+# scalars come out — so a key's value type differs before and after that call.
+CarlaSensorData = dict[str, Any]
+
 
 class BaseAgent:
     """Agent class handle basic sensor processing that both expert and student need."""
@@ -24,7 +29,12 @@ class BaseAgent:
     _global_plan_world_coord: list[tuple[carla.Transform, Any]]
     _global_plan: list[tuple[dict[str, float], Any]]
 
-    def setup(self, lead_config: LeadConfig, sensor_agent: bool = False) -> None:
+    def setup(
+        self,
+        lead_config: LeadConfig,
+        sensor_agent: bool = False,
+        past_window_num_iterations: int = 0,
+    ) -> None:
         self.noisy_lat_ref, self.noisy_lon_ref = gps.find_gps_ref(
             self._global_plan_world_coord,
             self._global_plan,
@@ -36,13 +46,19 @@ class BaseAgent:
         )
         self.lead_config = lead_config
         self.config_expert = lead_config.expert
-        self.kalman_filter = KalmanFilter(self.config_expert)
+        # Pose history covering the caller's past window — a driving agent
+        # passes its policy's, so the sweep alignment always finds the pose of
+        # a sweep's own tick age; the expert reads no history and passes none.
+        self.kalman_filter = KalmanFilter(
+            self.config_expert,
+            history_length=past_window_num_iterations + 1,
+        )
         self.gnss_uses_transverse_mercator = gps.gnss_uses_transverse_mercator(
             CarlaDataProvider.get_client(),
         )
 
         self.yaws_queue = deque(
-            maxlen=self.config_expert.data_collection.ego_history_length,
+            maxlen=past_window_num_iterations + 1,
         )
 
         self.control = carla.VehicleControl(steer=0.0, throttle=0.0, brake=1.0)
@@ -71,14 +87,14 @@ class BaseAgent:
             )
             self.gps_waypoint_planners_dict[dist] = planner
 
-    def tick(self, input_data: dict) -> dict:
+    def tick(self, sensor_data: CarlaSensorData) -> CarlaSensorData:
         # Get the vehicle's speed from sensor
-        speed = input_data["speed"][1]["speed"]
+        speed = sensor_data["speed"][1]["speed"]
 
         # Preprocess the compass data from the IMU
         self.previous_compass = self.compass
         compass = gps.preprocess_compass(
-            input_data["imu"][1][-1],
+            sensor_data["imu"][1][-1],
         )  # Range [-pi,pi]
         if self.previous_compass is not None:
             compass = float(
@@ -89,7 +105,7 @@ class BaseAgent:
 
         # Filter the GPS position with Kalman filter
         noisy_gps_pos = gps.convert_gnss_to_carla(
-            input_data["gps"][1],
+            sensor_data["gps"][1],
             self.noisy_lat_ref,
             self.noisy_lon_ref,
             self.gnss_uses_transverse_mercator,
@@ -116,7 +132,7 @@ class BaseAgent:
             planner.run_step(np.append(self.localized_position, noisy_gps_pos[2]))
 
         # Create a dictionary containing the vehicle's state
-        input_data.update(
+        sensor_data.update(
             {
                 "theta": self.compass,
                 "localized_position": self.localized_position,
@@ -125,31 +141,31 @@ class BaseAgent:
         )
 
         # --- LiDAR (the rig always has two) ---
-        input_data["lidar"] = np.concatenate(
+        sensor_data["lidar"] = np.concatenate(
             (
                 point_clouds.lidar_to_ego_coordinate(
                     self.config_expert.sensor_rig.lidar_rot_1,
                     self.config_expert.sensor_rig.lidar_pos_1,
-                    input_data["lidar1"],
+                    sensor_data["lidar1"],
                 ),
                 point_clouds.lidar_to_ego_coordinate(
                     self.config_expert.sensor_rig.lidar_rot_2,
                     self.config_expert.sensor_rig.lidar_pos_2,
-                    input_data["lidar2"],
+                    sensor_data["lidar2"],
                 ),
             ),
             axis=0,
         )
-        lidar_x, lidar_y = input_data["lidar"][:, 0], input_data["lidar"][:, 1]
+        lidar_x, lidar_y = sensor_data["lidar"][:, 0], sensor_data["lidar"][:, 1]
         # Remove lidar points inside ego bounding boxes. We already need LiDAR for expert.
-        input_data["lidar"] = input_data["lidar"][
+        sensor_data["lidar"] = sensor_data["lidar"][
             (np.abs(lidar_x) > self.config_expert.simulation.ego_extent_x)
             & (np.abs(lidar_y) > self.config_expert.simulation.ego_extent_y)
         ]
         # The raw sweep is what gets stored and what the expert's box labels
         # count hits on; model-specific processing (ground removal, radar
         # merging) is the driving agent's and the data loader's business.
-        input_data["lidar_sweep"] = input_data["lidar"]
+        sensor_data["lidar_sweep"] = sensor_data["lidar"]
 
         # --- Radar ---
         if self.config_expert.sensor_rig.use_radars:
@@ -157,8 +173,8 @@ class BaseAgent:
                 self.config_expert.sensor_rig.radars,
                 start=1,
             ):
-                input_data[f"radar{i}"] = point_clouds.radar_points_to_ego(
-                    input_data[f"radar{i}"][1],
+                sensor_data[f"radar{i}"] = point_clouds.radar_points_to_ego(
+                    sensor_data[f"radar{i}"][1],
                     sensor_pos=radar_calibration["pos"],
                     sensor_rot=radar_calibration["rot"],
                 )
@@ -167,15 +183,15 @@ class BaseAgent:
         # CARLA cameras
         for camera_idx in range(1, self.config_expert.sensor_rig.num_cameras + 1):
             # The expert's RGB cameras only produce data on save ticks
-            if f"rgb_{camera_idx}" not in input_data:
+            if f"rgb_{camera_idx}" not in sensor_data:
                 assert not self.sensor_agent, f"rgb_{camera_idx} missing"
                 continue
-            input_data[f"rgb_{camera_idx}"] = input_data[f"rgb_{camera_idx}"][1][
+            sensor_data[f"rgb_{camera_idx}"] = sensor_data[f"rgb_{camera_idx}"][1][
                 :,
                 :,
                 :3,
             ]
-        return input_data
+        return sensor_data
 
     @step_cached_property
     def ego_past_positions(self) -> tuple[tuple[float, float], ...]:
@@ -201,9 +217,9 @@ class BaseAgent:
         """Return ego past yaws in current ego frame. Goes from the oldest (i = 0) to current step (i = -1)."""
         if len(self.yaws_queue) == 0:
             return ()
-        past_yaws = []
+        past_ego_yaws = []
         yaw_now = self.yaws_queue[-1]
         for yaw in self.yaws_queue:
             dyaw = (yaw - yaw_now + np.pi) % (2 * np.pi) - np.pi
-            past_yaws.append(dyaw)
-        return tuple(past_yaws)
+            past_ego_yaws.append(dyaw)
+        return tuple(past_ego_yaws)

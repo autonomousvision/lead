@@ -26,7 +26,7 @@ class EgoStateRecorder:
             expert: The expert agent owning the CARLA state to record.
         """
         self.expert = expert
-        self.ego_metadata = py123d_log_api.get_carla_lincoln_mkz_2020_metadata()
+        self.ego_metadata = py123d_log_api.CARLA_LINCOLN_MKZ_2020_METADATA
 
     def extract(self, timestamp: Timestamp) -> EgoStateSE3:
         """Extract the current ego state from CARLA.

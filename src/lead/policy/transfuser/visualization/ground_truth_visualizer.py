@@ -12,9 +12,14 @@ from PIL import Image, ImageDraw, ImageFont
 
 from lead.common.constants import RadarLabels
 from lead.config import LeadConfig
-from lead.policy.transfuser.dataloader import labels
-from lead.policy.transfuser.labels import BoundingBoxIndex
+from lead.config.policy.transfuser.label_classes import BoundingBoxIndex
+from lead.policy.transfuser.dataloader.sample import TransfuserForwardBatch
+from lead.policy.transfuser.utils import ops
 from lead.policy.transfuser.visualization import colors, drawing
+
+# One coordinate out of a batch, whichever way it was collated: a numpy scalar
+# and a 0-d tensor are neither of them Python floats.
+_Scalar = float | np.floating | torch.Tensor
 
 # Bundled fonts live alongside this module; resolve relative to the file so the
 # paths hold regardless of the current working directory.
@@ -75,7 +80,7 @@ class GroundTruthVisualizer:
     radar_min_radius_pixel: typing.ClassVar[float] = 3.0
     radar_max_radius_pixel: typing.ClassVar[float] = 43.0
 
-    def __init__(self, lead_config: LeadConfig, data: dict[str, typing.Any]) -> None:
+    def __init__(self, lead_config: LeadConfig, data: TransfuserForwardBatch) -> None:
         """Initialize the visualizer from one batched sample.
 
         Args:
@@ -84,37 +89,43 @@ class GroundTruthVisualizer:
         """
         self.lead_config = lead_config
         self.config = lead_config.policy.transfuser
-        data_config = lead_config.expert.data_collection
-        self.data_config = data_config
-        self.data: dict[str, typing.Any] = data
+        config = self.config
+        self.data: TransfuserForwardBatch = data
 
         self.scale_factor: int = 4
         self.size_width: int = int(
-            (data_config.max_y_meter - data_config.min_y_meter)
-            * data_config.pixels_per_meter,
+            (config.bev_max_y_meter - config.bev_min_y_meter)
+            * config.bev_pixels_per_meter,
         )
         self.size_height: int = int(
-            (data_config.max_x_meter - data_config.min_x_meter)
-            * data_config.pixels_per_meter,
+            (config.bev_max_x_meter - config.bev_min_x_meter)
+            * config.bev_pixels_per_meter,
         )
         self.origin: tuple[float, float] = (
             (self.size_height * self.scale_factor)
             // (
-                (data_config.max_x_meter - data_config.min_x_meter)
-                / max((-data_config.min_x_meter), 1)
+                (config.bev_max_x_meter - config.bev_min_x_meter)
+                / max((-config.bev_min_x_meter), 1)
             ),
             (self.size_width * self.scale_factor) // 2,
         )
         self.loc_pixels_per_meter: float = (
-            data_config.pixels_per_meter * self.scale_factor
+            config.bev_pixels_per_meter * self.scale_factor
         )
 
         start_color = np.array([255, 255, 255], dtype=np.float32)
         end_color = np.array(colors.LIDAR_COLOR, dtype=np.float32)
 
-        rasterized_lidar: torch.Tensor = self.data["rasterized_lidar"]
+        # A camera-only model (LTF) has no LiDAR raster; its overlays are drawn
+        # on the empty BEV grid instead.
+        rasterized_lidar: torch.Tensor | None = self.data.get("rasterized_lidar")
         bev: jt.Float32[npt.NDArray, "h w"] = (
-            rasterized_lidar.detach().cpu().numpy()[0][0]
+            np.zeros(
+                (config.lidar_height_pixel, config.lidar_width_pixel),
+                dtype=np.float32,
+            )
+            if rasterized_lidar is None
+            else rasterized_lidar.detach().cpu().numpy()[0][0]
         )
         bev = (bev / (bev.max() + 1e-6)).astype(np.float32)
 
@@ -122,9 +133,7 @@ class GroundTruthVisualizer:
         for c in range(3):
             bev_img[..., c] = start_color[c] + (end_color[c] - start_color[c]) * bev
 
-        # Drawing blends label colors in, so the BEV stays a float image until
-        # the final composition casts it back to uint8.
-        self.bev_image: jt.Shaped[npt.NDArray, "h w 3"] = cv2.resize(
+        self.bev_image: jt.UInt8[npt.NDArray, "h w 3"] = cv2.resize(
             bev_img.astype(np.uint8),
             dsize=(
                 bev_img.shape[1] * self.scale_factor,
@@ -174,22 +183,17 @@ class GroundTruthVisualizer:
         self,
         modality: str,
     ) -> jt.UInt8[npt.NDArray, "h w 3"] | None:
-        """Build one perspective image from the ground-truth data.
-
-        Args:
-            modality: Perspective modality, one of ``perspective_modalities``.
-
-        Returns:
-            The perspective image, or None when the modality is unavailable.
-        """
+        """Build one perspective image from the ground-truth data."""
         perspective = self.data.get(modality)
         if perspective is None:
             return None
         perspective = perspective[0]
         if modality == "depth":
-            return self._depth_to_color(
-                perspective.detach().cpu().float().numpy(),
+            metric_depth = ops.dequantize_depth(
+                perspective.detach().cpu(),
+                self.lead_config.expert.storage.save_depth_max_meters,
             )
+            return self._depth_to_color(metric_depth.numpy())
         if modality == "semantic":
             perspective = perspective.unsqueeze(0)
         image = (
@@ -204,14 +208,7 @@ class GroundTruthVisualizer:
         self,
         depth: jt.Float32[npt.NDArray, "h w"],
     ) -> jt.UInt8[npt.NDArray, "h w 3"]:
-        """Colorize a metric depth map against the far plane it was stored with.
-
-        Args:
-            depth: Metric depth in meters.
-
-        Returns:
-            The colorized depth image.
-        """
+        """Colorize a metric depth map against the far plane it was stored with."""
         max_depth_meter = self.lead_config.expert.storage.save_depth_max_meters
         return drawing.depth_to_color(depth, max_depth_meter)
 
@@ -219,14 +216,7 @@ class GroundTruthVisualizer:
         self,
         semantic: jt.UInt8[npt.NDArray, "h w"],
     ) -> jt.UInt8[npt.NDArray, "h w 3"]:
-        """Map semantic class labels to their visualization colors.
-
-        Args:
-            semantic: Semantic class label image.
-
-        Returns:
-            The colored semantic image.
-        """
+        """Map semantic class labels to their visualization colors."""
         converter = np.array(
             list(colors.TRANSFUSER_SEMANTIC_COLORS.values()),
             dtype=np.uint8,
@@ -247,11 +237,7 @@ class GroundTruthVisualizer:
         self,
         bev_semantic: jt.Int[npt.NDArray, "h w"],
     ) -> None:
-        """Alpha-blend a BEV semantic class map onto the BEV image.
-
-        Args:
-            bev_semantic: BEV semantic class labels.
-        """
+        """Alpha-blend a BEV semantic class map onto the BEV image."""
         converter = np.array(
             list(colors.CARLA_TRANSFUSER_BEV_SEMANTIC_COLOR_CONVERTER.values()),
         )
@@ -275,23 +261,17 @@ class GroundTruthVisualizer:
             dsize=(self.bev_image.shape[1], self.bev_image.shape[0]),
             interpolation=cv2.INTER_NEAREST,
         )
-        self.bev_image = bev_semantic_image * alpha + (1 - alpha) * self.bev_image
+        self.bev_image = (
+            bev_semantic_image * alpha + (1 - alpha) * self.bev_image
+        ).astype(np.uint8)
 
     # --- Shared drawing primitives ---
 
-    def _to_pixel(self, x: float, y: float) -> tuple[int, int]:
-        """Convert an ego-frame position to BEV pixel coordinates.
-
-        Args:
-            x: X coordinate in the ego frame in meters.
-            y: Y coordinate in the ego frame in meters.
-
-        Returns:
-            The (x, y) pixel coordinates in the BEV image.
-        """
+    def _to_pixel(self, x: _Scalar, y: _Scalar) -> tuple[int, int]:
+        """Convert an ego-frame position to BEV pixel coordinates."""
         return (
-            int(x * self.loc_pixels_per_meter + self.origin[0]),
-            int(y * self.loc_pixels_per_meter + self.origin[1]),
+            int(float(x) * self.loc_pixels_per_meter + self.origin[0]),
+            int(float(y) * self.loc_pixels_per_meter + self.origin[1]),
         )
 
     def _draw_waypoints(
@@ -300,13 +280,7 @@ class GroundTruthVisualizer:
         base_color: tuple[int, int, int],
         radius: int,
     ) -> None:
-        """Draw a scatter of ego-frame waypoints, lightening along the sequence.
-
-        Args:
-            waypoints: Waypoints in the ego frame in meters.
-            base_color: Color of the first waypoint (RGB).
-            radius: Circle radius in pixels.
-        """
+        """Draw a scatter of ego-frame waypoints, lightening along the sequence."""
         for i, waypoint in enumerate(waypoints):
             cv2.circle(
                 self.bev_image,
@@ -358,8 +332,8 @@ class GroundTruthVisualizer:
     def _target_point(self) -> None:
         """Draw the previous, current and next target points."""
         for key, radius, number in [
-            ("target_point_previous", 14, 0),
-            ("target_point_next", 14, 2),
+            ("previous_target_point", 14, 0),
+            ("next_target_point", 14, 2),
             ("target_point", 18, 1),
         ]:
             target_point = self.data.get(key)
@@ -384,8 +358,8 @@ class GroundTruthVisualizer:
                 int(
                     self.bev_image.shape[1]
                     * (
-                        -self.data_config.min_x_meter
-                        / (self.data_config.max_x_meter - self.data_config.min_x_meter)
+                        -self.config.bev_min_x_meter
+                        / (self.config.bev_max_x_meter - self.config.bev_min_x_meter)
                     ),
                 ),
                 int(self.bev_image.shape[0] / 2),
@@ -409,16 +383,7 @@ class GroundTruthVisualizer:
         class_index: int,
         brake: float | None = None,
     ) -> list[float]:
-        """Color of a bounding box of the given class.
-
-        Args:
-            class_index: Bounding-box class.
-            brake: Braking probability. When given, the color is darkened
-                towards braking; ground-truth boxes pass None.
-
-        Returns:
-            The box color (RGB).
-        """
+        """Color of a bounding box of the given class."""
         color = list(
             list(colors.TRANSFUSER_BOUNDING_BOX_COLORS.values())[class_index],
         )
@@ -431,12 +396,7 @@ class GroundTruthVisualizer:
         boxes: jt.Float[npt.NDArray, "n d"],
         brake_shading: bool,
     ) -> None:
-        """Draw bounding boxes given in the image system, colored by class.
-
-        Args:
-            boxes: Boxes in the image system, indexed by ``BoundingBoxIndex``.
-            brake_shading: Darken each box by its braking probability.
-        """
+        """Draw bounding boxes given in the image system, colored by class."""
         for box in boxes:
             box = box.copy()
             box[:4] = box[:4] * self.scale_factor
@@ -445,7 +405,7 @@ class GroundTruthVisualizer:
                 box,
                 color=self._class_color(
                     int(box[BoundingBoxIndex.CLASS]),
-                    box[BoundingBoxIndex.BRAKE] if brake_shading else None,
+                    float(box[BoundingBoxIndex.BRAKE]) if brake_shading else None,
                 ),
             )
 
@@ -458,73 +418,6 @@ class GroundTruthVisualizer:
                 boxes[boxes.sum(axis=-1) != 0.0],
                 brake_shading=False,
             )
-
-        vehicles_future_waypoints = self.data.get("vehicles_future_waypoints")
-        vehicle_future_yaws = self.data.get("vehicles_future_yaws")
-
-        if vehicles_future_waypoints is not None:
-            for future_box_waypoints in vehicles_future_waypoints:
-                self._draw_waypoints(
-                    future_box_waypoints[0],
-                    colors.GROUNDTRUTH_BB_WP_COLOR,
-                    colors.PREDICTION_WAYPOINT_RADIUS // 4,
-                )
-
-        if vehicles_future_waypoints is not None and vehicle_future_yaws is not None:
-            for future_box_waypoints, future_box_yaws in zip(
-                vehicles_future_waypoints,
-                vehicle_future_yaws,
-                strict=True,
-            ):
-                wps = future_box_waypoints[0]
-                yaws = future_box_yaws[0]
-                for i, wp in enumerate(wps):
-                    color = drawing.lighter_shade(
-                        colors.GROUNDTRUTH_BB_WP_COLOR,
-                        i,
-                        len(wps),
-                    )
-                    self._draw_bounding_box_from_waypoint(wp[0], wp[1], yaws[i], color)
-
-    def _draw_bounding_box_from_waypoint(
-        self,
-        x: float,
-        y: float,
-        yaw: float,
-        color: tuple[int, int, int],
-    ) -> None:
-        """Draw an ego-sized bounding box footprint at a future waypoint.
-
-        Args:
-            x: X coordinate in the ego frame in meters.
-            y: Y coordinate in the ego frame in meters.
-            yaw: Yaw in the ego frame in radians.
-            color: Box color (RGB).
-        """
-        bb = np.array(
-            [
-                x,
-                y,
-                self.lead_config.expert.simulation.ego_extent_x,
-                self.lead_config.expert.simulation.ego_extent_y,
-                yaw,
-            ],
-        )
-        bb = labels.bb_vehicle_to_image_system(
-            bb[None],
-            pixels_per_meter=self.data_config.pixels_per_meter,
-            min_x=self.data_config.min_x_meter,
-            min_y=self.data_config.min_y_meter,
-        )[0]
-        bb[:4] = bb[:4] * self.scale_factor
-        self.bev_image = drawing.draw_box(
-            self.bev_image,
-            bb,
-            color=color,
-            thickness=1,
-        )
-
-    # --- Radar ---
 
     def _radars(self) -> None:
         """Draw the raw radar returns and the radar detections."""
@@ -559,15 +452,7 @@ class GroundTruthVisualizer:
         color: tuple[int, int, int],
         radius_offset: int = 0,
     ) -> None:
-        """Draw radar returns as markers sized by radial velocity.
-
-        Args:
-            x: X coordinates in meters.
-            y: Y coordinates in meters.
-            velocity: Radial velocities in m/s; positive means approaching.
-            color: Marker color (RGB).
-            radius_offset: Extra marker radius in pixels.
-        """
+        """Draw radar returns as markers sized by radial velocity."""
         min_r = self.radar_min_radius_pixel
         max_r = self.radar_max_radius_pixel
         for xm, ym, vk in zip(x, y, velocity, strict=True):
@@ -642,11 +527,7 @@ class GroundTruthVisualizer:
     # --- Meta panel ---
 
     def _extra_meta_lines(self) -> list[str]:
-        """Additional meta-panel lines contributed by subclasses.
-
-        Returns:
-            Extra text lines in ``"<name> <value>"`` format.
-        """
+        """Additional meta-panel lines contributed by subclasses."""
         return []
 
     def _meta(self) -> None:
@@ -673,7 +554,7 @@ class GroundTruthVisualizer:
                 attr_data = attr_data.item()
             text_lines.append(f"{attr_name} {attr_data}")
 
-        for attr_name in ["target_point_previous", "target_point", "target_point_next"]:
+        for attr_name in ["previous_target_point", "target_point", "next_target_point"]:
             attr_data = self.data.get(attr_name)
             if attr_data is None:
                 continue
@@ -773,13 +654,6 @@ class GroundTruthVisualizer:
         The perspectives are stacked vertically on the right, the BEV sits on
         the left, and the meta panel is appended at the bottom, all separated
         by borders.
-
-        Args:
-            border_size: Size of the border between components in pixels.
-            border_color: Color of the border (RGB).
-
-        Returns:
-            The composed image.
         """
         lidar_image = np.ascontiguousarray(self.bev_image, dtype=np.uint8)
 
@@ -837,9 +711,7 @@ class GroundTruthVisualizer:
         target_width = ret.shape[1]
         target_height = int(meta_panel.shape[0] * (target_width / meta_panel.shape[1]))
         meta_panel_resized = cv2.resize(meta_panel, (target_width, target_height))
-        ret = np.concatenate(
+        return np.concatenate(
             (ret, horizontal_border(target_width), meta_panel_resized),
             axis=0,
         )
-
-        return ret

@@ -5,6 +5,7 @@ File that aggregates results of a carla evaluation run into a csv file.
 
 import argparse
 import csv
+import json
 import math
 import os
 import re
@@ -12,7 +13,6 @@ import sys
 import xml.etree.ElementTree as ET
 
 import numpy as np
-import ujson
 
 from lead.common import runtime_variables
 
@@ -30,13 +30,11 @@ PENALTY_VALUE_DICT = {
 
 
 def min_speed_penalty(percentage):
-    score_penalty = 1 - (1 - 0.7) * (1 - percentage / 100)
-    return score_penalty
+    return 1 - (1 - 0.7) * (1 - percentage / 100)
 
 
 def outside_route_lanes_penalty(percentage):
-    score_penalty = 1 - (1 - 0.0) * percentage / 100
-    return score_penalty
+    return 1 - (1 - 0.0) * percentage / 100
 
 
 def main():
@@ -135,7 +133,7 @@ def main():
     # aggregate files
     for f in filenames:
         with open(f, encoding="utf-8") as json_file:
-            evaluation_data = ujson.load(json_file)
+            evaluation_data = json.load(json_file)
 
             if len(total_infractions) == 0:
                 for infraction_name in infraction_names:
@@ -145,39 +143,34 @@ def main():
                 if record["scores"]["score_route"] <= 1e-7:
                     print(
                         "Warning: There is a route where the agent did not start to drive."
-                        + " Route ID: "
-                        + record["route_id"],
+                        " Route ID: " + record["route_id"],
                         file=sys.stderr,
                     )
                 if record["status"] == "Failed - Agent couldn't be set up":
                     print(
                         "Error: There is at least one route where the agent could not be set up."
-                        + " Route ID: "
-                        + record["route_id"],
+                        " Route ID: " + record["route_id"],
                         file=sys.stderr,
                     )
                     abort = True
                 if record["status"] == "Failed":
                     print(
                         "Error: There is at least one route that failed."
-                        + " Route ID: "
-                        + record["route_id"],
+                        " Route ID: " + record["route_id"],
                         file=sys.stderr,
                     )
                     abort = True
                 if record["status"] == "Failed - Simulation crashed":
                     print(
                         "Error: There is at least one route where the simulation crashed."
-                        + " Route ID: "
-                        + record["route_id"],
+                        " Route ID: " + record["route_id"],
                         file=sys.stderr,
                     )
                     abort = True
                 if record["status"] == "Failed - Agent crashed":
                     print(
                         "Error: There is at least one route where the agent crashed."
-                        + " Route ID: "
-                        + record["route_id"],
+                        " Route ID: " + record["route_id"],
                         file=sys.stderr,
                     )
                     abort = True

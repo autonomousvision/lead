@@ -1,10 +1,13 @@
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torchmetrics
+from torch import nn
 from torch.amp.autocast_mode import autocast
 
+from lead.api.abstract_policy import AuxiliaryLog, TaskLosses
 from lead.config import LeadConfig
+from lead.policy.transfuser.dataloader.sample import TransfuserForwardBatch
+from lead.policy.transfuser.utils.ops import dequantize_depth
 
 
 class PerspectiveDecoder(nn.Module):
@@ -15,7 +18,6 @@ class PerspectiveDecoder(nn.Module):
         out_channels: int,
         perspective_upsample_factor: int,
         modality: str,
-        device: torch.device,
     ) -> None:
         """Decodes a low resolution perspective grid to a full resolution output. E.g. semantic segmentation, depth
 
@@ -25,13 +27,11 @@ class PerspectiveDecoder(nn.Module):
             out_channels: Feature channels of the output feature grid
             perspective_upsample_factor: Upsampling factor from input feature grid to output
             modality: "semantic" or "depth"
-            device: torch device
         """
         super().__init__()
         self.modality = modality
         self.lead_config = lead_config
         self.config = lead_config.policy.transfuser
-        self.device = device
         self.scale_factor_0 = (
             perspective_upsample_factor // self.config.deconv_scale_factor_0
         )
@@ -91,71 +91,76 @@ class PerspectiveDecoder(nn.Module):
     def compute_loss(
         self,
         prediction: torch.Tensor,
-        data: dict[str, torch.Tensor],
-        loss: dict,
-        log: dict,
-    ):
+        data: TransfuserForwardBatch,
+        loss: TaskLosses,
+        log: AuxiliaryLog,
+    ) -> None:
         """Compute loss and metrics for the given modality.
 
         Args:
             prediction: (B, C, H, W) Prediction tensor
-            data: dict containing the ground truth labels and masks
+            data: TransfuserForwardBatch containing the ground truth labels and masks
             loss: dict to store the computed loss
             log: dict to store computed metrics and logs
         """
-        if self.config.use_semantic:
-            label = data[self.modality].to(
+        if self.modality == "semantic":
+            label = data["semantic"].to(
                 prediction.device,
                 dtype=torch.long,
                 non_blocking=True,
             )
+        else:
+            label = dequantize_depth(
+                data["depth"].to(prediction.device, non_blocking=True),
+                self.lead_config.expert.storage.save_depth_max_meters,
+            )
 
-            with autocast(device_type="cuda", enabled=False):
-                if self.modality == "semantic":
-                    loss_value = F.cross_entropy(prediction.float(), label)
-                else:
-                    loss_value = F.l1_loss(prediction.float(), label.float())
+        with autocast(device_type="cuda", enabled=False):
+            if self.modality == "semantic":
+                loss_value = F.cross_entropy(prediction.float(), label)
+            else:
+                loss_value = F.l1_loss(prediction.float(), label)
 
-            loss.update({f"loss_{self.modality}": loss_value})
+        loss.update({f"loss_{self.modality}": loss_value})
 
-            if (
-                "iteration" in data
-                and (
-                    (data["iteration"] + 1)
-                    % self.lead_config.training.experiment.log_scalars_frequency
+        gradient_step = data.get("current_gradient_step")
+        log_every = self.lead_config.training.experiment.log_scalars_every_n_steps
+        if gradient_step is not None and ((gradient_step + 1) % log_every) == 0:
+            log[f"outputs/{self.modality}_min"] = prediction.min().item()
+            log[f"outputs/{self.modality}_max"] = prediction.max().item()
+            if self.modality == "semantic":
+                miou = torchmetrics.functional.jaccard_index(
+                    prediction,
+                    label,
+                    task="multiclass",
+                    num_classes=self.config.num_semantic_classes,
                 )
-                == 0
-            ):
-                log[f"{self.modality}/output_min"] = prediction.min().item()
-                log[f"{self.modality}/output_max"] = prediction.max().item()
-                if self.modality == "semantic":
-                    miou = torchmetrics.functional.jaccard_index(
-                        prediction,
-                        label,
-                        task="multiclass",
-                        num_classes=self.config.num_semantic_classes,
-                    )
-                    f1 = torchmetrics.functional.f1_score(
-                        prediction,
-                        label,
-                        task="multiclass",
-                        num_classes=self.config.num_semantic_classes,
-                        average="macro",
-                    )
-                    log["metric/semantic_miou"] = miou.item()
-                    log["metric/semantic_f1"] = f1.item()
-                else:
-                    mae = torchmetrics.functional.mean_absolute_error(
-                        prediction.float(),
-                        label.float(),
-                    )
-                    log["metric/depth_mae"] = mae.item()
+                f1 = torchmetrics.functional.f1_score(
+                    prediction,
+                    label,
+                    task="multiclass",
+                    num_classes=self.config.num_semantic_classes,
+                    average="macro",
+                )
+                log["metric/semantic_miou"] = miou.item()
+                log["metric/semantic_f1"] = f1.item()
+            else:
+                mae = torchmetrics.functional.mean_absolute_error(
+                    prediction.float(),
+                    label.float(),
+                )
+                log["metric/depth_mae"] = mae.item()
 
-    def forward(self, data: dict, image_feature_grid: torch.Tensor, log: dict):
+    def forward(
+        self,
+        data: TransfuserForwardBatch,
+        image_feature_grid: torch.Tensor,
+        log: AuxiliaryLog,
+    ):
         """Forward pass for the decoder.
 
         Args:
-            data: dict containing the ground truth labels and masks
+            data: TransfuserForwardBatch containing the ground truth labels and masks
             image_feature_grid: (B, D, H, W) Image feature grid from the encoder
             log: dict to store computed metrics and logs
 

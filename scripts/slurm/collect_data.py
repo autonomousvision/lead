@@ -20,8 +20,8 @@ from pathlib import Path
 import yaml
 
 from lead.common import runtime_variables
-from lead.common.dotenv import read_dotenv, read_dotenv_int
-from lead.common.logging import setup_logging
+from lead.common.env import read_dotenv, read_dotenv_int
+from lead.common.logging_setup import setup_logging
 from lead.config import load_lead_config, yaml_filtered
 
 LOG = logging.getLogger(__name__)
@@ -340,11 +340,7 @@ if __name__ == "__main__":
 
     scenario_white_lists = []  # Empty list = all scenarios allowed
     scenario_blacklist = ["YieldToEmergencyVehicle"]  # Scenarios to exclude
-    town_white_list = [
-        "Town12",
-        "Town13",
-        "Town15",
-    ]  # Empty list = all towns allowed, e.g. ["Town12", "Town13"]
+    town_white_list = []  # Empty list = all towns allowed, e.g. ["Town12", "Town13"]
     data_save_directory = read_dotenv("PY123D_DATA_ROOT")
 
     os.makedirs(data_save_directory, exist_ok=True)

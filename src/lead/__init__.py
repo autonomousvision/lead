@@ -9,7 +9,7 @@ import os
 import sys
 from pathlib import Path
 
-from lead.common.dotenv import read_dotenv
+from lead.common.env import read_dotenv
 
 # Put the vendored CARLA client, leaderboard and scenario runner on the path.
 for _key, _suffix in [
@@ -33,20 +33,31 @@ for env in ["PY123D_DATA_ROOT"]:
         except KeyError:
             pass
 
-if os.environ.get("LEAD_RUNTIME_TYPE_CHECKING", "false").lower() == "true":
+if os.environ.get("LEAD_RUNTIME_TYPE_CHECKING", "true").lower() == "true":
     import importlib
 
     from jaxtyping import install_import_hook
 
-    # Modules of numba @njit(cache=True) kernels: import them before the hook is
-    # installed so they stay uninstrumented. Wrapping a kernel makes numba pickle
-    # the wrapper's closure for the on-disk cache, which fails on its weakrefs.
-    for _numba_module in [
-        "lead.common.sensors.ransac",
-        "lead.expert.driving.forecast_kernels",
-    ]:
-        importlib.import_module(_numba_module)
+    # lead.common.sensors.ransac is a numba @njit(cache=True) kernel module:
+    # import it before the hook is installed so it stays uninstrumented.
+    # Wrapping a kernel makes numba pickle the wrapper's closure for the
+    # on-disk cache, which fails on its weakrefs.
+    importlib.import_module("lead.common.sensors.ransac")
 
-    # Applies @jaxtyped(typechecker=beartype) to every function and dataclass
-    # in lead.* imported after this point.
-    install_import_hook("lead", "beartype.beartype")
+    # The hook resolves the checker by dotted path, so bind it as an attribute
+    # of its package first. lead.common has an empty __init__, so nothing else
+    # is pulled in ahead of the hook and left uninstrumented.
+    from lead.common import runtime_typing
+
+    # Applies @jaxtyped(typechecker=...) to every function and dataclass in
+    # lead.* imported after this point. lead.expert.driving.forecast_kernels
+    # has the same numba-cache concern as ransac above, but it also needs
+    # CARLA, and importing it here -- before we know whether this process
+    # will ever touch the expert -- would make CARLA load as a side effect
+    # of importing anything under lead at all. lead/expert/__init__.py pauses
+    # this hook for that one import instead, once lead.expert is actually
+    # used; see lead.common.runtime_typing.import_unwrapped.
+    runtime_typing.hook_manager = install_import_hook(
+        "lead",
+        "lead.common.runtime_typing.typechecker",
+    )

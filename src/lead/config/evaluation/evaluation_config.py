@@ -5,14 +5,14 @@ import pathlib
 
 from lead.config.evaluation.controller_config import ControllerConfig
 from lead.config.evaluation.inference_config import InferenceConfig
-from lead.config.node import ConfigNode, child_node, overridable_property
+from lead.config.node import ConfigNode, config_child_node, overridable_property
 
 
 class EvaluationConfig(ConfigNode):
     """Inference driving and which debug/demo outputs are produced."""
 
-    inference = child_node(InferenceConfig)
-    controller = child_node(ControllerConfig)
+    inference = config_child_node(InferenceConfig)
+    controller = config_child_node(ControllerConfig)
 
     # --- Evaluation Visualization Settings ---
     # Frequency of frame production during evaluation
@@ -26,7 +26,7 @@ class EvaluationConfig(ConfigNode):
     @overridable_property
     def produce_demo_video(self) -> bool:
         """If true produce demo video output."""
-        return False
+        return True
 
     @overridable_property
     def produce_debug_image(self) -> bool:

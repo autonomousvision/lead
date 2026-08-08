@@ -33,7 +33,7 @@ class LidarRecorder(BaseRecorder):
             store_freq: Storage period of the stream in simulator steps.
         """
         super().__init__(expert, store_freq=store_freq)
-        self.ego_metadata = py123d_log_api.get_carla_lincoln_mkz_2020_metadata()
+        self.ego_metadata = py123d_log_api.CARLA_LINCOLN_MKZ_2020_METADATA
         self.lidar_metadata = carla_to_123d.build_lidar_metadata(expert.config_expert)
 
     def record(

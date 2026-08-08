@@ -11,6 +11,10 @@ from lead.config import ExpertConfig
 
 LOG = logging.getLogger(__name__)
 
+# One CARLA sensor specification of the leaderboard's ``sensors()`` list: the
+# sensor type, its id, its mount pose and that type's own parameters.
+SensorSpec = dict[str, float | int | str]
+
 
 def av_sensor_setup(
     config: ExpertConfig,
@@ -20,7 +24,7 @@ def av_sensor_setup(
     perturbate: bool,
     sensor_agent: bool,
     radar: bool = False,
-) -> list[dict]:
+) -> list[SensorSpec]:
     """
     Function to set up sensors for an autonomous vehicle (AV) simulation.
 
@@ -129,7 +133,7 @@ def av_sensor_setup(
     return result
 
 
-def lidar_sensor_setup(config: ExpertConfig) -> list[dict]:
+def lidar_sensor_setup(config: ExpertConfig) -> list[SensorSpec]:
     """Build the two-LiDAR rig specification.
 
     The rig always consists of two LiDARs; a single-LiDAR setup is not supported.
@@ -169,7 +173,7 @@ def _camera_sensor_setup(
     perturbation_translation: float,
     perturbate: bool,
     sensor_agent: bool,
-) -> list:
+) -> list[SensorSpec]:
     """Set up camera sensors for the given configuration.
 
     Args:
@@ -340,12 +344,12 @@ def perturbated_pose(
 
 
 def perturbated_sensor_cfg(
-    sensor_cfg: dict[str, float | str],
+    sensor_cfg: SensorSpec,
     perturbation_translation: float,
     perturbation_rotation: float,
     perturbation_roll: float = 0.0,
     perturbation_pitch: float = 0.0,
-) -> dict[str, float | str]:
+) -> SensorSpec:
     """Apply a 3D rigid transformation to the pose of a sensor specification.
 
     Args:

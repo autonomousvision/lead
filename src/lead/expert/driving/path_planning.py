@@ -8,7 +8,7 @@ import carla
 import numpy as np
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
-import lead.common.geometry as geometry
+from lead.common import geometry
 from lead.expert.driving.speed_planning import (
     compute_min_time_for_distance,
     compute_target_speed_idm,
@@ -826,7 +826,7 @@ class PathPlanningMixin:
                 ego_yaw = self.ego_vehicle.get_transform().rotation.yaw
                 other_yaw = other.get_transform().rotation.yaw
                 relative_yaw = abs(
-                    geometry.normalize_angle_degree(other_yaw - ego_yaw),
+                    geometry.normalize_angle_deg(other_yaw - ego_yaw),
                 )
 
                 # Only brake if roughly opposing direction (e.g. facing within 45° of us)
@@ -858,7 +858,7 @@ class PathPlanningMixin:
                 ego_yaw = self.ego_vehicle.get_transform().rotation.yaw
                 other_yaw = other.get_transform().rotation.yaw
                 relative_yaw = abs(
-                    geometry.normalize_angle_degree(other_yaw - ego_yaw),
+                    geometry.normalize_angle_deg(other_yaw - ego_yaw),
                 )
 
                 # Only brake if roughly opposing direction (e.g. facing within 45° of us)
@@ -890,7 +890,7 @@ class PathPlanningMixin:
                 ego_yaw = self.ego_vehicle.get_transform().rotation.yaw
                 other_yaw = other.get_transform().rotation.yaw
                 relative_yaw = abs(
-                    geometry.normalize_angle_degree(other_yaw - ego_yaw),
+                    geometry.normalize_angle_deg(other_yaw - ego_yaw),
                 )
 
                 # Only brake if roughly opposing direction (e.g. facing within 45° of us)
@@ -922,7 +922,7 @@ class PathPlanningMixin:
                 ego_yaw = self.ego_vehicle.get_transform().rotation.yaw
                 other_yaw = other.get_transform().rotation.yaw
                 relative_yaw = abs(
-                    geometry.normalize_angle_degree(other_yaw - ego_yaw),
+                    geometry.normalize_angle_deg(other_yaw - ego_yaw),
                 )
 
                 # Only brake if roughly opposing direction (e.g. facing within 45° of us)

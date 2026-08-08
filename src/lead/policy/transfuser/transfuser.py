@@ -1,16 +1,26 @@
 from __future__ import annotations
 
+import importlib
 import typing
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 
 import jaxtyping as jt
 import numpy as np
 import torch
+from py123d.datatypes.sensors.base_camera import CameraID
 
-from lead.api.abstract_policy import AbstractPolicy, SizedDataset
+from lead.api.abstract_dataset import SizedDataset
+from lead.api.abstract_policy import (
+    AbstractPolicy,
+    AuxiliaryLog,
+    TaskLosses,
+)
 from lead.config import LeadConfig
-from lead.dataloader import Frame
-from lead.policy.transfuser import precision
+from lead.config.policy.transfuser.transfuser_config import TransfuserConfig
+from lead.log_reader import SceneData
+from lead.log_reader.scene_loader import SceneLoader
+from lead.policy.transfuser.dataloader.sample import TransfuserForwardBatch
 from lead.policy.transfuser.decoder.bev_decoder import BEVDecoder
 from lead.policy.transfuser.decoder.center_net_decoder import (
     CenterNetBoundingBoxPrediction,
@@ -20,6 +30,8 @@ from lead.policy.transfuser.decoder.perspective_decoder import PerspectiveDecode
 from lead.policy.transfuser.decoder.planning_decoder import PlanningDecoder
 from lead.policy.transfuser.decoder.radar_detector import RadarDetector
 from lead.policy.transfuser.encoder.transfuser_backbone import TransfuserBackbone
+from lead.policy.transfuser.utils import precision
+from lead.policy.transfuser.utils.gpu_augmentation import augment_rgb_batch
 
 if typing.TYPE_CHECKING:
     from lead.policy.transfuser.visualization.feature_map_visualizer import (
@@ -33,19 +45,25 @@ if typing.TYPE_CHECKING:
     )
 
 
-class Transfuser(AbstractPolicy):
+class Transfuser(AbstractPolicy[TransfuserForwardBatch, "Prediction"]):
     """TransFuser policy: image + LiDAR fusion backbone with task-specific decoders."""
 
-    def __init__(
-        self,
-        device: torch.device,
-        lead_config: LeadConfig,
-    ) -> None:
-        super().__init__(device, lead_config)
-        self.config = lead_config.policy.transfuser
-        self.log = {}
+    # Declared so the type checker resolves it through the class rather than
+    # nn.Module.__getattr__, which types every attribute as Tensor | Module.
+    backbone: TransfuserBackbone
 
-        self.backbone = TransfuserBackbone(self.device, lead_config)
+    def __init__(self, lead_config: LeadConfig) -> None:
+        super().__init__(lead_config)
+        self.config = lead_config.policy.transfuser
+
+        module_name, _, class_name = self.config.backbone_target.partition(":")
+        backbone_class = getattr(importlib.import_module(module_name), class_name)
+        if not issubclass(backbone_class, TransfuserBackbone):
+            raise TypeError(
+                f"backbone_target '{self.config.backbone_target}' is not a "
+                f"TransfuserBackbone subclass.",
+            )
+        self.backbone = backbone_class(lead_config)
 
         if self.config.use_semantic:
             self.semantic_decoder = PerspectiveDecoder(
@@ -54,7 +72,6 @@ class Transfuser(AbstractPolicy):
                 out_channels=self.config.num_semantic_classes,
                 perspective_upsample_factor=self.backbone.perspective_upsample_factor,
                 modality="semantic",
-                device=self.device,
             )
 
         if self.config.use_depth:
@@ -64,51 +81,58 @@ class Transfuser(AbstractPolicy):
                 out_channels=1,
                 perspective_upsample_factor=self.backbone.perspective_upsample_factor,
                 modality="depth",
-                device=self.device,
             )
 
         if self.config.use_bev_semantic:
             self.bev_semantic_decoder = BEVDecoder(
                 lead_config,
                 self.config.num_bev_semantic_classes,
-                self.device,
             )
 
         if self.config.detect_boxes:
             self.center_net_decoder = CenterNetDecoder(
-                self.config.num_bb_classes,
+                self.config.num_box_classes,
                 lead_config,
-                self.device,
             )
 
         if self.config.use_radar_detection:
             self.radar_detector = RadarDetector(
                 bev_input_dim=self.backbone.num_lidar_features,
                 lead_config=lead_config,
-                device=self.device,
             )
 
         if self.config.use_planning_decoder:
             self.planning_decoder = PlanningDecoder(
                 input_bev_channels=self.backbone.num_lidar_features,
                 lead_config=lead_config,
-                device=self.device,
-            ).to(self.device)
+            )
 
-    def forward(self, data: dict[str, typing.Any]) -> Prediction:
-        self.log = {}
+    def augment_batch(self, batch: TransfuserForwardBatch) -> TransfuserForwardBatch:
+        """Inherited, see superclass."""
+        data_config = self.lead_config.training.data
+        if not self.training or not data_config.use_color_augmentation:
+            return batch
+        if "rgb" in batch:
+            batch["rgb"] = augment_rgb_batch(
+                batch["rgb"],
+                data_config.color_augmentation_probability,
+            )
+        return batch
+
+    def forward(self, batch: TransfuserForwardBatch) -> Prediction:
+        auxiliary_log: AuxiliaryLog = {}
         pred_route = pred_future_waypoints = pred_target_speed_distribution = (
             pred_target_speed_scalar
         ) = None
         pred_semantic = pred_depth = pred_bounding_box = pred_bev_semantic = None
 
         # Backbone
-        bev_features, image_features = self.backbone(data)
+        bev_features, image_features = self.backbone(batch)
 
         # Radar detection
         radar_features = radar_predictions = None
         if self.config.use_radar_detection:
-            radar_features, radar_predictions = self.radar_detector(bev_features, data)
+            radar_features, radar_predictions = self.radar_detector(bev_features, batch)
 
         # Planning heads
         if self.config.use_planning_decoder:
@@ -125,139 +149,147 @@ class Transfuser(AbstractPolicy):
                 bev_features,
                 planner_radar_features,
                 planner_radar_predictions,
-                data,
-                log=self.log,
+                batch,
+                log=auxiliary_log,
             )
 
         # Semantic segmentation forward pass
         if self.config.use_semantic:
-            pred_semantic = self.semantic_decoder(data, image_features, self.log)
+            pred_semantic = self.semantic_decoder(
+                batch,
+                image_features,
+                auxiliary_log,
+            )
 
         # Depth estimation forward pass
         if self.config.use_depth:
-            pred_depth = self.depth_decoder(data, image_features, self.log)
+            pred_depth = self.depth_decoder(batch, image_features, auxiliary_log)
 
-        # Bounding box detection forward pass
-        bev_feature_grid = self.backbone.top_down(bev_features)
-        if self.config.detect_boxes:
-            pred_bounding_box = self.center_net_decoder(
-                data,
-                bev_feature_grid,
-                self.log,
-            )
+        # Bounding box detection and BEV semantic segmentation forward pass,
+        # the two heads reading the top-down BEV feature grid.
+        if self.backbone.builds_bev_feature_grid:
+            bev_feature_grid = self.backbone.top_down(bev_features)
 
-        # BEV semantic segmentation forward pass
-        if self.config.use_bev_semantic:
-            pred_bev_semantic = self.bev_semantic_decoder(
-                bev_feature_grid,
-                self.log,
-            )
+            if self.config.detect_boxes:
+                pred_bounding_box = self.center_net_decoder(
+                    batch,
+                    bev_feature_grid,
+                    auxiliary_log,
+                )
+
+            if self.config.use_bev_semantic:
+                pred_bev_semantic = self.bev_semantic_decoder(
+                    bev_feature_grid,
+                    auxiliary_log,
+                )
 
         # Collect predictions
         return Prediction(
             # Planning prediction
-            pred_future_waypoints=pred_future_waypoints,
-            pred_target_speed_distribution=pred_target_speed_distribution,
-            pred_target_speed_scalar=pred_target_speed_scalar,
-            pred_route=pred_route,
+            future_waypoints=pred_future_waypoints,
+            target_speed_distribution=pred_target_speed_distribution,
+            target_speed_scalar=pred_target_speed_scalar,
+            route=pred_route,
             # CARLA perception prediction
-            pred_semantic=pred_semantic,
-            pred_depth=pred_depth,
-            pred_bounding_box=pred_bounding_box,
-            pred_bev_semantic=pred_bev_semantic,
-            pred_radar_features=radar_features,
-            pred_radar_predictions=radar_predictions,
+            semantic=pred_semantic,
+            depth=pred_depth,
+            bounding_box=pred_bounding_box,
+            bev_semantic=pred_bev_semantic,
+            radar_features=radar_features,
+            radar_predictions=radar_predictions,
+            auxiliary_log=auxiliary_log,
         )
 
     def compute_loss(
         self,
         predictions: Prediction,
-        data: dict[str, typing.Any],
-    ) -> tuple[dict[str, torch.Tensor], dict[str, typing.Any]]:
-        loss = {}
+        batch: TransfuserForwardBatch,
+    ) -> tuple[TaskLosses, AuxiliaryLog]:
+        loss: TaskLosses = {}
+        auxiliary_log = predictions.auxiliary_log
         # Semantic segmentation loss
         if self.config.use_semantic:
-            assert predictions.pred_semantic is not None
+            assert predictions.semantic is not None
             self.semantic_decoder.compute_loss(
-                predictions.pred_semantic,
-                data,
+                predictions.semantic,
+                batch,
                 loss,
-                log=self.log,
+                log=auxiliary_log,
             )
 
         # Depth estimation loss
         if self.config.use_depth:
-            assert predictions.pred_depth is not None
+            assert predictions.depth is not None
             self.depth_decoder.compute_loss(
-                predictions.pred_depth,
-                data,
+                predictions.depth,
+                batch,
                 loss,
-                log=self.log,
+                log=auxiliary_log,
             )
 
         # BEV semantic segmentation loss
         if self.config.use_bev_semantic:
-            assert predictions.pred_bev_semantic is not None
+            assert predictions.bev_semantic is not None
             self.bev_semantic_decoder.compute_loss(
-                predictions.pred_bev_semantic,
-                data,
+                predictions.bev_semantic,
+                batch,
                 loss,
-                log=self.log,
+                log=auxiliary_log,
             )
 
         # Bounding box detection loss
         if self.config.detect_boxes:
-            assert predictions.pred_bounding_box is not None
+            assert predictions.bounding_box is not None
             self.center_net_decoder.compute_loss(
-                data=data,
-                bounding_box_features=predictions.pred_bounding_box,
+                data=batch,
+                bounding_box_features=predictions.bounding_box,
                 losses=loss,
-                log=self.log,
+                log=auxiliary_log,
             )
 
         # Radar detection loss
         if self.config.use_radar_detection:
-            assert predictions.pred_radar_predictions is not None
+            assert predictions.radar_predictions is not None
             self.radar_detector.compute_loss(
-                pred=predictions.pred_radar_predictions,
-                data=data,
+                pred=predictions.radar_predictions,
+                data=batch,
                 loss=loss,
-                log=self.log,
+                log=auxiliary_log,
             )
 
         # Planning loss
         if self.config.use_planning_decoder:
             self.planning_decoder.compute_loss(
-                data=data,
+                data=batch,
                 predictions=predictions,
                 loss=loss,
-                log=self.log,
+                log=auxiliary_log,
             )
 
-        return loss, self.log
+        return loss, auxiliary_log
 
-    def build_features(self, frame: Frame) -> dict[str, typing.Any]:
+    def build_features(self, scene_data: SceneData) -> Mapping[str, typing.Any]:
         from lead.policy.transfuser.dataloader.features import build_features
 
-        return build_features(frame, self.lead_config)
+        return build_features(scene_data, self.lead_config)
 
-    def batch_features(
+    def features_to_batch(
         self,
-        features: dict[str, typing.Any],
+        features: Mapping[str, typing.Any],
         device: torch.device,
-    ) -> dict[str, typing.Any]:
+    ) -> TransfuserForwardBatch:
         # The model consumes float tensors with a leading batch dimension; the
-        # town is a plain array, as the training collate leaves it.
-        batch: dict[str, typing.Any] = {
-            "town": np.array([features["town"]]),
+        # town stays a list of strings, as the training collate leaves it.
+        batch: TransfuserForwardBatch = {
+            "town": [features["town"]],
         }
         for key in (
             "rgb",
             "rasterized_lidar",
             "radar",
-            "target_point_previous",
+            "previous_target_point",
             "target_point",
-            "target_point_next",
+            "next_target_point",
             "speed",
         ):
             if key not in features:
@@ -269,18 +301,42 @@ class Transfuser(AbstractPolicy):
             )[None]
         return batch
 
+    def get_policy_config(self) -> TransfuserConfig:
+        """Inherited, see superclass."""
+        return self.config
+
+    def build_scene_loader(self) -> SceneLoader:
+        """The loader over this policy's training scenes, reading what it ingests.
+
+        Returns:
+            The scene loader handed to this policy's dataset.
+        """
+        data = self.lead_config.training.data
+        return SceneLoader(
+            data.py123d_data_root,
+            self.build_scene_filter(),
+            perturbation_probability=data.sensor_perturbation_probability,
+            target_point_pop_distance=self.config.target_point_pop_distance,
+            past_tick_ages=self.config.past_lidar_tick_ages,
+            tick_duration_us=round(1e6 / self.lead_config.expert.simulation.carla_fps),
+            camera_ids=[CameraID(camera) for camera in self.config.input_cameras],
+        )
+
     def build_dataset(self) -> SizedDataset:
-        # Imported here so evaluation-time policy imports skip the data pipeline.
+        """Build the TransFuser dataset; the cache store is opened per config."""
         from lead.policy.transfuser.dataloader.dataset import TransfuserDataset
 
-        return TransfuserDataset(lead_config=self.lead_config)
+        return TransfuserDataset(
+            lead_config=self.lead_config,
+            scene_loader=self.build_scene_loader(),
+        )
 
-    def detailed_loss_weights(self, epoch: int) -> dict[str, float]:
-        return self.config.detailed_loss_weights(epoch)
+    def per_task_loss_weights(self, epoch: int) -> dict[str, float]:
+        return self.config.per_task_loss_weights(epoch)
 
     def visualize_prediction(
         self,
-        data: dict[str, typing.Any],
+        data: TransfuserForwardBatch,
         prediction: Prediction,
     ) -> PredictionVisualizer:
         """Build the visualizer of the model predictions for one sample.
@@ -306,7 +362,7 @@ class Transfuser(AbstractPolicy):
 
     def visualize_ground_truth(
         self,
-        data: dict[str, typing.Any],
+        data: TransfuserForwardBatch,
     ) -> GroundTruthVisualizer:
         """Build the visualizer of the ground-truth labels for one sample.
 
@@ -326,7 +382,7 @@ class Transfuser(AbstractPolicy):
 
     def visualize_features(
         self,
-        data: dict[str, typing.Any],
+        data: TransfuserForwardBatch,
         prediction: Prediction,
     ) -> FeatureMapVisualizer:
         """Build the visualizer of the label and prediction feature maps for one sample.
@@ -352,7 +408,8 @@ class Transfuser(AbstractPolicy):
 
     def prepare_for_training(self) -> None:
         """Patch norm layers to run in fp32 and optionally freeze the backbone."""
-        precision.patch_norm_fp32(self)
+        if self.config.norm_layers_in_fp32:
+            precision.patch_norm_fp32(self)
         self.backbone.requires_grad_(not self.config.freeze_backbone)
 
 
@@ -361,24 +418,26 @@ class Prediction:
     """Raw output predictions from the model."""
 
     # Planning prediction
-    pred_future_waypoints: jt.Float[torch.Tensor, "bs n_waypoints 2"] | None
-    pred_target_speed_distribution: (
-        jt.Float[torch.Tensor, "bs num_speed_classes"] | None
-    )
-    pred_target_speed_scalar: jt.Float[torch.Tensor, " bs"] | None
-    pred_route: jt.Float[torch.Tensor, "bs n_checkpoints 2"] | None
+    future_waypoints: jt.Float[torch.Tensor, "bs n_waypoints 2"] | None
+    target_speed_distribution: jt.Float[torch.Tensor, "bs num_speed_classes"] | None
+    target_speed_scalar: jt.Float[torch.Tensor, " bs"] | None
+    route: jt.Float[torch.Tensor, "bs n_checkpoints 2"] | None
 
     # CARLA perception prediction
-    pred_semantic: (
+    semantic: (
         jt.Float[torch.Tensor, "bs num_semantic_classes img_height img_width"] | None
     )
-    pred_bev_semantic: (
+    bev_semantic: (
         jt.Float[torch.Tensor, "bs num_bev_classes bev_height bev_width"] | None
     )
-    pred_depth: jt.Float[torch.Tensor, "bs img_height img_width"] | None
-    pred_bounding_box: CenterNetBoundingBoxPrediction | None
-    pred_radar_features: jt.Float[torch.Tensor, "B Q C"] | None
-    pred_radar_predictions: jt.Float[torch.Tensor, "B Q 4"] | None
+    depth: jt.Float[torch.Tensor, "bs img_height img_width"] | None
+    bounding_box: CenterNetBoundingBoxPrediction | None
+    radar_features: jt.Float[torch.Tensor, "B Q C"] | None
+    radar_predictions: jt.Float[torch.Tensor, "B Q 4"] | None
+
+    # Auxiliary values the heads recorded during the forward pass; compute_loss
+    # appends to it and hands it to the trainer for scalar logging.
+    auxiliary_log: AuxiliaryLog = field(default_factory=dict)
 
 
 @dataclass

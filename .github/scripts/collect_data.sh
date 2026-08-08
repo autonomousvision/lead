@@ -41,3 +41,6 @@ for route in "$@"; do
   wait "$CARLA_PID" 2>/dev/null || true
   CARLA_PID=""
 done
+
+# The e2e suite checks the readable log count against the routes requested here.
+echo "LEAD_E2E_MIN_LOGS=$#" >> "${GITHUB_ENV:-/dev/null}"

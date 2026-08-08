@@ -1,5 +1,8 @@
-from lead.common.constants import LeadSemanticSegmentationClass
-from lead.policy.transfuser.labels import BEVSemanticClass, BoundingBoxClass
+from lead.config.policy.transfuser.label_classes import (
+    BEVSemanticClass,
+    BoundingBoxClass,
+    PerspectiveSemanticClass,
+)
 from lead.policy.transfuser.visualization import colors
 
 
@@ -40,8 +43,8 @@ class TestColorConverters:
                 f"Keys not in ascending order: {keys[i]} >= {keys[i + 1]}"
             )
 
-        # Check all LEAD semantic classes have colors
-        for semantic_class in LeadSemanticSegmentationClass:
+        # Check all perspective semantic classes have colors
+        for semantic_class in PerspectiveSemanticClass:
             assert semantic_class in keys, f"Missing key: {semantic_class}"
 
         # Verify colors are RGB tuples

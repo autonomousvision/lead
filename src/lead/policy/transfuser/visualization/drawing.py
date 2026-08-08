@@ -3,8 +3,8 @@ import jaxtyping as jt
 import numpy as np
 import numpy.typing as npt
 
+from lead.config.policy.transfuser.label_classes import BoundingBoxIndex
 from lead.policy.transfuser.decoder.center_net_decoder import PredictedBoundingBox
-from lead.policy.transfuser.labels import BoundingBoxIndex
 
 MARKER_MIN_RADIUS_PIXEL = 3
 MARKER_STROKE_RATIO = 0.25
@@ -40,7 +40,7 @@ def _marker_geometry(size: int) -> tuple[int, int]:
 
 
 def draw_ring(
-    bev: jt.Shaped[npt.NDArray, "h w 3"],
+    bev: jt.UInt8[npt.NDArray, "h w 3"],
     x: int,
     y: int,
     size: int,
@@ -52,7 +52,7 @@ def draw_ring(
 
 
 def draw_cross(
-    bev: jt.Shaped[npt.NDArray, "h w 3"],
+    bev: jt.UInt8[npt.NDArray, "h w 3"],
     x: int,
     y: int,
     size: int,
@@ -66,12 +66,12 @@ def draw_cross(
 
 
 def draw_box(
-    img: jt.Shaped[npt.NDArray, "H W C"],
+    img: jt.UInt8[npt.NDArray, "H W C"],
     box: jt.Float[npt.NDArray, " N"] | PredictedBoundingBox,
     color: list[float] | tuple[int, int, int] = (255, 255, 255),
     thickness: int = 2,
     corner_radius: int = 2,
-) -> jt.Shaped[npt.NDArray, "H W C"]:
+) -> jt.UInt8[npt.NDArray, "H W C"]:
     """Utility function to draw a rotated bounding box on BEV image with rounded corners.
 
     Args:
@@ -192,7 +192,7 @@ def draw_box(
 
 
 def draw_circle_with_number(
-    bev_image: jt.Float[npt.NDArray, "H W 3"],
+    bev_image: jt.UInt8[npt.NDArray, "h w 3"],
     x: int,
     y: int,
     color: tuple[int, int, int],

@@ -1,3 +1,4 @@
+import typing
 from typing import Any
 
 import jaxtyping as jt
@@ -7,7 +8,8 @@ import torch.nn.functional as F
 from torch import nn
 
 from lead.config import LeadConfig
-from lead.policy.transfuser import ops
+from lead.policy.transfuser.dataloader.sample import TransfuserForwardBatch
+from lead.policy.transfuser.utils import ops
 
 
 class TransfuserBackbone(nn.Module):
@@ -17,19 +19,21 @@ class TransfuserBackbone(nn.Module):
     using transformer-based attention mechanisms across multiple resolution levels.
     """
 
-    def __init__(self, device: torch.device, lead_config: LeadConfig) -> None:
+    # Declared so the type checker resolves these through the class rather than
+    # nn.Module.__getattr__, which types every attribute as Tensor | Module.
+    image_encoder: typing.Any
+    lidar_encoder: typing.Any
+
+    def __init__(self, lead_config: LeadConfig) -> None:
         """Initialize the TransFuser backbone with dual encoder branches and fusion modules.
 
         Args:
-            device: Torch device for model placement (CPU or CUDA).
             lead_config: Root config tree.
         """
         super().__init__()
-        self.device = device
         self.lead_config = lead_config
         config = lead_config.policy.transfuser
         self.config = config
-        self.data_config = lead_config.expert.data_collection
 
         # Image branch
         self.image_encoder = timm.create_model(
@@ -71,7 +75,7 @@ class TransfuserBackbone(nn.Module):
                     ],
                     kernel_size=1,
                 )
-                for i in range(0, 4)
+                for i in range(4)
             ],
         )
         self.img_channel_to_lidar = nn.ModuleList(
@@ -85,11 +89,11 @@ class TransfuserBackbone(nn.Module):
                     ],
                     kernel_size=1,
                 )
-                for i in range(0, 4)
+                for i in range(4)
             ],
         )
         self.avgpool_lidar = nn.AdaptiveAvgPool2d(
-            (self.config.lidar_vert_anchors, self.config.lidar_horz_anchors),
+            (self.config.lidar_bev_grid_rows, self.config.lidar_bev_grid_cols),
         )
 
         # Fusion transformers
@@ -101,48 +105,49 @@ class TransfuserBackbone(nn.Module):
                     ],
                     lead_config=lead_config,
                 )
-                for i in range(0, 4)
+                for i in range(4)
             ],
         )
 
         # Post-fusion convs
-        self.perspective_upsample_factor = (
-            self.image_encoder.feature_info.info[image_start_index + 3]["reduction"]
-            // self.config.perspective_downsample_factor
-        )
+        self.perspective_upsample_factor = self.image_encoder.feature_info.info[
+            image_start_index + 3
+        ]["reduction"]
 
-        self.upsample = nn.Upsample(
-            scale_factor=self.config.bev_upsample_factor,
-            mode="bilinear",
-            align_corners=False,
-        )
-        self.upsample2 = nn.Upsample(
-            size=(
-                self.data_config.lidar_height_pixel
-                // self.config.bev_down_sample_factor,
-                self.data_config.lidar_width_pixel
-                // self.config.bev_down_sample_factor,
-            ),
-            mode="bilinear",
-            align_corners=False,
-        )
-        self.up_conv5 = nn.Conv2d(
-            self.config.bev_features_chanels,
-            self.config.bev_features_chanels,
-            (3, 3),
-            padding=1,
-        )
-        self.up_conv4 = nn.Conv2d(
-            self.config.bev_features_chanels,
-            self.config.bev_features_chanels,
-            (3, 3),
-            padding=1,
-        )
-        self.c5_conv = nn.Conv2d(
-            self.num_lidar_features,
-            self.config.bev_features_chanels,
-            (1, 1),
-        )
+        # The top-down pyramid feeds the box and BEV semantic heads only, so
+        # with both off it would train on no gradient.
+        self.builds_bev_feature_grid = config.detect_boxes or config.use_bev_semantic
+        if self.builds_bev_feature_grid:
+            self.upsample = nn.Upsample(
+                scale_factor=self.config.bev_upsample_factor,
+                mode="bilinear",
+                align_corners=False,
+            )
+            self.upsample2 = nn.Upsample(
+                size=(
+                    self.config.lidar_height_pixel // self.config.bev_downsample_factor,
+                    self.config.lidar_width_pixel // self.config.bev_downsample_factor,
+                ),
+                mode="bilinear",
+                align_corners=False,
+            )
+            self.up_conv5 = nn.Conv2d(
+                self.config.bev_feature_channels,
+                self.config.bev_feature_channels,
+                (3, 3),
+                padding=1,
+            )
+            self.up_conv4 = nn.Conv2d(
+                self.config.bev_feature_channels,
+                self.config.bev_feature_channels,
+                (3, 3),
+                padding=1,
+            )
+            self.c5_conv = nn.Conv2d(
+                self.num_lidar_features,
+                self.config.bev_feature_channels,
+                (1, 1),
+            )
 
     def top_down(
         self,
@@ -161,16 +166,15 @@ class TransfuserBackbone(nn.Module):
         """
         p5 = F.relu(self.c5_conv(x), inplace=True)
         p4 = F.relu(self.up_conv5(self.upsample(p5)), inplace=True)
-        p3 = F.relu(self.up_conv4(self.upsample2(p4)), inplace=True)
-        return p3
+        return F.relu(self.up_conv4(self.upsample2(p4)), inplace=True)
 
     def forward(
         self,
-        data: dict[str, torch.Tensor],
+        data: TransfuserForwardBatch,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Forward pass through the TransFuser backbone with data preprocessing.
 
-        Extracts RGB and LiDAR inputs from the data dictionary, handles device placement
+        Extracts RGB and LiDAR inputs from the data dictionary, casts them
         and dtype conversion, and optionally generates positional encodings for LTF mode.
 
         Args:
@@ -184,21 +188,20 @@ class TransfuserBackbone(nn.Module):
                 - image_features: Image feature map for perception tasks
         """
         rgb = data["rgb"].to(
-            self.device,
-            dtype=self.lead_config.training.optimization.torch_float_type,
+            dtype=self.lead_config.training.optimization.torch_dtype,
             non_blocking=True,
         )
         if self.config.LTF:
-            x = torch.linspace(0, 1, self.data_config.lidar_width_pixel)
-            y = torch.linspace(0, 1, self.data_config.lidar_height_pixel)
+            x = torch.linspace(0, 1, self.config.lidar_width_pixel)
+            y = torch.linspace(0, 1, self.config.lidar_height_pixel)
             y_grid, x_grid = torch.meshgrid(y, x, indexing="ij")
 
             lidar = torch.zeros(
                 (
                     rgb.shape[0],
                     2,
-                    self.data_config.lidar_height_pixel,
-                    self.data_config.lidar_width_pixel,
+                    self.config.lidar_height_pixel,
+                    self.config.lidar_width_pixel,
                 ),
                 device=rgb.device,
             )
@@ -206,8 +209,7 @@ class TransfuserBackbone(nn.Module):
             lidar[:, 1] = x_grid.unsqueeze(0)  # Left right positional encoding
         else:
             lidar = data["rasterized_lidar"].to(
-                self.device,
-                dtype=self.lead_config.training.optimization.torch_float_type,
+                dtype=self.lead_config.training.optimization.torch_dtype,
                 non_blocking=True,
             )
         return self._forward(rgb, lidar)
@@ -223,19 +225,13 @@ class TransfuserBackbone(nn.Module):
     ]:
         """
         Image + LiDAR feature fusion using transformers
-        Args:
-            image: RGB image.
-            lidar: Pseudo-image LiDAR.
-        Returns:
-            lidar_features: BEV feature map for planning.
-            image_features: Image feature map for perception.
         """
-        image_features = ops.normalize_imagenet(image)
-        lidar_features = lidar
-
-        if self.lead_config.training.optimization.channel_last:
+        if self.lead_config.training.optimization.use_channels_last_memory_format:
             image = image.to(memory_format=torch.channels_last)
             lidar = lidar.to(memory_format=torch.channels_last)
+
+        image_features = ops.normalize_imagenet(image)
+        lidar_features = lidar
 
         # Generate an iterator for all the layers in the network that one can loop through.
         image_layers = iter(self.image_encoder.items())
@@ -368,7 +364,7 @@ class GPT(nn.Module):
             torch.zeros(
                 1,
                 self.config.img_vert_anchors * self.config.img_horz_anchors
-                + self.config.lidar_vert_anchors * self.config.lidar_horz_anchors,
+                + self.config.lidar_bev_grid_rows * self.config.lidar_bev_grid_cols,
                 self.n_embd,
             ),
         )
@@ -395,9 +391,6 @@ class GPT(nn.Module):
 
         Applies custom initialization strategies based on configuration parameters
         to improve training stability and convergence.
-
-        Args:
-            module: PyTorch module to initialize (Linear or LayerNorm).
         """
         if isinstance(module, nn.Linear):
             module.weight.data.normal_(
@@ -511,8 +504,7 @@ class Block(nn.Module):
             Output tensor of same shape as input with attention and MLP applied.
         """
         x = x + self.attn(self.ln1(x))
-        x = x + self.mlp(self.ln2(x))
-        return x
+        return x + self.mlp(self.ln2(x))
 
 
 class SelfAttention(nn.Module):
@@ -596,5 +588,4 @@ class SelfAttention(nn.Module):
         )  # re-assemble all head outputs side by side
 
         # output projection
-        y = self.resid_drop(self.proj(y))
-        return y
+        return self.resid_drop(self.proj(y))

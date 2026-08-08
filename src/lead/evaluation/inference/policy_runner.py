@@ -52,7 +52,8 @@ class PolicyRunner:
         weight_path = os.path.join(model_path, weight_files[0])
         LOG.info(f"Loading model weight from {weight_path}")
 
-        self.policy: AbstractPolicy = build_policy(self.device, lead_config)
+        # Nothing places the policy here, so this runner does.
+        self.policy: AbstractPolicy = build_policy(lead_config).to(self.device)
         if self.lead_config.training.optimization.sync_batchnorm:
             # convert_sync_batchnorm's stub widens the return type to nn.Module;
             # it always preserves the input module's actual class at runtime.
@@ -72,14 +73,14 @@ class PolicyRunner:
 
         Args:
             data: The batched model inputs, as built by the policy's
-                ``batch_features``.
+                ``features_to_batch``.
 
         Returns:
             The raw prediction of the policy.
         """
         with autocast(
             device_type="cuda",
-            dtype=self.lead_config.training.optimization.torch_float_type,
+            dtype=self.lead_config.training.optimization.torch_dtype,
             enabled=self.lead_config.training.optimization.use_mixed_precision_training,
         ):
             return self.policy(data)

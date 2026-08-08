@@ -8,17 +8,14 @@ on:
 jobs:
   collect-data:
     runs-on: self-hosted
-    timeout-minutes: 180
+    timeout-minutes: 240
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
     - name: Use runner's micromamba and repo scripts
-      # Reuses whatever conda-format env root already exists on this self-hosted runner
-      # (same convention as the old $CONDA var, just renamed) so the persistent `lead` env
-      # survives the switch with no reinstall. Installs the micromamba binary itself if
-      # this runner doesn't already have it.
+      # Reuse the runner's env root so the persistent `lead` env needs no reinstall.
       run: |
         MAMBA_ROOT_PREFIX="${CONDA:-$HOME/micromamba}"
         echo "MAMBA_ROOT_PREFIX=$MAMBA_ROOT_PREFIX" >> "$GITHUB_ENV"
@@ -39,17 +36,20 @@ jobs:
         [ -x "$MAMBA_ROOT_PREFIX/envs/lead/bin/uv" ] || \
           micromamba install -y -n lead -c conda-forge uv ffmpeg parallel tree gcc zip unzip git-lfs uv rclone
 
-    - name: Install project (torch, carla client, everything in uv.lock)
-      # --reinstall-package forces setup.py to rerun even when uv's build cache
-      # has an unchanged lead wheel, so create_dotenv() always bootstraps .env
-      # (the checkout is fresh every run and .env is gitignored).
-      run: micromamba run -n lead env UV_PROJECT_ENVIRONMENT=$MAMBA_ROOT_PREFIX/envs/lead uv sync --extra dev --reinstall-package lead
+    - name: Install project (torch, carla client, all deps)
+      # Reinstall lead itself so create_dotenv() bootstraps the gitignored .env.
+      # A previously installed non-cu129 torch lacks this runner's sm_120 kernels.
+      run: |
+        if ! micromamba run -n lead python -c "import torch; assert 'cu129' in torch.__version__" 2>/dev/null; then
+          micromamba run -n lead uv pip uninstall torch torchvision 2>/dev/null || true
+        fi
+        micromamba run -n lead uv pip install -e "." --reinstall-package lead
 
     - name: Configure .env
-      # CARLA lives in $HOME, not the workspace: checkout's git clean would
-      # delete an untracked in-repo install on every run (~20 GB re-download).
+      # CARLA lives in $HOME: git clean would delete an in-repo install every run.
       run: |
         sed -i "s|^CARLA_ROOT=.*|CARLA_ROOT=${HOME}/CARLA/standard_0916|" .env
+        echo "PY123D_DATA_ROOT=$(dotenv PY123D_DATA_ROOT)" >> "$GITHUB_ENV"
 
     - name: Install CARLA server (first run only)
       run: |
@@ -66,13 +66,216 @@ jobs:
         esac
 
     - name: Run E2E tests
-      # PY123D_DATA_ROOT lives in the generated .env, not the workflow env.
-      run: |
-        export LEAD_TEST_DATA_ROOT="$(grep '^PY123D_DATA_ROOT=' .env | cut -d= -f2-)"
-        micromamba run -n lead python -m pytest tests/e2e_tests/ -v
+      run: micromamba run -n lead python -m pytest tests/e2e_tests/ -v
 
     - name: Run notebooks
       run: micromamba run -n lead jupyter execute notebooks/*.ipynb
+
+    - name: Build TransFuser training cache
+      run: |
+        micromamba run -n lead python -m lead.training.build_cache
+        test -f "$PY123D_DATA_ROOT/transfuser_training_cache/manifest.yaml"
+        micromamba run -n lead python .github/scripts/check_cache_store.py
+
+    - name: Pretrain TransFuser one epoch from the cache (perception only)
+      env:
+        WANDB_MODE: offline
+      run: |
+        micromamba run -n lead python -m lead.training.train \
+          training.data.read_from_cache_store=true \
+          training.optimization.num_epochs=1 \
+          training.optimization.batch_size=4 \
+          training.experiment.output_dir="$RUNNER_TEMP/transfuser_pretrain"
+        micromamba run -n lead bash .github/scripts/check_training_artifacts.sh \
+          "$RUNNER_TEMP/transfuser_pretrain" --checkpoint 0000
+
+    - name: Posttrain TransFuser one epoch on the pretrained weights (planning decoder)
+      env:
+        WANDB_MODE: offline
+      run: |
+        micromamba run -n lead python -m lead.training.train \
+          policy.transfuser.use_planning_decoder=true \
+          training.experiment.initial_weights_file="$RUNNER_TEMP/transfuser_pretrain/model_0000.pth" \
+          training.data.read_from_cache_store=true \
+          training.optimization.num_epochs=1 \
+          training.optimization.batch_size=4 \
+          training.experiment.output_dir="$RUNNER_TEMP/transfuser_posttrain"
+        micromamba run -n lead bash .github/scripts/check_training_artifacts.sh \
+          "$RUNNER_TEMP/transfuser_posttrain" --checkpoint 0000
+
+    # No cache build for ego-status: it declares nothing cacheable.
+    - name: Train ego-status one epoch
+      env:
+        WANDB_MODE: offline
+      run: |
+        micromamba run -n lead python -m lead.training.train \
+          policy.target=lead.policy.ego_status.ego_status:EgoStatus \
+          training.data.read_from_cache_store=true \
+          training.optimization.num_epochs=1 \
+          training.optimization.batch_size=4 \
+          training.experiment.output_dir="$RUNNER_TEMP/ego_status_training"
+        micromamba run -n lead bash .github/scripts/check_training_artifacts.sh \
+          "$RUNNER_TEMP/ego_status_training" --checkpoint 0000
+
+    - name: Train combinations
+      env:
+        WANDB_MODE: offline
+      run: |
+        # No -e: every variant runs and failures are reported together.
+        set -uo pipefail
+        # name | cache store | overrides
+        variants=(
+          "no_semantic|true|policy.transfuser.use_semantic=false"
+          "no_depth|true|policy.transfuser.use_depth=false"
+          "no_bev_semantic|true|policy.transfuser.use_bev_semantic=false"
+          "no_boxes|true|policy.transfuser.detect_boxes=false"
+          "no_radar|true|policy.transfuser.use_radar_detection=false"
+          "perception_off|true|policy.transfuser.use_depth=false policy.transfuser.use_semantic=false policy.transfuser.use_bev_semantic=false policy.transfuser.detect_boxes=false policy.transfuser.use_radar_detection=false"
+          "no_target_speed|true|policy.transfuser.predict_target_speed=false"
+          "no_spatial_path|true|policy.transfuser.predict_spatial_path=false"
+          "no_waypoints|true|policy.transfuser.predict_temporal_spatial_waypoints=false"
+          "ltf|true|policy.transfuser.LTF=true"
+          "frozen_backbone|true|policy.transfuser.freeze_backbone=true"
+          "minimal_planning_inputs|true|policy.transfuser.use_previous_target_point=false policy.transfuser.use_next_target_point=false policy.transfuser.use_velocity=false policy.transfuser.smooth_route=false"
+          # Cache off is the only path the label builders are on.
+          "live_labels|false|"
+          "no_boxes_live_labels|false|policy.transfuser.detect_boxes=false"
+          # Preprocessing and BEV geometry only show with the cache off: the
+          # store holds rasters built at the default settings.
+          "raw_sensor_preprocessing|false|policy.transfuser.accumulate_lidar_sweeps=false policy.transfuser.merge_radar_into_lidar=false policy.transfuser.remove_lidar_ground_points=false policy.transfuser.duplicate_radar_near_ego=false"
+          "bev_geometry|false|policy.transfuser.bev_pixels_per_meter=2.0 policy.transfuser.bev_min_x_meter=-32 policy.transfuser.bev_max_x_meter=32 policy.transfuser.bev_min_y_meter=-32 policy.transfuser.bev_max_y_meter=32"
+          "bev_geometry_asymmetric|false|policy.transfuser.bev_pixels_per_meter=2.0 policy.transfuser.bev_min_x_meter=-40 policy.transfuser.bev_max_x_meter=72 policy.transfuser.bev_min_y_meter=-40 policy.transfuser.bev_max_y_meter=40"
+        )
+        failed=()
+        for variant in "${variants[@]}"; do
+          IFS='|' read -r name cache overrides <<<"$variant"
+          read -ra extra <<<"$overrides"
+          echo "::group::$name"
+          micromamba run -n lead python -m lead.training.train \
+            policy.transfuser.use_planning_decoder=true \
+            training.data.read_from_cache_store="$cache" \
+            training.lightning.max_steps=2 \
+            training.lightning.enable_progress_bar=false \
+            training.optimization.batch_size=2 \
+            training.optimization.use_torch_compile=false \
+            training.optimization.save_model_checkpoint=false \
+            training.experiment.log_wandb=false \
+            training.experiment.output_dir="$RUNNER_TEMP/head_matrix/$name" \
+            "${extra[@]}" \
+          && micromamba run -n lead bash .github/scripts/check_training_artifacts.sh \
+            "$RUNNER_TEMP/head_matrix/$name" || failed+=("$name")
+          echo "::endgroup::"
+        done
+        if [ "${#failed[@]}" -gt 0 ]; then
+          echo "::error::Failing variants: ${failed[*]}"
+          exit 1
+        fi
+        echo "All ${#variants[@]} variants passed."
+
+    - name: Build and train the cache-config matrix
+      env:
+        WANDB_MODE: offline
+      run: |
+        # Each arm builds its own store and trains from it, proving the
+        # fingerprint and read path under that config.
+        set -uo pipefail
+        # name | overrides
+        variants=(
+          "no_boxes|policy.transfuser.detect_boxes=false"
+          "raw_sensor_preprocessing|policy.transfuser.accumulate_lidar_sweeps=false policy.transfuser.merge_radar_into_lidar=false policy.transfuser.remove_lidar_ground_points=false policy.transfuser.duplicate_radar_near_ego=false"
+          "bev_geometry|policy.transfuser.bev_pixels_per_meter=2.0 policy.transfuser.bev_min_x_meter=-32 policy.transfuser.bev_max_x_meter=32 policy.transfuser.bev_min_y_meter=-32 policy.transfuser.bev_max_y_meter=32"
+          "bev_geometry_asymmetric|policy.transfuser.bev_pixels_per_meter=2.0 policy.transfuser.bev_min_x_meter=-40 policy.transfuser.bev_max_x_meter=72 policy.transfuser.bev_min_y_meter=-40 policy.transfuser.bev_max_y_meter=40"
+        )
+        failed=()
+        for variant in "${variants[@]}"; do
+          IFS='|' read -r name overrides <<<"$variant"
+          read -ra extra <<<"$overrides"
+          store="$RUNNER_TEMP/cache_matrix/$name"
+          echo "::group::$name"
+          micromamba run -n lead python -m lead.training.build_cache \
+            policy.transfuser.cache_store_root="$store" \
+            "${extra[@]}" \
+          && test -f "$store/manifest.yaml" \
+          && micromamba run -n lead python -m lead.training.train \
+            policy.transfuser.use_planning_decoder=true \
+            training.data.read_from_cache_store=true \
+            policy.transfuser.cache_store_root="$store" \
+            training.lightning.max_steps=2 \
+            training.lightning.enable_progress_bar=false \
+            training.optimization.batch_size=2 \
+            training.optimization.use_torch_compile=false \
+            training.optimization.save_model_checkpoint=false \
+            training.experiment.log_wandb=false \
+            training.experiment.output_dir="$store/training" \
+            "${extra[@]}" \
+          && micromamba run -n lead bash .github/scripts/check_training_artifacts.sh \
+            "$store/training" || failed+=("$name")
+          echo "::endgroup::"
+        done
+        if [ "${#failed[@]}" -gt 0 ]; then
+          echo "::error::Failing cache-matrix variants: ${failed[*]}"
+          exit 1
+        fi
+        echo "All ${#variants[@]} cache-matrix variants passed."
+
+    - name: Build and train on a normal-view-only dataset
+      env:
+        WANDB_MODE: offline
+      run: |
+        # The perturbated split is an optional download; cache building and
+        # training must work without it.
+        set -uo pipefail
+        normal_only_root="$RUNNER_TEMP/normal_view_only_data"
+        mkdir -p "$normal_only_root/logs"
+        cp -rs "$PY123D_DATA_ROOT/logs/normal_view" "$normal_only_root/logs/normal_view"
+        cp -rs "$PY123D_DATA_ROOT/maps" "$normal_only_root/maps"
+        # name | overrides
+        variants=(
+          "perturbation_fallback|"
+          "perturbation_off|training.data.use_sensor_perturbation=false"
+        )
+        failed=()
+        for variant in "${variants[@]}"; do
+          IFS='|' read -r name overrides <<<"$variant"
+          read -ra extra <<<"$overrides"
+          store="$RUNNER_TEMP/normal_view_only_cache/$name"
+          echo "::group::$name"
+          micromamba run -n lead python -m lead.training.build_cache \
+            training.data.py123d_data_root="$normal_only_root" \
+            policy.transfuser.cache_store_root="$store" \
+            "${extra[@]}" \
+          && test -f "$store/manifest.yaml" \
+          && test ! -e "$store/perturbated_view" \
+          && micromamba run -n lead python -m lead.training.train \
+            policy.transfuser.use_planning_decoder=true \
+            training.data.py123d_data_root="$normal_only_root" \
+            training.data.read_from_cache_store=true \
+            policy.transfuser.cache_store_root="$store" \
+            training.lightning.max_steps=2 \
+            training.lightning.enable_progress_bar=false \
+            training.optimization.batch_size=2 \
+            training.optimization.use_torch_compile=false \
+            training.optimization.save_model_checkpoint=false \
+            training.experiment.log_wandb=false \
+            training.experiment.output_dir="$store/training" \
+            "${extra[@]}" || failed+=("$name")
+          echo "::endgroup::"
+        done
+        if [ "${#failed[@]}" -gt 0 ]; then
+          echo "::error::Failing normal-view-only variants: ${failed[*]}"
+          exit 1
+        fi
+        echo "All ${#variants[@]} normal-view-only variants passed."
+
+    - name: Evaluate the released checkpoint on benchmark routes
+      # The route tier scales with the branch, like data collection above.
+      run: |
+        micromamba run -n lead hf download ln2697/transfuser-carla-123d \
+          --local-dir "$RUNNER_TEMP/hf_checkpoint"
+        case "$GITHUB_REF_NAME" in
+          pre-release) bash .github/scripts/evaluate_checkpoint_pre_release.sh "$RUNNER_TEMP/hf_checkpoint/transfuser" ;;
+          *)           bash .github/scripts/evaluate_checkpoint_main.sh "$RUNNER_TEMP/hf_checkpoint/transfuser" ;;
+        esac
 
     - name: Stop CARLA server
       if: always()

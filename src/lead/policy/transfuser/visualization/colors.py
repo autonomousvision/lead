@@ -1,7 +1,10 @@
 """Colors and radii used by the TransFuser visualizers."""
 
-from lead.common.constants import LeadSemanticSegmentationClass
-from lead.policy.transfuser.labels import BEVSemanticClass, BoundingBoxClass
+from lead.config.policy.transfuser.label_classes import (
+    BEVSemanticClass,
+    BoundingBoxClass,
+    PerspectiveSemanticClass,
+)
 
 
 def rgb(r, g, b):
@@ -43,16 +46,16 @@ CARLA_TRANSFUSER_BEV_SEMANTIC_COLOR_CONVERTER = {
 
 # TransFuser++ semantic segmentation colors for CARLA data
 TRANSFUSER_SEMANTIC_COLORS = {
-    LeadSemanticSegmentationClass.UNLABELED: rgb(255, 255, 255),
-    LeadSemanticSegmentationClass.VEHICLE: rgb(31, 119, 180),
-    LeadSemanticSegmentationClass.ROAD: rgb(128, 64, 128),
-    LeadSemanticSegmentationClass.TRAFFIC_LIGHT: rgb(250, 170, 30),
-    LeadSemanticSegmentationClass.PEDESTRIAN: rgb(0, 255, 60),
-    LeadSemanticSegmentationClass.ROAD_LINE: rgb(157, 234, 50),
-    LeadSemanticSegmentationClass.OBSTACLE: rgb(255, 0, 0),
-    LeadSemanticSegmentationClass.SPECIAL_VEHICLE: rgb(255, 255, 0),
-    LeadSemanticSegmentationClass.STOP_SIGN: rgb(125, 0, 0),
-    LeadSemanticSegmentationClass.BIKER: rgb(220, 20, 60),
+    PerspectiveSemanticClass.UNLABELED: rgb(255, 255, 255),
+    PerspectiveSemanticClass.VEHICLE: rgb(31, 119, 180),
+    PerspectiveSemanticClass.ROAD: rgb(128, 64, 128),
+    PerspectiveSemanticClass.TRAFFIC_LIGHT: rgb(250, 170, 30),
+    PerspectiveSemanticClass.PEDESTRIAN: rgb(0, 255, 60),
+    PerspectiveSemanticClass.ROAD_LINE: rgb(157, 234, 50),
+    PerspectiveSemanticClass.OBSTACLE: rgb(255, 0, 0),
+    PerspectiveSemanticClass.SPECIAL_VEHICLE: rgb(255, 255, 0),
+    PerspectiveSemanticClass.STOP_SIGN: rgb(125, 0, 0),
+    PerspectiveSemanticClass.BIKER: rgb(220, 20, 60),
 }
 
 # TransFuser++ bounding box colors

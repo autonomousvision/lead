@@ -1,5 +1,7 @@
 """Trackers turning one predicted plan representation into vehicle controls."""
 
+import typing
+
 import jaxtyping as jt
 import numpy as np
 import torch
@@ -10,6 +12,17 @@ from lead.common.pid import (
     PIDController,
 )
 from lead.config import LeadConfig
+
+
+class VehicleControl(typing.NamedTuple):
+    """One tick's control commands, each in its CARLA range."""
+
+    # Steering command in [-1, 1].
+    steer: float
+    # Throttle command in [0, 1].
+    throttle: float
+    # Brake command in [0, 1].
+    brake: float
 
 
 class WaypointTracker:
@@ -25,20 +38,20 @@ class WaypointTracker:
             k_p=lead_config.evaluation.controller.turn_kp,
             k_i=lead_config.evaluation.controller.turn_ki,
             k_d=lead_config.evaluation.controller.turn_kd,
-            n=lead_config.evaluation.controller.turn_n,
+            error_window_size=lead_config.evaluation.controller.turn_error_window,
         )
         self.longitudinal_controller = PIDController(
             k_p=lead_config.evaluation.controller.speed_kp,
             k_i=lead_config.evaluation.controller.speed_ki,
             k_d=lead_config.evaluation.controller.speed_kd,
-            n=lead_config.evaluation.controller.speed_n,
+            error_window_size=lead_config.evaluation.controller.speed_error_window,
         )
 
     def step(
         self,
         waypoints: jt.Float[torch.Tensor, "1 num_waypoints 2"],
         velocity: jt.Float[torch.Tensor, "1 1"],
-    ) -> tuple[float, float, float]:
+    ) -> VehicleControl:
         """Compute vehicle controls from the predicted waypoints.
 
         Args:
@@ -46,22 +59,21 @@ class WaypointTracker:
             velocity: Current speed of the vehicle in m/s.
 
         Returns:
-            steer: Steering command in [-1, 1]
-            throttle: Throttle command in [0, 1]
-            brake: Brake command in [0, 1]
+            The tick's vehicle control.
         """
         waypoints_np = waypoints[0].data.cpu().float().numpy()
         speed = float(velocity[0].data.cpu().float().numpy())
 
-        one_second = int(
+        ticks_per_second = int(
             self.lead_config.expert.simulation.carla_fps
             // self.lead_config.expert.data_collection.data_save_freq,
         )
-        half_second = one_second // 2
+        ticks_per_half_second = ticks_per_second // 2
 
         desired_speed = (
             np.linalg.norm(
-                waypoints_np[half_second - 1] - waypoints_np[one_second - 1],
+                waypoints_np[ticks_per_half_second - 1]
+                - waypoints_np[ticks_per_second - 1],
             )
             * 2.0
         )
@@ -69,7 +81,7 @@ class WaypointTracker:
             np.clip(
                 desired_speed - speed,
                 0.0,
-                self.lead_config.evaluation.controller.wp_delta_clip,
+                self.lead_config.evaluation.controller.waypoint_speed_delta_clip,
             ),
         )
 
@@ -114,7 +126,11 @@ class WaypointTracker:
 
         steer = self.lateral_controller.step(angle)
         steer = np.clip(steer, -1.0, 1.0)  # Valid steering values are in [-1,1]
-        return float(steer), float(throttle), float(brake)
+        return VehicleControl(
+            steer=float(steer),
+            throttle=float(throttle),
+            brake=float(brake),
+        )
 
 
 class PathSpeedTracker:
@@ -136,7 +152,7 @@ class PathSpeedTracker:
         speed: jt.Float[torch.Tensor, "1 1"],
         ego_vehicle_location: float = 0.0,
         ego_vehicle_rotation: float = 0.0,
-    ) -> tuple[float, float, float]:
+    ) -> VehicleControl:
         """Compute vehicle controls from the predicted path and target speed.
 
         Args:
@@ -147,9 +163,7 @@ class PathSpeedTracker:
             ego_vehicle_rotation: Current rotation of the ego vehicle.
 
         Returns:
-            steer: Steering command in [-1, 1]
-            throttle: Throttle command in [0, 1]
-            brake: Brake command in [0, 1]
+            The tick's vehicle control.
         """
         pred_checkpoints_np = pred_checkpoints[0].data.cpu().float().numpy()
         speed_val = float(speed[0].data.cpu().float().numpy())
@@ -176,4 +190,8 @@ class PathSpeedTracker:
             speed_val,
         )
 
-        return steer, throttle, float(brake)
+        return VehicleControl(
+            steer=steer,
+            throttle=throttle,
+            brake=float(brake),
+        )

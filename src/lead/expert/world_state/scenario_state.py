@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
-import lead.common.geometry as geometry
+from lead.common import geometry
 from lead.common.runtime_property_caching import step_cached_property
 from lead.expert.utils import roadgraph
 
@@ -791,8 +791,7 @@ class ScenarioStateMixin:
                         ret = []
                     else:
                         raise e
-        ret = [actor for actor in ret if self.is_actor_inside_bev(actor)]
-        return ret
+        return [actor for actor in ret if self.is_actor_inside_bev(actor)]
 
     @step_cached_property
     def scenario_obstacles_convex_hull(self):
@@ -861,7 +860,7 @@ class ScenarioStateMixin:
             return CarlaDataProvider.get_current_scenario_memory()[
                 "vehicle_opened_door"
             ]
-        elif self.previous_active_scenario_type == "VehicleOpensDoorTwoWays":
+        if self.previous_active_scenario_type == "VehicleOpensDoorTwoWays":
             if CarlaDataProvider.previous_active_scenario is not None:
                 try:
                     CarlaDataProvider.previous_active_scenario.meta["obstacles"][
@@ -873,8 +872,7 @@ class ScenarioStateMixin:
                 except RuntimeError as e:
                     if "trying to operate on a destroyed actor" in str(e):
                         return False
-                    else:
-                        raise e
+                    raise e
         return False
 
     @step_cached_property
@@ -885,7 +883,7 @@ class ScenarioStateMixin:
         """
         if self.current_active_scenario_type == "VehicleOpensDoorTwoWays":
             return CarlaDataProvider.get_current_scenario_memory()["vehicle_door_side"]
-        elif self.previous_active_scenario_type == "VehicleOpensDoorTwoWays":
+        if self.previous_active_scenario_type == "VehicleOpensDoorTwoWays":
             if CarlaDataProvider.previous_active_scenario is not None:
                 return CarlaDataProvider.previous_active_scenario.meta[
                     "vehicle_door_side"
@@ -910,7 +908,7 @@ class ScenarioStateMixin:
     def two_way_obstacle_distance_to_cones_factor(self):
         if self.ego_lane_width <= 2.76:
             return 1.13
-        elif self.ego_lane_width <= 3.01:
+        if self.ego_lane_width <= 3.01:
             return 1.12
         return 1.12
 
@@ -918,7 +916,7 @@ class ScenarioStateMixin:
     def two_way_vehicle_open_door_distance_to_center_line_factor(self):
         if self.ego_lane_width <= 2.76:
             return 1.0
-        elif self.ego_lane_width <= 3.01:
+        if self.ego_lane_width <= 3.01:
             return 0.875
         return 0.75
 

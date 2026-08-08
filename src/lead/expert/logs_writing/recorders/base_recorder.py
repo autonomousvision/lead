@@ -62,3 +62,4 @@ class BaseRecorder(abc.ABC):
             The modalities to write for this tick (may be several, e.g. one
             camera frame per camera ID).
         """
+        raise NotImplementedError

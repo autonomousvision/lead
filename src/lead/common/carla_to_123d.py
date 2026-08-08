@@ -277,7 +277,7 @@ def build_pinhole_camera_metadatas(
     """
     camera_metadatas: dict[CameraID, PinholeCameraMetadata] = {}
     for cam_key in range(1, config_expert.sensor_rig.num_cameras + 1):
-        camera_id = py123d_log_api.CAMERA_ID_MAPPING[cam_key]
+        camera_id = py123d_log_api.CAMERA_ID_BY_LEAD_INDEX[cam_key]
         calibration = config_expert.sensor_rig.cameras[cam_key - 1]
         width = calibration["width"]
         height = calibration["height"]
@@ -342,7 +342,7 @@ def build_radar_metadatas(
         The per-radar metadata keyed by 123D radar ID, and the metadata of the
         merged stream the logs store all radars in.
     """
-    ego_metadata = py123d_log_api.get_carla_lincoln_mkz_2020_metadata()
+    ego_metadata = py123d_log_api.CARLA_LINCOLN_MKZ_2020_METADATA
     radar_metadatas: dict[RadarID, RadarMetadata] = {}
     for sensor_index, calibration in enumerate(
         config_expert.sensor_rig.radars,
@@ -369,7 +369,7 @@ def build_radar_metadatas(
         quaternion = quaternion_from_carla_rotation(
             carla.Rotation(roll=rot[0], pitch=rot[1], yaw=rot[2]),
         )
-        radar_id = py123d_log_api.RADAR_ID_MAPPING[sensor_index]
+        radar_id = py123d_log_api.RADAR_ID_BY_LEAD_INDEX[sensor_index]
         radar_metadatas[radar_id] = RadarMetadata(
             radar_name=str(radar_id),
             radar_id=radar_id,

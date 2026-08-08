@@ -8,7 +8,7 @@ class TestPIDController:
 
     def test_proportional_response(self):
         """Test proportional control reduces error linearly."""
-        controller = PIDController(k_p=0.5, k_i=0.0, k_d=0.0, n=5)
+        controller = PIDController(k_p=0.5, k_i=0.0, k_d=0.0, error_window_size=5)
         errors = [10.0, 5.0, 2.0, 1.0]
         outputs = [controller.step(e) for e in errors]
         expected = [e * 0.5 for e in errors]
@@ -16,7 +16,7 @@ class TestPIDController:
 
     def test_integral_accumulation(self):
         """Test integral term accumulates persistent error."""
-        controller = PIDController(k_p=0.0, k_i=1.0, k_d=0.0, n=3)
+        controller = PIDController(k_p=0.0, k_i=1.0, k_d=0.0, error_window_size=3)
         # Feed constant error - integral should grow
         outputs = [controller.step(1.0) for _ in range(5)]
         # Integral grows as window fills, then stabilizes at average
@@ -25,7 +25,7 @@ class TestPIDController:
 
     def test_derivative_detects_change(self):
         """Test derivative term responds to error rate of change."""
-        controller = PIDController(k_p=0.0, k_i=0.0, k_d=1.0, n=5)
+        controller = PIDController(k_p=0.0, k_i=0.0, k_d=1.0, error_window_size=5)
         controller.step(0.0)
         output = controller.step(5.0)  # Sudden error increase
         assert output == 5.0  # D-term = k_d * (5.0 - 0.0)
@@ -35,7 +35,7 @@ class TestPIDController:
 
     def test_combined_pid_response(self):
         """Test full PID controller tracking setpoint."""
-        controller = PIDController(k_p=0.8, k_i=0.2, k_d=0.1, n=10)
+        controller = PIDController(k_p=0.8, k_i=0.2, k_d=0.1, error_window_size=10)
         # Simulate approaching target with decreasing error
         errors = [10.0, 8.0, 5.0, 3.0, 1.0, 0.5]
         outputs = [controller.step(e) for e in errors]
@@ -48,7 +48,7 @@ class TestPIDController:
     def test_window_size_limits_history(self):
         """Test sliding window maintains fixed size."""
         n = 3
-        controller = PIDController(k_p=0.0, k_i=1.0, k_d=0.0, n=n)
+        controller = PIDController(k_p=0.0, k_i=1.0, k_d=0.0, error_window_size=n)
         # Fill beyond window size
         for i in range(10):
             controller.step(float(i))

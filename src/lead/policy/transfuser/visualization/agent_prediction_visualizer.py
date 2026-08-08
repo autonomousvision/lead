@@ -3,6 +3,7 @@
 import typing
 
 from lead.config import LeadConfig
+from lead.policy.transfuser.dataloader.sample import TransfuserForwardBatch
 from lead.policy.transfuser.transfuser import AgentPrediction
 from lead.policy.transfuser.visualization.prediction_visualizer import (
     PredictionVisualizer,
@@ -21,7 +22,7 @@ class AgentPredictionVisualizer(PredictionVisualizer):
     def __init__(
         self,
         lead_config: LeadConfig,
-        data: dict[str, typing.Any],
+        data: TransfuserForwardBatch,
         prediction: AgentPrediction,
     ) -> None:
         """Initialize the visualizer from one batched sample and its prediction.
@@ -48,11 +49,7 @@ class AgentPredictionVisualizer(PredictionVisualizer):
         self._bounding_boxes()
 
     def _target_speed(self) -> float | None:
-        """The post-processed target speed the agent actually tracks.
-
-        Returns:
-            The target speed in m/s, or None if the model does not predict it.
-        """
+        """The post-processed target speed the agent actually tracks."""
         if self.agent_prediction.target_speed is None:
             return None
         return float(
@@ -60,11 +57,7 @@ class AgentPredictionVisualizer(PredictionVisualizer):
         )
 
     def _extra_meta_lines(self) -> list[str]:
-        """Add the predicted vehicle controls to the meta panel.
-
-        Returns:
-            Extra text lines in ``"<name> <value>"`` format.
-        """
+        """Add the predicted vehicle controls to the meta panel."""
         lines = super()._extra_meta_lines()
         lines.append(f"pred_steer {self.agent_prediction.steer:.2f}")
         lines.append(f"pred_throttle {self.agent_prediction.throttle:.2f}")

@@ -3,21 +3,21 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
-      - id: check-added-large-files # prevents giant files from being committed.
-      - id: check-case-conflict # checks for files that would conflict in case-insensitive filesystems.
-      - id: check-merge-conflict # checks for files that contain merge conflict strings.
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-merge-conflict
         args: [--assume-in-merge]
-      - id: check-symlinks # checks for symlinks which do not point to anything.
-      - id: destroyed-symlinks # detects symlinks which are changed to regular files.
-      - id: detect-private-key # detects the presence of private keys.
-      - id: check-toml # checks toml files for parseable syntax.
-      - id: check-vcs-permalinks # ensures that links to vcs websites are permalinks.
-      - id: debug-statements # checks for debugger imports and breakpoint() calls.
-      - id: check-yaml # checks yaml files for parseable syntax.
-      - id: end-of-file-fixer # ensures that a file is either empty, or ends with one newline.
-      - id: fix-byte-order-marker # removes utf-8 byte order marker.
-      - id: mixed-line-ending # replaces or checks mixed line ending.
-      - id: trailing-whitespace # trims trailing whitespace.
+      - id: check-symlinks
+      - id: destroyed-symlinks
+      - id: detect-private-key
+      - id: check-toml
+      - id: check-vcs-permalinks
+      - id: debug-statements
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: fix-byte-order-marker
+      - id: mixed-line-ending
+      - id: trailing-whitespace
       - id: check-json
         exclude: /README\.rst$|\.pot?$
       - id: pretty-format-json
@@ -27,15 +27,15 @@ repos:
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.10.0
     hooks:
-      - id: python-check-blanket-noqa # requires noqa comments to name the silenced rule.
-      - id: python-check-blanket-type-ignore # requires type ignores to name the silenced error.
+      - id: python-check-blanket-noqa
+      - id: python-check-blanket-type-ignore
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.1
     hooks:
       - id: codespell
+        # tomli lets codespell read [tool.codespell] from pyproject.toml on 3.10.
         additional_dependencies: [tomli]
-        args: [-L, "perturbate,unperturbated,statics,deques,ue,lightening"]
 
   - repo: https://github.com/kynan/nbstripout
     rev: 0.8.2
@@ -45,8 +45,8 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.10
     hooks:
+      # fix = true comes from [tool.ruff] in pyproject.toml.
       - id: ruff
-        args: [--fix]
       - id: ruff-format
 
   - repo: https://github.com/efrecon/pre-commit-hook-lxml
@@ -58,15 +58,8 @@ repos:
     rev: 0.8.3
     hooks:
       - id: pydoclint
-        args:
-          [
-            --style=google,
-            --arg-type-hints-in-docstring=false,
-            --skip-checking-raises=true,
-            --allow-init-docstring=true,
-            --check-return-types=false,
-            --check-yield-types=false,
-          ]
+        # Configured via [tool.pydoclint] in pyproject.toml.
+        args: [--config=pyproject.toml]
         types: [python]
 
   - repo: https://github.com/executablebooks/mdformat
@@ -87,6 +80,17 @@ repos:
     hooks:
     -   id: add-trailing-comma
 
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        args: [--severity=error]
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+
   - repo: local
     hooks:
       - id: forbid-merge-leftovers
@@ -94,6 +98,12 @@ repos:
         entry: git merge/rebase leftover file committed
         language: fail
         files: '\.(orig|rej)$|\.(BACKUP|BASE|LOCAL|REMOTE)\.\d+$'
+      - id: lint-imports
+        name: import-linter
+        entry: lint-imports
+        language: system
+        pass_filenames: false
+        files: ^src/lead/
       - id: basedpyright
         name: basedpyright
         entry: basedpyright --project .

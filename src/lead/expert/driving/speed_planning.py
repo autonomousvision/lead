@@ -641,11 +641,8 @@ class SpeedPlanningMixin:
             A tuple containing the target speed considering the leading vehicle and the updated speed_reduced_by_obj.
         """
         target_speed_wrt_leading_vehicle = initial_target_speed
-        # _, _, ignored_adversarial_actors_ids = self.adversarial_actors_ids
 
         for vehicle_id, _ in predicted_bounding_boxes.items():
-            # if vehicle_id in ignored_adversarial_actors_ids:
-            #     continue
             if vehicle_id in self.leading_vehicle_ids and not self.near_lane_change:
                 # Vehicle is in front of the ego vehicle
                 ego_speed = self.ego_vehicle.get_velocity().length()
@@ -1335,7 +1332,7 @@ class SpeedPlanningMixin:
             distance_to_stop_sign = next_traffic_light_bb["distance"]
 
         # Compute the target speed using the IDM
-        target_speed = compute_target_speed_idm(
+        return compute_target_speed_idm(
             config=self.config_expert,
             desired_speed=target_speed,
             leading_actor_length=0,
@@ -1347,7 +1344,6 @@ class SpeedPlanningMixin:
         )
 
         # Return whether the ego vehicle is affected by the stop sign and the adjusted target speed
-        return target_speed
 
     def _vehicle_obstacle_detected(
         self,

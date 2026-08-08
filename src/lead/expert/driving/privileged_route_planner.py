@@ -288,8 +288,7 @@ class PrivilegedRoutePlanner:
             The smoothed transition value between 0 and 1.
         """
 
-        smoothed_value = -np.cos(value * np.pi) / 2.0 + 0.5
-        return smoothed_value
+        return -np.cos(value * np.pi) / 2.0 + 0.5
 
     def shift_route_smoothly(
         self,
@@ -623,9 +622,7 @@ class PrivilegedRoutePlanner:
         yaws = np.arctan2(differences[:, 1], differences[:, 0]) * 180.0 / np.pi
 
         # Add first and last yaw angles to maintain array length
-        yaws = np.concatenate([[yaws[0]], yaws, [yaws[-1]]])
-
-        return yaws
+        return np.concatenate([[yaws[0]], yaws, [yaws[-1]]])
 
     def smooth_and_supersample(
         self,
@@ -1052,8 +1049,7 @@ class PrivilegedRoutePlanner:
             ]
 
             return leading_vehicle_ids.tolist()
-        else:
-            return []
+        return []
 
     def compute_trailing_vehicles(
         self,
@@ -1138,5 +1134,4 @@ class PrivilegedRoutePlanner:
             ]
 
             return vehicles_behind_ids.tolist()
-        else:
-            return []
+        return []

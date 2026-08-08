@@ -4,7 +4,7 @@ import jaxtyping as jt
 import numpy as np
 import numpy.typing as npt
 
-from lead.common.geometry import euler_deg_to_mat
+from lead.common.geometry import euler_degrees_to_rotation_matrix
 
 
 def lidar_to_ego_coordinate(
@@ -24,7 +24,11 @@ def lidar_to_ego_coordinate(
     Returns:
         LiDAR points transformed to ego vehicle coordinate system.
     """
-    rotation_matrix = euler_deg_to_mat(lidar_rot[0], lidar_rot[1], lidar_rot[2])
+    rotation_matrix = euler_degrees_to_rotation_matrix(
+        lidar_rot[0],
+        lidar_rot[1],
+        lidar_rot[2],
+    )
     translation = np.array(lidar_pos)
     lidar_points = (rotation_matrix @ lidar[1][:, :3].T).T + translation
     lidar_points[:, 2] = (
@@ -60,7 +64,7 @@ def radar_points_to_ego(
     z = r * np.sin(alt)
     pts = np.stack([x, y, z], axis=1).astype(np.float32)
 
-    R_se = euler_deg_to_mat(*sensor_rot)
+    R_se = euler_degrees_to_rotation_matrix(*sensor_rot)
     pts_ego = (R_se @ pts.T).T + np.asarray(sensor_pos, dtype=np.float32).reshape(1, 3)
 
     pts_ego[:, 2] = pts_ego[:, 2] - sensor_pos[-1] / 2  # Not sure why we need this :/

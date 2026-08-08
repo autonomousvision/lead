@@ -5,20 +5,21 @@ import math
 import re
 
 import carla
+import jaxtyping as jt
 import numpy as np
 import numpy.typing as npt
 from agents.navigation.local_planner import RoadOption
 
-from lead.common.geometry import normalize_angle
+from lead.common.geometry import normalize_angle_rad
 
 LOG = logging.getLogger(__name__)
 
 
 def convert_gps_to_carla(
-    gps: npt.NDArray,
+    gps: jt.Float[npt.NDArray, " 3"],
     lat_ref: float,
     lon_ref: float,
-) -> npt.NDArray:
+) -> jt.Float[npt.NDArray, " 3"]:
     """
     Converts GPS signal into the CARLA coordinate frame.
 
@@ -42,16 +43,14 @@ def convert_gps_to_carla(
         - my
     )
     x = mx - scale * lon_ref * math.pi * EARTH_RADIUS_EQUA / 180.0
-    gps = np.array([x, y, gps[2]])
-
-    return gps
+    return np.array([x, y, gps[2]])
 
 
 def convert_tmerc_gnss_to_carla(
-    gnss: npt.NDArray,
+    gnss: jt.Float[npt.NDArray, " 3"],
     lat_ref: float,
     lon_ref: float,
-) -> npt.NDArray:
+) -> jt.Float[npt.NDArray, " 3"]:
     """
     Converts a transverse-Mercator GNSS reading into the CARLA coordinate frame.
 
@@ -84,11 +83,11 @@ def convert_tmerc_gnss_to_carla(
 
 
 def convert_gnss_to_carla(
-    gnss: npt.NDArray,
+    gnss: jt.Float[npt.NDArray, " 3"],
     lat_ref: float,
     lon_ref: float,
     uses_transverse_mercator: bool,
-) -> npt.NDArray:
+) -> jt.Float[npt.NDArray, " 3"]:
     """
     Converts a GNSS sensor reading into the CARLA coordinate frame.
 
@@ -201,4 +200,4 @@ def preprocess_compass(compass: float) -> float:
     if math.isnan(compass):  # simulation bug
         compass = 0.0
     # The minus 90.0 degree is because the compass sensor uses a different coordinate system then CARLA
-    return normalize_angle(compass - np.deg2rad(90.0))
+    return normalize_angle_rad(compass - np.deg2rad(90.0))

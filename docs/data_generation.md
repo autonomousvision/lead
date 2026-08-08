@@ -4,16 +4,16 @@
 
 The expert drives CARLA routes and writes a py123d dataset to `PY123D_DATA_ROOT`. Start CARLA and run:
 
-```bash
-python -m lead --expert --routes lead/src/lead/routes/data_routes/lead/Accident/route_001761.xml
+```console
+user@host:~/lead$ python -m lead --expert --routes src/lead/routes/data_routes/lead/Accident/route_001761.xml
 ```
 
 ## Parallel collection on SLURM
 
 For collecting many routes in parallel on a SLURM cluster:
 
-```bash
-python scripts/slurm/collect_data.py
+```console
+user@host:~/lead$ python scripts/slurm/collect_data.py
 ```
 
 Every route XML becomes its own SLURM job with a private CARLA instance. The launcher
@@ -22,17 +22,128 @@ and SLURM resources are set in `.env` (see `.env.example`). A route counts as fi
 once its result file shows a completed run with a nonzero route score, so re-running
 the launcher only collects what is missing.
 
-## Common issues
+## Change the sensor rig
 
-**Corrupted maps after parallel collection.** py123d maps are shared: one map per town,
-used by all logs. A writer converts a missing map on first use, so parallel jobs in the
-same town can race and corrupt the shared map files. Convert all maps once before
-starting parallel jobs:
+The rig is `SensorRigConfig` in
+[sensor_rig_config.py](../src/lead/config/expert/sensor_rig_config.py): two lidars, a
+list of cameras, a list of radars, edited in place. It both spawns the CARLA sensors and
+becomes the calibration written into the log, so collecting with your own rig is that
+edit plus a re-run of the expert.
 
-```bash
-python scripts/common/convert_py123d_maps.py
+<details>
+<summary>Mounting a different camera rig</summary>
+
+A single front camera instead of the six-camera surround rig:
+
+```python
+cameras: list[CameraSpec] = [
+    {  # front
+        "pos": [0.25, 0.0, 2.25],
+        "rot": [0.0, 0.0, 0.0],
+        "width": 1024,
+        "height": 512,
+        "fov": 90,
+    },
+]
 ```
 
-Already-converted towns are skipped; `collect_data.py` runs this automatically. To
-recover a corrupted map, delete its `.arrow` file under `<PY123D_DATA_ROOT>/maps/` and
-re-run the conversion.
+Camera `i` is stored under the ID that `CAMERA_ID_BY_LEAD_INDEX` in
+[py123d_log_api.py](../src/lead/api/py123d_log_api.py) maps it to, so more than the six
+mapped cameras (or four radars) needs an entry each. All cameras share the resolution of
+`cameras[0]`, and the rig is always two lidars. Depth, instance and perturbated cameras
+are derived from the RGB list on their own; a policy's camera selection,
+`policy.transfuser.camera.input_cameras` for TransFuser, is not. Scalar knobs need no
+edit at all: the expert also reads the `LEAD_CONFIG` dotlist, e.g.
+`export LEAD_CONFIG="expert.sensor_rig.use_radars=false"`.
+
+Training reads `<PY123D_DATA_ROOT>/config.yaml` as its expert section, so store the
+config with the data. `scripts/slurm/collect_data.py` does it; after a local run:
+
+```python
+import yaml
+
+from lead.config import load_lead_config, yaml_filtered
+
+expert_config = yaml_filtered(load_lead_config().expert.to_dict())
+with open("data/lead/123D/config.yaml", "w", encoding="utf-8") as f:
+    yaml.safe_dump(expert_config, f, sort_keys=False)
+```
+
+</details>
+
+## Add a modality offline
+
+A log is one Arrow file per modality stream plus `sync.arrow`, which holds one row per
+tick with the row index each stream sits at. A modality computed after collection —
+reasoning traces, captions, auto-labels — is therefore just another file: write
+`custom.<id>.arrow` next to the others, and closing the writer rebuilds the sync table
+from every `*.arrow` in the directory, leaving the existing streams as they are. It
+reads back like any other stream,
+`scene.get_custom_modality_at_iteration(0, "reasoning").data`, and LEAD's own
+`custom.driving_meta` is nothing more than that.
+
+<details>
+<summary>Example code</summary>
+
+```python
+from pathlib import Path
+
+import pyarrow as pa
+from py123d.api.scene.arrow.arrow_log_writer import ArrowLogWriter, SyncConfig
+from py123d.api.scene.arrow.arrow_scene_builder import ArrowSceneBuilder
+from py123d.api.scene.arrow.utils.log_writer_config import LogWriterConfig
+from py123d.api.scene.scene_filter import SceneFilter
+from py123d.common.execution.thread_pool_executor import ThreadPoolExecutor
+from py123d.datatypes import CustomModality, CustomModalityMetadata, Timestamp
+
+logs_root = Path("data/lead/123D/logs")
+log_dir = logs_root / "normal_view/Accident/Town03_Rep0_route_001783_route0"
+
+# The log's own metadata; the writer resolves the same directory back from it.
+scenes = ArrowSceneBuilder(
+    logs_root=str(logs_root),
+    maps_root="data/lead/123D/maps",
+).get_scenes(
+    SceneFilter(
+        split_names=["normal_view/Accident"],
+        log_names=[log_dir.name],
+        future_num_iterations=0,
+    ),
+    ThreadPoolExecutor(),
+)
+log_metadata = scenes[0].get_log_metadata()
+
+# The tick timestamps the sync table already defines.
+sync = pa.ipc.open_file(pa.memory_map(str(log_dir / "sync.arrow"))).read_all()
+timestamps = sync.column("sync.timestamp_us").to_pylist()
+
+writer = ArrowLogWriter(
+    log_writer_config=LogWriterConfig(force_log_conversion=True),
+    logs_root=logs_root,
+    sensors_root=Path("data/lead/123D/sensors"),
+    sync_config=SyncConfig(
+        reference_column="custom.driving_meta.timestamp_us",
+        direction="backward",
+    ),
+)
+writer.reset(log_metadata)
+
+metadata = CustomModalityMetadata(modality_id="reasoning", metadata={"model": "..."})
+for time_us in timestamps:
+    writer.write_async(
+        CustomModality(
+            data={"text": your_caption_for(time_us)},
+            metadata=metadata,
+            timestamp=Timestamp.from_us(time_us),
+        ),
+    )
+writer.close()
+```
+
+Values go through msgpack, so numpy arrays are fine and numpy scalars such as `np.bool_`
+are not. Timestamps must be non-decreasing and need not cover every tick; ticks without
+a row keep a null column, exactly like the camera streams at 4 Hz. `reference_column`
+has to stay the stream the log was written against, and the rebuild overwrites
+`sync.arrow` in place.
+
+</details>

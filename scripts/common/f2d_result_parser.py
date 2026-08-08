@@ -9,6 +9,7 @@ import math
 import re
 from collections.abc import Iterable
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 
@@ -406,7 +407,7 @@ def print_hm_overview(
     rows: list[dict],
     key_fields: tuple[str, ...],
 ) -> None:
-    print("")
+    print()
     print(f"{title}:")
     if not rows:
         print("No complete Base/Generalization overview available.")
@@ -453,10 +454,11 @@ def build_latex_row(table: pd.DataFrame, method: str, b2d_score: float | None) -
             + ", ".join(missing_splits),
         )
 
-    base_ds = float(split_scores.loc["Base", "DS"])
-    base_success = float(split_scores.loc["Base", "Success"])
-    gen_ds = float(split_scores.loc["Generalization", "DS"])
-    gen_success = float(split_scores.loc["Generalization", "Success"])
+    # The stubs type scalar .loc lookups as Scalar, which float() cannot take.
+    base_ds = float(cast("float", split_scores.loc["Base", "DS"]))
+    base_success = float(cast("float", split_scores.loc["Base", "Success"]))
+    gen_ds = float(cast("float", split_scores.loc["Generalization", "DS"]))
+    gen_success = float(cast("float", split_scores.loc["Generalization", "Success"]))
     hm_base = harmonic_mean(base_ds, base_success)
     hm_gen = harmonic_mean(gen_ds, gen_success)
     b2d_value = "B2D_TODO" if b2d_score is None else f"{b2d_score:.1f}"
@@ -494,14 +496,14 @@ def main() -> None:
         ("Class",),
     )
 
-    print("")
+    print()
     print(f"Parsed rows: {len(rows)}")
     print(f"Seeds: {', '.join(sorted(rows['Seed'].astype(str).unique().tolist()))}")
     if warnings:
-        print("")
+        print()
         for warning in warnings:
             print(warning)
-    print("")
+    print()
     print("Summary:")
     summary_rows = build_summary_rows(table, args.b2d_score)
     if not summary_rows:
@@ -523,11 +525,11 @@ def main() -> None:
 
     try:
         latex_row = build_latex_row(table, args.method, args.b2d_score)
-        print("")
+        print()
         print("LaTeX row:")
         print(latex_row)
     except ValueError as exc:
-        print("")
+        print()
         print(f"LaTeX row unavailable: {exc}")
 
     if args.strict and strict_failure:

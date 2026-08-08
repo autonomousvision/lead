@@ -13,7 +13,7 @@ if typing.TYPE_CHECKING:
     import carla
 
 
-def angle2class(angle: float, num_dir_bins: int) -> tuple[int, float]:
+def angle_to_yaw_class(angle: float, num_yaw_bins: int) -> tuple[int, float]:
     """Convert continuous angle to discrete class and residual.
 
     Encodes a continuous angle into a discrete class and a small regression
@@ -21,7 +21,7 @@ def angle2class(angle: float, num_dir_bins: int) -> tuple[int, float]:
 
     Args:
         angle: Continuous angle in radians (0-2π or -π~π).
-        num_dir_bins: Number of discrete direction bins for encoding.
+        num_yaw_bins: Number of discrete direction bins for encoding.
 
     Returns:
         A tuple containing:
@@ -29,14 +29,14 @@ def angle2class(angle: float, num_dir_bins: int) -> tuple[int, float]:
             - Angle residual as float (difference from class center)
     """
     angle = angle % (2 * np.pi)
-    angle_per_class = 2 * np.pi / float(num_dir_bins)
+    angle_per_class = 2 * np.pi / float(num_yaw_bins)
     shifted_angle = (angle + angle_per_class / 2) % (2 * np.pi)
     angle_cls = shifted_angle // angle_per_class
     angle_res = shifted_angle - (angle_cls * angle_per_class + angle_per_class / 2)
     return int(angle_cls), angle_res
 
 
-def normalize_angle(x: float) -> float:
+def normalize_angle_rad(angle_rad: float) -> float:
     """
     Normalize an angle to the range [-π, π).
 
@@ -45,56 +45,56 @@ def normalize_angle(x: float) -> float:
     other applications where angle wrapping is needed.
 
     Args:
-        x: Angle in radians (can be any real number)
+        angle_rad: Angle in radians (can be any real number)
 
     Returns:
         float: Normalized angle in the range [-π, π)
 
     Examples:
-        >>> normalize_angle(3 * np.pi)
+        >>> normalize_angle_rad(3 * np.pi)
         -3.141592653589793
-        >>> normalize_angle(-3 * np.pi)
+        >>> normalize_angle_rad(-3 * np.pi)
         3.141592653589793
-        >>> normalize_angle(np.pi / 4)
+        >>> normalize_angle_rad(np.pi / 4)
         0.7853981633974483
-        >>> normalize_angle(0)
+        >>> normalize_angle_rad(0)
         0.0
     """
-    x = x % (2 * np.pi)
-    if x > np.pi:
-        x -= 2 * np.pi
-    return x
+    angle_rad = angle_rad % (2 * np.pi)
+    if angle_rad > np.pi:
+        angle_rad -= 2 * np.pi
+    return angle_rad
 
 
-def normalize_angle_degree(x: float) -> float:
+def normalize_angle_deg(angle_deg: float) -> float:
     """
     Normalize an angle to the range [-180°, 180°).
 
     Args:
-        x: Angle in degrees (can be any real number)
+        angle_deg: Angle in degrees (can be any real number)
 
     Returns:
         float: Normalized angle in the range [-180°, 180°)
 
     Examples:
-        >>> normalize_angle_degree(450)
+        >>> normalize_angle_deg(450)
         90.0
-        >>> normalize_angle_degree(-270)
+        >>> normalize_angle_deg(-270)
         90.0
-        >>> normalize_angle_degree(180)
+        >>> normalize_angle_deg(180)
         -180.0
-        >>> normalize_angle_degree(90)
+        >>> normalize_angle_deg(90)
         90.0
-        >>> normalize_angle_degree(0)
+        >>> normalize_angle_deg(0)
         0.0
     """
-    x = x % 360.0
-    if x > 180.0:
-        x -= 360.0
-    return x
+    angle_deg = angle_deg % 360.0
+    if angle_deg > 180.0:
+        angle_deg -= 360.0
+    return angle_deg
 
 
-def euler_deg_to_mat(
+def euler_degrees_to_rotation_matrix(
     roll: float,
     pitch: float,
     yaw: float,
@@ -118,24 +118,27 @@ def euler_deg_to_mat(
     Rx = np.array([[1, 0, 0], [0, np.cos(r), -np.sin(r)], [0, np.sin(r), np.cos(r)]])
     Ry = np.array([[np.cos(p), 0, np.sin(p)], [0, 1, 0], [-np.sin(p), 0, np.cos(p)]])
     Rz = np.array([[np.cos(y), -np.sin(y), 0], [np.sin(y), np.cos(y), 0], [0, 0, 1]])
-    # roll (x), pitch (y), yaw (z)
+    # Compose roll about x, pitch about y, yaw about z.
     return Rz @ Ry @ Rx
 
 
-def inverse_conversion_2d(
+def to_local_frame_2d(
     point: jt.Float[npt.NDArray, " 2"],
     translation: jt.Float[npt.NDArray, " 2"],
     yaw: float,
 ) -> jt.Float[npt.NDArray, " 2"]:
-    """
-    Performs a forward coordinate conversion on a 2D point.
+    """Express a global 2D point in the local frame at ``(translation, yaw)``.
+
+    Computes ``Rᵀ (point - translation)`` — the inverse of
+    :func:`to_global_frame_2d`.
 
     Args:
-        point: Point to be converted
-        translation: 2D translation vector of the new coordinate system
-        yaw: yaw in radian of the new coordinate system
+        point: Point in the global frame.
+        translation: Global 2D origin of the local frame.
+        yaw: Yaw of the local frame in radians.
+
     Returns:
-        Converted point.
+        The point expressed in the local frame.
     """
     rotation_matrix = np.array(
         [[np.cos(yaw), -np.sin(yaw)], [np.sin(yaw), np.cos(yaw)]],
@@ -143,30 +146,31 @@ def inverse_conversion_2d(
     return rotation_matrix.T @ (point - translation)
 
 
-def conversion_2d(
+def to_global_frame_2d(
     point: jt.Float[npt.NDArray, " 2"],
     translation: jt.Float[npt.NDArray, " 2"],
     yaw: float,
 ) -> jt.Float[npt.NDArray, " 2"]:
-    """
-    Performs a forward coordinate conversion on a 2D point
+    """Express a local 2D point in the global frame; inverse of :func:`to_local_frame_2d`.
+
+    Computes ``R point + translation``.
 
     Args:
-        point: Point to be converted
-        translation: 2D translation vector of the new coordinate system
-        yaw: yaw in radian of the new coordinate system
+        point: Point in the local frame at ``(translation, yaw)``.
+        translation: Global 2D origin of the local frame.
+        yaw: Yaw of the local frame in radians.
+
     Returns:
-        Converted point.
+        The point expressed in the global frame.
     """
     rotation_matrix = np.array(
         [[np.cos(yaw), -np.sin(yaw)], [np.sin(yaw), np.cos(yaw)]],
     )
 
-    converted_point = rotation_matrix @ point + translation
-    return converted_point
+    return rotation_matrix @ point + translation
 
 
-def get_world_coordinate_2d(
+def world_coordinate_2d(
     ego_transform: carla.Transform,
     local_location: carla.Location,
 ) -> carla.Location:
@@ -191,9 +195,9 @@ def get_world_coordinate_2d(
 
 
 def get_relative_transform(
-    ego_matrix: npt.NDArray,
-    vehicle_matrix: npt.NDArray,
-) -> npt.NDArray:
+    ego_matrix: jt.Float[npt.NDArray, "4 4"],
+    vehicle_matrix: jt.Float[npt.NDArray, "4 4"],
+) -> jt.Float[npt.NDArray, " 3"]:
     """Returns the position of the vehicle matrix in the ego coordinate system.
 
     Args:
@@ -207,17 +211,17 @@ def get_relative_transform(
     return rot @ relative_pos
 
 
-def get_horizontal_distance(actor1: carla.Actor, actor2: carla.Actor) -> float:
+def get_horizontal_distance(actor_a: carla.Actor, actor_b: carla.Actor) -> float:
     """Get horizontal distance between two actors.
 
     Args:
-        actor1: First actor.
-        actor2: Second actor.
+        actor_a: First actor.
+        actor_b: Second actor.
 
     Returns:
         float: Horizontal distance between the two actors.
     """
-    location1, location2 = actor1.get_location(), actor2.get_location()
+    location1, location2 = actor_a.get_location(), actor_b.get_location()
 
     # Compute the distance vector (ignoring the z-coordinate)
     import carla
@@ -254,7 +258,7 @@ def _obb_axes(obb: carla.BoundingBox) -> jt.Float[npt.NDArray, "3 3"]:
     )
 
 
-def check_obb_intersection(obb1: carla.BoundingBox, obb2: carla.BoundingBox) -> bool:
+def check_obb_intersection(box_a: carla.BoundingBox, box_b: carla.BoundingBox) -> bool:
     """
     Check if two 3D oriented bounding boxes (OBBs) intersect.
 
@@ -262,29 +266,29 @@ def check_obb_intersection(obb1: carla.BoundingBox, obb2: carla.BoundingBox) -> 
     and their 9 cross products), preceded by a bounding-sphere early-out.
 
     Args:
-        obb1: The first oriented bounding box.
-        obb2: The second oriented bounding box.
+        box_a: The first oriented bounding box.
+        box_b: The second oriented bounding box.
 
     Returns:
         True if the two OBBs intersect, False otherwise.
     """
     relative_position = np.array(
         [
-            obb2.location.x - obb1.location.x,
-            obb2.location.y - obb1.location.y,
-            obb2.location.z - obb1.location.z,
+            box_b.location.x - box_a.location.x,
+            box_b.location.y - box_a.location.y,
+            box_b.location.z - box_a.location.z,
         ],
     )
-    extent1 = np.array([obb1.extent.x, obb1.extent.y, obb1.extent.z])
-    extent2 = np.array([obb2.extent.x, obb2.extent.y, obb2.extent.z])
+    extent1 = np.array([box_a.extent.x, box_a.extent.y, box_a.extent.z])
+    extent2 = np.array([box_b.extent.x, box_b.extent.y, box_b.extent.z])
 
     # Boxes further apart than the sum of their bounding spheres cannot intersect
     max_reach = np.linalg.norm(extent1) + np.linalg.norm(extent2)
     if relative_position @ relative_position > max_reach * max_reach:
         return False
 
-    axes1 = _obb_axes(obb1)
-    axes2 = _obb_axes(obb2)
+    axes1 = _obb_axes(box_a)
+    axes2 = _obb_axes(box_b)
     cross_axes = np.cross(axes1[:, None, :], axes2[None, :, :]).reshape(9, 3)
     candidate_axes = np.concatenate([axes1, axes2, cross_axes], axis=0)
 

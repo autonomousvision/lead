@@ -45,12 +45,7 @@ def install_path_hook() -> None:
     if conda_prefix:
         hook = Path(conda_prefix) / "etc" / "conda" / "activate.d" / "lead_path.sh"
         hook.parent.mkdir(parents=True, exist_ok=True)
-        hook.write_text(
-            export_line + "\n" + 'export UV_PROJECT_ENVIRONMENT="$CONDA_PREFIX"\n',
-        )
-        unhook = Path(conda_prefix) / "etc" / "conda" / "deactivate.d" / "lead_path.sh"
-        unhook.parent.mkdir(parents=True, exist_ok=True)
-        unhook.write_text("unset UV_PROJECT_ENVIRONMENT\n")
+        hook.write_text(export_line + "\n")
     elif virtual_env:
         activate = Path(virtual_env) / "bin" / "activate"
         if activate.exists() and export_line not in activate.read_text():

@@ -1,9 +1,10 @@
 """Camera projection helpers."""
 
+import jaxtyping as jt
 import numpy as np
 import numpy.typing as npt
 
-from lead.common.geometry import euler_deg_to_mat
+from lead.common.geometry import euler_degrees_to_rotation_matrix
 
 
 def project_points_to_image(
@@ -12,7 +13,7 @@ def project_points_to_image(
     camera_fov: int | float,
     camera_width: int,
     camera_height: int,
-    points: npt.NDArray,
+    points: jt.Float[npt.NDArray, "n 2"],
 ) -> tuple[list[tuple[float, float]], list[bool]]:
     """
     Project 2D points (with z=0) to 2D image coordinates using camera parameters.
@@ -39,14 +40,14 @@ def project_points_to_image(
 
     # Get rotation matrix using the provided function
     roll, pitch, yaw = camera_rot
-    R = euler_deg_to_mat(roll, pitch, yaw)
+    R = euler_degrees_to_rotation_matrix(roll, pitch, yaw)
 
     # Transform points to camera coordinate system
     # Translate points relative to camera position
     points_translated = points_3d - camera_pos_arr
 
     # Rotate points to camera coordinate system
-    points_camera: npt.NDArray = (R @ points_translated.T).T
+    points_camera: jt.Float[npt.NDArray, "n 3"] = (R @ points_translated.T).T
 
     # Convert from world coordinates (x=forward, y=right, z=up)
     # to camera coordinates (x=right, y=down, z=forward)

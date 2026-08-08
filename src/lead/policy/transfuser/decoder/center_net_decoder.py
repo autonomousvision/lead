@@ -13,11 +13,13 @@ import torch.nn.functional as F
 from torch import nn
 from torch.amp.autocast_mode import autocast
 
-import lead.common.geometry as geometry
+from lead.api.abstract_policy import AuxiliaryLog, TaskLosses
+from lead.common import geometry
 from lead.config import LeadConfig
-from lead.policy.transfuser import ops, precision
-from lead.policy.transfuser.dataloader import labels
-from lead.policy.transfuser.labels import BoundingBoxIndex
+from lead.config.policy.transfuser.label_classes import BoundingBoxIndex
+from lead.policy.transfuser.dataloader import label_builders
+from lead.policy.transfuser.dataloader.sample import TransfuserForwardBatch
+from lead.policy.transfuser.utils import ops, precision
 
 
 class CenterNetDecoder(nn.Module):
@@ -25,58 +27,57 @@ class CenterNetDecoder(nn.Module):
         self,
         num_classes: int,
         lead_config: LeadConfig,
-        device: torch.device,
     ) -> None:
         """Center Net Head implementation adapted from MM Detection
         Args:
             num_classes: Number of classes to predict.
             lead_config: Root config tree.
-            device: Device to run the model on.
         """
         super().__init__()
-        self.device = device
         self.lead_config = lead_config
         config = lead_config.policy.transfuser
         self.config = config
         self.num_classes = num_classes
 
         self.heatmap_head: nn.Sequential = self._build_head(
-            config.bb_input_channel,
+            config.box_head_input_channels,
             num_classes,
         )
-        self.wh_head: nn.Sequential = self._build_head(config.bb_input_channel, 2)
-        self.offset_head: nn.Sequential = self._build_head(config.bb_input_channel, 2)
-        self.yaw_class_head: nn.Sequential = self._build_head(
-            config.bb_input_channel,
-            config.num_dir_bins,
+        self.wh_head: nn.Sequential = self._build_head(
+            config.box_head_input_channels,
+            2,
         )
-        self.yaw_res_head: nn.Sequential = self._build_head(config.bb_input_channel, 1)
-        if lead_config.training.data.training_used_lidar_steps > 1:
+        self.offset_head: nn.Sequential = self._build_head(
+            config.box_head_input_channels,
+            2,
+        )
+        self.yaw_class_head: nn.Sequential = self._build_head(
+            config.box_head_input_channels,
+            config.num_yaw_bins,
+        )
+        self.yaw_res_head: nn.Sequential = self._build_head(
+            config.box_head_input_channels,
+            1,
+        )
+        if lead_config.policy.transfuser.predict_box_velocity:
             self.velocity_head: nn.Sequential = self._build_head(
-                config.bb_input_channel,
+                config.box_head_input_channels,
                 1,
             )
 
     def _build_head(self, in_channel: int, out_channel: int) -> nn.Sequential:
-        """Build head for each branch.
-        Args:
-            in_channel: Number of input channels.
-            out_channel: Number of output channels.
-        Returns:
-            Head network.
-        """
-        layer = nn.Sequential(
+        """Build head for each branch."""
+        return nn.Sequential(
             nn.Conv2d(in_channel, in_channel, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
             nn.Conv2d(in_channel, out_channel, kernel_size=1),
         )
-        return layer
 
     def forward(
         self,
-        data: dict,
-        bev_feature_grid: torch.Tensor,
-        log: dict,
+        data: TransfuserForwardBatch,
+        bev_feature_grid: jt.Float[torch.Tensor, "b c cell_h cell_w"],
+        log: AuxiliaryLog,
     ) -> CenterNetBoundingBoxPrediction:
         """
         Forward feature of a single level.
@@ -88,13 +89,23 @@ class CenterNetDecoder(nn.Module):
         Returns:
             Object containing all predictions with proper shapes.
         """
-        center_heatmap_pred: torch.Tensor = self.heatmap_head(bev_feature_grid)
-        wh_pred: torch.Tensor = self.wh_head(bev_feature_grid)
-        offset_pred: torch.Tensor = self.offset_head(bev_feature_grid)
-        yaw_class_pred: torch.Tensor = self.yaw_class_head(bev_feature_grid)
-        yaw_res_pred: torch.Tensor = self.yaw_res_head(bev_feature_grid)
-        velocity_pred: torch.Tensor | None = None
-        if self.lead_config.training.data.training_used_lidar_steps > 1:
+        center_heatmap_pred: jt.Float[torch.Tensor, "b n_box_classes cell_h cell_w"] = (
+            self.heatmap_head(bev_feature_grid)
+        )
+        wh_pred: jt.Float[torch.Tensor, "b 2 cell_h cell_w"] = self.wh_head(
+            bev_feature_grid,
+        )
+        offset_pred: jt.Float[torch.Tensor, "b 2 cell_h cell_w"] = self.offset_head(
+            bev_feature_grid,
+        )
+        yaw_class_pred: jt.Float[torch.Tensor, "b n_yaw_bins cell_h cell_w"] = (
+            self.yaw_class_head(bev_feature_grid)
+        )
+        yaw_res_pred: jt.Float[torch.Tensor, "b 1 cell_h cell_w"] = self.yaw_res_head(
+            bev_feature_grid,
+        )
+        velocity_pred: jt.Float[torch.Tensor, "b 1 cell_h cell_w"] | None = None
+        if self.lead_config.policy.transfuser.predict_box_velocity:
             velocity_pred = self.velocity_head(bev_feature_grid)
 
         return CenterNetBoundingBoxPrediction(
@@ -110,11 +121,11 @@ class CenterNetDecoder(nn.Module):
 
     def compute_loss(
         self,
-        data: dict,
+        data: TransfuserForwardBatch,
         bounding_box_features: CenterNetBoundingBoxPrediction,
-        losses: dict,
-        log: dict,
-    ):
+        losses: TaskLosses,
+        log: AuxiliaryLog,
+    ) -> None:
         """
         Compute bounding box prediction losses and metrics.
         Args:
@@ -123,56 +134,37 @@ class CenterNetDecoder(nn.Module):
             losses: Dictionary to store computed losses.
             log: Dictionary to store debug messages.
         """
-        center_heatmap_target: torch.Tensor = data["center_net_heatmap"].to(
-            self.device,
-            dtype=self.lead_config.training.optimization.torch_float_type,
-            non_blocking=True,
-        )
+        center_heatmap_target: jt.Float[
+            torch.Tensor,
+            "b n_box_classes cell_h cell_w",
+        ] = data["center_net_heatmap"]
 
-        wh_target: torch.Tensor = data["center_net_wh"].to(
-            self.device,
-            dtype=self.lead_config.training.optimization.torch_float_type,
-            non_blocking=True,
-        )
+        wh_target: jt.Float[torch.Tensor, "b 2 cell_h cell_w"] = data["center_net_wh"]
 
-        yaw_class_target: torch.Tensor = data["center_net_yaw_class"].to(
-            self.device,
-            dtype=torch.long,
-            non_blocking=True,
-        )
+        yaw_class_target: jt.Int64[torch.Tensor, "b cell_h cell_w"] = data[
+            "center_net_yaw_class"
+        ].to(dtype=torch.long)
 
-        yaw_res_target: torch.Tensor = data["center_net_yaw_res"].to(
-            self.device,
-            dtype=self.lead_config.training.optimization.torch_float_type,
-            non_blocking=True,
-        )
+        yaw_res_target: jt.Float[torch.Tensor, "b 1 cell_h cell_w"] = data[
+            "center_net_yaw_res"
+        ]
 
-        offset_target: torch.Tensor = data["center_net_offset"].to(
-            self.device,
-            dtype=self.lead_config.training.optimization.torch_float_type,
-            non_blocking=True,
-        )
+        offset_target: jt.Float[torch.Tensor, "b 2 cell_h cell_w"] = data[
+            "center_net_offset"
+        ]
 
-        velocity_target: torch.Tensor = data["center_net_velocity"].to(
-            self.device,
-            dtype=self.lead_config.training.optimization.torch_float_type,
-            non_blocking=True,
-        )
+        velocity_target: jt.Float[torch.Tensor, "b 1 cell_h cell_w"] = data[
+            "center_net_velocity"
+        ]
 
-        pixel_weight: torch.Tensor = data["center_net_pixel_weight"].to(
-            self.device,
-            dtype=self.lead_config.training.optimization.torch_float_type,
-            non_blocking=True,
-        )  # [bs, 2, h, w]
+        pixel_weight: jt.Float[torch.Tensor, "b 2 cell_h cell_w"] = data[
+            "center_net_pixel_weight"
+        ]
 
         # avg_factor is the number of valid bounding boxes in the batch: losses use
         # sum reduction divided by it so pixels without a box (zeroed by pixel_weight)
         # have no impact. A small epsilon keeps this stable when there are no boxes.
-        avg_factor = data["center_net_avg_factor"].to(
-            self.device,
-            dtype=self.lead_config.training.optimization.torch_float_type,
-            non_blocking=True,
-        )  # (B,)
+        avg_factor: jt.Float[torch.Tensor, " b"] = data["center_net_avg_factor"]
 
         with autocast(device_type="cuda", enabled=False):
             # Compute per-sample losses for heatmap
@@ -187,7 +179,7 @@ class CenterNetDecoder(nn.Module):
             avg_factor_clamped = (
                 avg_factor
                 + torch.finfo(
-                    self.lead_config.training.optimization.torch_float_type,
+                    self.lead_config.training.optimization.torch_dtype,
                 ).eps
             )
             loss_center_heatmap = (
@@ -250,12 +242,8 @@ class CenterNetDecoder(nn.Module):
             loss_yaw_res_per_sample = loss_yaw_res_per_sample.sum(dim=(1, 2, 3))  # (B,)
             loss_yaw_res = (loss_yaw_res_per_sample / avg_factor_clamped).mean()
 
-        loss_velocity = torch.zeros(
-            1,
-            dtype=self.lead_config.training.optimization.torch_float_type,
-            device=self.device,
-        )
-        if self.lead_config.training.data.training_used_lidar_steps > 1:
+        loss_velocity = torch.zeros(1, device=center_heatmap_target.device)
+        if self.lead_config.policy.transfuser.predict_box_velocity:
             assert bounding_box_features.velocity_pred is not None
             loss_velocity_per_sample = (
                 F.l1_loss(
@@ -281,34 +269,29 @@ class CenterNetDecoder(nn.Module):
             },
         )
 
-        if (
-            "iteration" in data
-            and (
-                (data["iteration"] + 1)
-                % self.lead_config.training.experiment.log_scalars_frequency
-            )
-            == 0
-        ):
+        gradient_step = data.get("current_gradient_step")
+        log_every = self.lead_config.training.experiment.log_scalars_every_n_steps
+        if gradient_step is not None and ((gradient_step + 1) % log_every) == 0:
             heatmap_pred = bounding_box_features.center_heatmap_pred
             wh_pred = bounding_box_features.wh_pred
             offset_pred = bounding_box_features.offset_pred
             yaw_class_pred = bounding_box_features.yaw_class_pred
             yaw_res_pred = bounding_box_features.yaw_res_pred
-            log["center_net_output/heatmap_pred_min"] = heatmap_pred.min().item()
-            log["center_net_output/heatmap_pred_max"] = heatmap_pred.max().item()
-            log["center_net_output/wh_pred_min"] = wh_pred.min().item()
-            log["center_net_output/wh_pred_max"] = wh_pred.max().item()
-            log["center_net_output/offset_pred_min"] = offset_pred.min().item()
-            log["center_net_output/offset_pred_max"] = offset_pred.max().item()
-            log["center_net_output/yaw_class_pred_min"] = yaw_class_pred.min().item()
-            log["center_net_output/yaw_class_pred_max"] = yaw_class_pred.max().item()
-            log["center_net_output/yaw_res_pred_min"] = yaw_res_pred.min().item()
-            log["center_net_output/yaw_res_pred_max"] = yaw_res_pred.max().item()
-            if self.lead_config.training.data.training_used_lidar_steps > 1:
+            log["outputs/center_net_heatmap_min"] = heatmap_pred.min().item()
+            log["outputs/center_net_heatmap_max"] = heatmap_pred.max().item()
+            log["outputs/center_net_wh_min"] = wh_pred.min().item()
+            log["outputs/center_net_wh_max"] = wh_pred.max().item()
+            log["outputs/center_net_offset_min"] = offset_pred.min().item()
+            log["outputs/center_net_offset_max"] = offset_pred.max().item()
+            log["outputs/center_net_yaw_class_min"] = yaw_class_pred.min().item()
+            log["outputs/center_net_yaw_class_max"] = yaw_class_pred.max().item()
+            log["outputs/center_net_yaw_res_min"] = yaw_res_pred.min().item()
+            log["outputs/center_net_yaw_res_max"] = yaw_res_pred.max().item()
+            if self.lead_config.policy.transfuser.predict_box_velocity:
                 velocity_pred = bounding_box_features.velocity_pred
                 assert velocity_pred is not None
-                log["center_net_output/velocity_pred_min"] = velocity_pred.min().item()
-                log["center_net_output/velocity_pred_max"] = velocity_pred.max().item()
+                log["outputs/center_net_velocity_min"] = velocity_pred.min().item()
+                log["outputs/center_net_velocity_max"] = velocity_pred.max().item()
 
 
 @dataclass
@@ -325,12 +308,11 @@ class CenterNetBoundingBoxPrediction:
     lead_config: LeadConfig
 
     @cached_property
-    def pred_bounding_box_image_system(self) -> jt.Float[npt.NDArray, "B K 9"]:
+    def bounding_boxes_in_image_frame(self) -> jt.Float[npt.NDArray, "B K 9"]:
         """Numpy array of shape (bs, k, 9) with features (x, y, w, h, yaw, velocity, brake, class, score) in image system"""
         config = self.lead_config.policy.transfuser
-        data_config = self.lead_config.expert.data_collection
-        k = config.top_k_center_keypoints
-        kernel = config.center_net_max_pooling_kernel
+        k = config.max_center_net_detections
+        kernel = config.center_net_max_pooling_kernel_size
 
         center_heatmap_pred = get_local_maximum(self.center_heatmap_pred, kernel=kernel)
 
@@ -351,7 +333,7 @@ class CenterNetBoundingBoxPrediction:
             yaw,
         )  # We don't predict brake but keep it for now to avoid refactoring
 
-        if self.lead_config.training.data.training_used_lidar_steps <= 1:
+        if not self.lead_config.policy.transfuser.predict_box_velocity:
             velocity = torch.zeros_like(yaw)
         else:
             assert self.velocity_pred is not None
@@ -373,20 +355,19 @@ class CenterNetBoundingBoxPrediction:
             ),
             dim=-1,
         )
-        batch_bboxes[:, :, : BoundingBoxIndex.YAW] *= data_config.pixels_per_meter
+        batch_bboxes[:, :, : BoundingBoxIndex.YAW] *= config.bev_pixels_per_meter
 
         return batch_bboxes.detach().cpu().float().numpy()
 
     @cached_property
-    def pred_bounding_box_vehicle_system(self) -> jt.Float[npt.NDArray, "B K 9"]:
+    def bounding_boxes_in_ego_frame(self) -> jt.Float[npt.NDArray, "B K 9"]:
         """Numpy array of shape (bs, k, 9) with features (x, y, w, h, yaw, velocity, brake, class, score) in vehicle system"""
         config = self.lead_config.policy.transfuser
-        data_config = self.lead_config.expert.data_collection
-        bboxes_image_system = self.pred_bounding_box_image_system
+        bboxes_image_system = self.bounding_boxes_in_image_frame
         # filter bbox based on the confidence of the prediction
         bboxes_image_system = bboxes_image_system[
             bboxes_image_system[:, :, BoundingBoxIndex.SCORE]
-            > config.bb_confidence_threshold
+            > config.box_confidence_threshold
         ]
         # convert to vehicle system
         bounding_box_vehicle_system = []
@@ -394,11 +375,11 @@ class CenterNetBoundingBoxPrediction:
             original_shape = bis.shape
             bis = bis.reshape(-1, 9)
             bounding_box_vehicle_system.append(
-                labels.bb_image_to_vehicle_system(
+                label_builders.box_rows_to_ego_frame(
                     bis,
-                    data_config.pixels_per_meter,
-                    data_config.min_x_meter,
-                    data_config.min_y_meter,
+                    config.bev_pixels_per_meter,
+                    config.bev_min_x_meter,
+                    config.bev_min_y_meter,
                 ).reshape(original_shape),
             )
         return np.array(bounding_box_vehicle_system).reshape(
@@ -423,10 +404,11 @@ class PredictedBoundingBox:
     score: float
 
     @property
-    def norm(self):
+    def distance_from_ego(self) -> float:
+        """Planar distance of the box centre from the ego, in meters."""
         return math.sqrt(self.x**2 + self.y**2)
 
-    def update(
+    def transformed_to(
         self,
         x: float,
         y: float,
@@ -436,7 +418,7 @@ class PredictedBoundingBox:
         orientation_target: float,
     ) -> PredictedBoundingBox:
         pos_diff = np.array([x_target, y_target]) - np.array([x, y])
-        rot_diff = geometry.normalize_angle(orientation_target - orientation)
+        rot_diff = geometry.normalize_angle_rad(orientation_target - orientation)
 
         # Rotate difference vector from global to local coordinate system.
         rotation_matrix = np.array(
@@ -458,7 +440,7 @@ class PredictedBoundingBox:
         # Calculate new coordinates
         local_coords = local_rot_matrix.T @ (np.array([self.x, self.y]) - pos_diff).T
         new_x, new_y = float(local_coords[0]), float(local_coords[1])
-        new_yaw = float(geometry.normalize_angle(self.yaw - rot_diff))
+        new_yaw = float(geometry.normalize_angle_rad(self.yaw - rot_diff))
 
         # Return a new bounding box with updated values
         return PredictedBoundingBox(
@@ -503,8 +485,8 @@ class PredictedBoundingBox:
 
 @precision.force_fp32(apply_to=("pred", "gaussian_target"))
 def gaussian_focal_loss(
-    pred: torch.Tensor,
-    gaussian_target: torch.Tensor,
+    pred: jt.Float[torch.Tensor, "b n_box_classes cell_h cell_w"],
+    gaussian_target: jt.Float[torch.Tensor, "b n_box_classes cell_h cell_w"],
     alpha: float = 2.0,
     gamma: float = 4.0,
     reduction: str = "mean",
@@ -578,7 +560,7 @@ def gen_gaussian_target(
         out_heatmap: Updated heatmap covered by gaussian kernel.
     """
     diameter = 2 * radius + 1
-    gaussian_kernel = gaussian2d(radius, sigma=diameter / 6, dtype=heatmap.dtype)
+    gaussian_kernel = gaussian2d(radius, sigma=diameter / 6, dtype=heatmap.dtype.type)
 
     x, y = center
 
@@ -628,10 +610,13 @@ def gaussian_radius(det_size: list[float], min_overlap: float) -> int:
     c3 = (min_overlap - 1) * width * height
     sq3 = sqrt(b3**2 - 4 * a3 * c3)
     r3 = (b3 + sq3) / (2 * a3)
-    return int(min(r1, r2, r3))
+    return max(0, int(min(r1, r2, r3)))
 
 
-def get_local_maximum(heat: torch.Tensor, kernel: int = 3) -> torch.Tensor:
+def get_local_maximum(
+    heat: jt.Float[torch.Tensor, "b n_box_classes cell_h cell_w"],
+    kernel: int = 3,
+) -> jt.Float[torch.Tensor, "b n_box_classes cell_h cell_w"]:
     """Extract local maximum pixel with given kernel.
 
     Args:
@@ -649,7 +634,7 @@ def get_local_maximum(heat: torch.Tensor, kernel: int = 3) -> torch.Tensor:
 
 
 def get_topk_from_heatmap(
-    scores: torch.Tensor,
+    scores: jt.Float[torch.Tensor, "b n_box_classes cell_h cell_w"],
     k: int = 20,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Get top k positions from heatmap.
@@ -676,11 +661,13 @@ def get_topk_from_heatmap(
 
 
 def gather_feat(
-    feat: torch.Tensor,
-    ind: torch.Tensor,
-    mask: torch.Tensor | None = None,
-) -> torch.Tensor:
+    feat: jt.Float[torch.Tensor, "b n_cells c"],
+    ind: jt.Int64[torch.Tensor, "b k"],
+    mask: jt.Bool[torch.Tensor, "b k"] | None = None,
+) -> jt.Float[torch.Tensor, "b k c"] | jt.Float[torch.Tensor, "n_kept c"]:
     """Gather feature according to index.
+
+    A mask drops the batch axis: the kept entries are flattened into one list.
 
     Args:
         feat: Target feature map.
@@ -688,7 +675,7 @@ def gather_feat(
         mask: Mask of feature map. Default: None.
 
     Returns:
-        Gathered feature.
+        Gathered feature, of shape (b, k, c) without a mask and (n_kept, c) with one.
     """
     dim = feat.size(2)
     ind = ind.unsqueeze(2).repeat(1, 1, dim)
@@ -700,7 +687,10 @@ def gather_feat(
     return feat
 
 
-def transpose_and_gather_feat(feat: torch.Tensor, ind: torch.Tensor) -> torch.Tensor:
+def transpose_and_gather_feat(
+    feat: jt.Float[torch.Tensor, "b c cell_h cell_w"],
+    ind: jt.Int64[torch.Tensor, "b k"],
+) -> jt.Float[torch.Tensor, "b k c"]:
     """Transpose and gather feature according to index.
 
     Args:
@@ -712,5 +702,4 @@ def transpose_and_gather_feat(feat: torch.Tensor, ind: torch.Tensor) -> torch.Te
     """
     feat = feat.permute(0, 2, 3, 1).contiguous()
     feat = feat.view(feat.size(0), -1, feat.size(3))
-    feat = gather_feat(feat, ind)
-    return feat
+    return gather_feat(feat, ind)

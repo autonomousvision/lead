@@ -10,7 +10,10 @@ from lead.common.geometry import rotate_point
 from lead.config import ExpertConfig
 
 
-def distance_location_to_route(route: npt.NDArray, location: npt.NDArray) -> float:
+def distance_location_to_route(
+    route: jt.Float[npt.NDArray, "n 3"],
+    location: jt.Float[npt.NDArray, " 3"],
+) -> float:
     """
     Project a location onto the closest point on a route.
 
@@ -25,9 +28,7 @@ def distance_location_to_route(route: npt.NDArray, location: npt.NDArray) -> flo
     distances = np.linalg.norm(route - location, axis=1)
 
     # Find the minimum distance (i.e., the closest point)
-    min_distance = np.min(distances)
-
-    return min_distance
+    return np.min(distances)
 
 
 def compute_global_route(
@@ -56,8 +57,8 @@ def compute_global_route(
 
 
 def intersection_of_routes(
-    points_a: npt.NDArray,
-    points_b: npt.NDArray,
+    points_a: jt.Float[npt.NDArray, "n 3"],
+    points_b: jt.Float[npt.NDArray, "m 3"],
     epsilon: float = 0.5,
 ) -> tuple[carla.Location | None, int | None]:
     """

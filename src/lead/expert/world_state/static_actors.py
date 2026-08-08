@@ -6,8 +6,7 @@ import logging
 import carla
 import numpy as np
 
-import lead.common.geometry as geometry
-from lead.common import constants
+from lead.common import constants, geometry
 
 LOG = logging.getLogger(__name__)
 

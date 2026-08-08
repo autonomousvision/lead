@@ -1,21 +1,15 @@
 """End-to-end test for log readability."""
 
-import os
-
 import pytest
 from py123d.api.scene.scene_filter import SceneFilter
 from py123d.datatypes import LidarID
 
-from lead.dataloader.scene_index import get_scenes
+from lead.log_reader.scene_index import get_scenes
 
 
 @pytest.mark.e2e
-def test_logs_readable():
+def test_logs_readable(data_root):
     """Load scenes and verify core modalities resolve."""
-    data_root = os.environ.get("LEAD_TEST_DATA_ROOT")
-    if not data_root:
-        pytest.skip("LEAD_TEST_DATA_ROOT not set")
-
     # Cameras only exist on save ticks; anchor the scenes on them.
     scenes = get_scenes(
         data_root,

@@ -1,37 +1,33 @@
-"""Properties of the running process (not the experiment): device, CPU assignment, scratch locations.
+"""Properties of the running process (not the experiment): CPU assignment, scratch locations.
 
 Kept out of the config so experiment configs stay reproducible across machines.
 """
 
 from __future__ import annotations
 
+import multiprocessing
 import os
-import typing
 from pathlib import Path
 
-if typing.TYPE_CHECKING:
-    import torch
 
+def num_assigned_cpu_cores(default: int = 8) -> int:
+    """Number of CPU cores this process may use.
 
-def device() -> torch.device:
-    """PyTorch device of this process."""
-    import torch
-
-    local_rank = int(os.environ.get("LOCAL_RANK", "0"))
-    return torch.device(
-        f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu",
-    )
-
-
-def assigned_cpu_cores(default: int = 8) -> int:
-    """Number of CPU cores assigned to this job.
+    A worker process of a pool shares the job's cores with its siblings, so it
+    reports one: a pool it sized from the job's count would multiply the node's
+    threads by the number of workers. Ranks launched as subprocesses, as
+    Lightning's DDP launches them, are not worker processes and get the job's
+    full count.
 
     Args:
         default: Core count assumed outside of SLURM.
 
     Returns:
-        The SLURM-assigned core count, or the default.
+        One inside a worker process, else the SLURM-assigned core count, else
+        the default.
     """
+    if multiprocessing.parent_process() is not None:
+        return 1
     cpus_per_task = os.environ.get("SLURM_CPUS_PER_TASK")
     if "SLURM_JOB_ID" in os.environ and cpus_per_task:
         return int(cpus_per_task)
@@ -45,6 +41,6 @@ def project_root() -> Path:
 
 def output_dir_root() -> Path:
     """Root directory for generated outputs, read hot from ``LEAD_OUTPUT_DIR_ROOT`` in ``.env``."""
-    from lead.common.dotenv import read_dotenv
+    from lead.common.env import read_dotenv
 
     return Path(read_dotenv("LEAD_OUTPUT_DIR_ROOT"))

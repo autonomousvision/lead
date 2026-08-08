@@ -23,9 +23,6 @@ class DataCollectionConfig(ConfigNode):
     # How often we log in the main loop
     log_info_freq: int = 1
 
-    # --- Data saving configuration for LiDAR ---
-    # How many steps to stack LiDAR point clouds
-    lidar_stack_size: int = 5
     # Period (in simulator steps) of the save ticks: the render-heavy camera
     # streams are rendered and stored at this cadence (5 = 4 Hz at 20 fps).
     data_save_freq: int = 5
@@ -56,17 +53,9 @@ class DataCollectionConfig(ConfigNode):
         """Storage period of the instance segmentation; defaults to every save tick."""
         return self.data_save_freq
 
-    @property
-    def ego_history_length(self) -> int:
-        """Ticks of filtered ego pose history kept; must cover the radar window (2x stack)."""
-        return 4 * self.lidar_stack_size + 1
-
     # --- Planning Area ---
-    # How many pixels make up 1 meter in BEV grids.
-    pixels_per_meter: float = 4.0
-    # Pixels per meter used in the semantic segmentation map during data collection
-    # On Town 13 2.0 is the highest that opencv can handle
-    pixels_per_meter_collection: float = 2.0
+    # The region around the ego the expert plans in and logs labels for; a
+    # policy rasterizing this area picks its own resolution and crop.
     # Back boundary of the planning area in meters.
     min_x_meter: int = -32
     # Front boundary of the planning area in meters.
@@ -75,26 +64,6 @@ class DataCollectionConfig(ConfigNode):
     min_y_meter: int = -40
     # Right boundary of the planning area in meters.
     max_y_meter: int = 40
-
-    @property
-    def lidar_width_pixel(self) -> int:
-        """Width resolution of LiDAR BEV representation in pixels."""
-        return int((self.max_x_meter - self.min_x_meter) * self.pixels_per_meter)
-
-    @property
-    def lidar_height_pixel(self) -> int:
-        """Height resolution of LiDAR BEV representation in pixels."""
-        return int((self.max_y_meter - self.min_y_meter) * self.pixels_per_meter)
-
-    @property
-    def lidar_width_meter(self) -> int:
-        """Width of LiDAR coverage area in meters."""
-        return int(self.max_x_meter - self.min_x_meter)
-
-    @property
-    def lidar_height_meter(self) -> int:
-        """Height of LiDAR coverage area in meters."""
-        return int(self.max_y_meter - self.min_y_meter)
 
     # --- Dataset and Timing Configuration ---
     # If true shuffle weather conditions during data collection.

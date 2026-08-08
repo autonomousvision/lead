@@ -1,8 +1,6 @@
-"""Invariants every log of the dataset under ``LEAD_TEST_DATA_ROOT`` must satisfy:
+"""Invariants every log of the dataset under ``PY123D_DATA_ROOT`` must satisfy:
 storage frequencies, save-tick anchoring, age-0 alignment, and consistency of the
 derived quantities."""
-
-import os
 
 import numpy as np
 import pytest
@@ -11,37 +9,24 @@ from py123d.datatypes import CustomModality, LidarID, ModalityType
 
 from lead.api.py123d_log_api import (
     BOX_ATTRIBUTES_KEY,
-    CAMERA_ID_MAPPING,
+    CAMERA_ID_BY_LEAD_INDEX,
     DRIVING_META_MODALITY_ID,
     LOCALIZED_EGO_STATE_KEY,
-    localized_position_yaw,
+    se3_matrix_to_localized_pose,
 )
-from lead.dataloader import Py123DDataLoader, scene_index
-from lead.dataloader.box_decoding import carla_ego_pose
+from lead.log_reader import SceneLoader, scene_index
+from lead.log_reader.carla_decoding import carla_ego_pose
+from tests.e2e_tests.conftest import sample_indices
 
 TICK_US = 50_000
 SAVE_PERIOD = 5
 SWEEP_WINDOW = 10
 # Bound on |ground truth - GNSS+IMU estimate|; generous for filter transients.
 MAX_LOCALIZATION_ERROR_M = 20.0
-MAX_SAMPLES = 12
 
 
 @pytest.fixture(scope="module")
-def data_root():
-    """The collected dataset root, or skip when none is configured.
-
-    Returns:
-        The dataset root path.
-    """
-    root = os.environ.get("LEAD_TEST_DATA_ROOT")
-    if not root:
-        pytest.skip("LEAD_TEST_DATA_ROOT not set")
-    return root
-
-
-@pytest.fixture(scope="module")
-def loader(data_root: str) -> Py123DDataLoader:
+def loader(data_root: str) -> SceneLoader:
     """The generic loader over the dataset, sensor extras disabled for speed.
 
     Args:
@@ -50,19 +35,19 @@ def loader(data_root: str) -> Py123DDataLoader:
     Returns:
         The loader.
     """
-    loader = Py123DDataLoader(
+    loader = SceneLoader(
         data_root,
-        radar_sweeps=False,
-        semantics=False,
-        depths=False,
-        map=False,
+        read_radar_sweeps=False,
+        read_semantic_cameras=False,
+        read_depth_cameras=False,
+        read_map_api=False,
     )
     assert len(loader) > 0, f"No scenes under {data_root}"
     return loader
 
 
 @pytest.fixture(scope="module")
-def windowed_loader(data_root: str) -> Py123DDataLoader:
+def windowed_loader(data_root: str) -> SceneLoader:
     """A loader whose scenes carry two save periods of future.
 
     Args:
@@ -71,29 +56,17 @@ def windowed_loader(data_root: str) -> Py123DDataLoader:
     Returns:
         The loader.
     """
-    return Py123DDataLoader(
+    return SceneLoader(
         data_root,
         SceneFilter(future_num_iterations=2 * SAVE_PERIOD),
-        radar_sweeps=False,
-        semantics=False,
-        depths=False,
-        map=False,
+        read_radar_sweeps=False,
+        read_semantic_cameras=False,
+        read_depth_cameras=False,
+        read_map_api=False,
     )
 
 
-def sample_indices(count: int) -> list[int]:
-    """Up to ``MAX_SAMPLES`` indices spread evenly over a sequence.
-
-    Args:
-        count: Length of the sequence.
-
-    Returns:
-        The sorted, unique indices.
-    """
-    return sorted(set(np.linspace(0, count - 1, MAX_SAMPLES, dtype=int).tolist()))
-
-
-def anchor_us(loader: Py123DDataLoader, index: int) -> int:
+def anchor_us(loader: SceneLoader, index: int) -> int:
     """The anchor timestamp of a sample.
 
     Args:
@@ -170,7 +143,7 @@ def test_every_tick_is_stored_between_save_ticks(windowed_loader):
     assert scenes, "No scene has two save periods of future"
     camera_id = next(
         camera_id
-        for camera_id in CAMERA_ID_MAPPING.values()
+        for camera_id in CAMERA_ID_BY_LEAD_INDEX.values()
         if camera_id in scenes[0].get_camera_metadatas()
     )
     for index in sample_indices(len(scenes)):
@@ -223,7 +196,7 @@ def test_past_motion_matches_the_stored_localization(loader):
     """Past positions/yaws re-derive from the raw driving-meta stream."""
     for index in sample_indices(len(loader)):
         frame = loader[index]
-        positions, yaws = frame.past_positions, frame.past_yaws
+        positions, yaws = frame.past_ego_positions, frame.past_ego_yaws
         assert positions is not None and yaws is not None
         expected_len = min(SWEEP_WINDOW, frame.scene_metadata.initial_idx + 1)
         assert positions.shape == (expected_len, 2)
@@ -243,7 +216,7 @@ def test_past_motion_matches_the_stored_localization(loader):
         ):
             assert isinstance(modality, CustomModality)
             age = round((anchor - modality.timestamp.time_us) / TICK_US)
-            poses[age] = localized_position_yaw(
+            poses[age] = se3_matrix_to_localized_pose(
                 np.asarray(modality.data[LOCALIZED_EGO_STATE_KEY], dtype=np.float64),
             )
         anchor_position, anchor_yaw = poses[0]
@@ -268,8 +241,11 @@ def test_localized_pose_is_a_planar_se3_near_the_ground_truth(loader):
     """The stored localization is a valid planar SE(3) close to the true pose."""
     for index in sample_indices(len(loader)):
         frame = loader[index]
-        assert frame.meta is not None
-        matrix = np.asarray(frame.meta[LOCALIZED_EGO_STATE_KEY], dtype=np.float64)
+        assert frame.driving_meta is not None
+        matrix = np.asarray(
+            frame.driving_meta[LOCALIZED_EGO_STATE_KEY],
+            dtype=np.float64,
+        )
         assert matrix.shape == (4, 4)
         np.testing.assert_allclose(matrix[3], [0.0, 0.0, 0.0, 1.0], atol=1e-12)
         rotation = matrix[:3, :3]
@@ -279,7 +255,7 @@ def test_localized_pose_is_a_planar_se3_near_the_ground_truth(loader):
 
         assert frame.ego_state is not None
         gt_position, _ = carla_ego_pose(frame.ego_state)
-        localized_position, _ = localized_position_yaw(matrix)
+        localized_position, _ = se3_matrix_to_localized_pose(matrix)
         assert np.linalg.norm(localized_position - gt_position) < (
             MAX_LOCALIZATION_ERROR_M
         ), "localized pose implausibly far from the ground truth"
@@ -290,10 +266,10 @@ def test_driving_meta_carries_the_core_contract(loader):
     """The meta fields the loaders depend on exist with their documented shapes."""
     for index in sample_indices(len(loader)):
         frame = loader[index]
-        meta = frame.meta
+        meta = frame.driving_meta
         assert meta is not None
-        assert str(loader.tp_pop_distance) in meta["target_point_indices"]
-        for attribute in ("target_point_previous", "target_point", "target_point_next"):
+        assert str(loader.target_point_pop_distance) in meta["target_point_indices"]
+        for attribute in ("previous_target_point", "target_point", "next_target_point"):
             point = getattr(frame, attribute)
             assert point is not None and np.isfinite(point).all()
         route = np.asarray(meta["route"])
@@ -314,8 +290,8 @@ def test_future_accessors_walk_the_tick_grid(windowed_loader):
     iterations = [1, SAVE_PERIOD, 2 * SAVE_PERIOD]
     for index in sample_indices(len(scenes)):
         anchor = scenes[index].get_timestamp_at_iteration(0).time_us
-        states = windowed_loader.future_ego_states(index, iterations)
-        metas = windowed_loader.future_metas(index, iterations)
+        states = windowed_loader.read_future_ego_states(index, iterations)
+        metas = windowed_loader.read_future_driving_metas(index, iterations)
         previous_position, _ = carla_ego_pose(states[1])
         for iteration in iterations:
             state = states[iteration]
@@ -332,21 +308,21 @@ def test_future_accessors_walk_the_tick_grid(windowed_loader):
 @pytest.mark.e2e
 def test_both_views_load_and_pair_by_timestamp(data_root):
     """Both views load for the same ticks; the sensors differ, the tick does not."""
-    normal = Py123DDataLoader(
+    normal = SceneLoader(
         data_root,
-        perturbation_prob=0.0,
-        lidar_sweeps=False,
-        radar_sweeps=False,
-        map=False,
+        perturbation_probability=0.0,
+        read_lidar_sweeps=False,
+        read_radar_sweeps=False,
+        read_map_api=False,
     )
-    perturbated = Py123DDataLoader(
+    perturbated = SceneLoader(
         data_root,
-        perturbation_prob=1.0,
-        lidar_sweeps=False,
-        radar_sweeps=False,
-        map=False,
+        perturbation_probability=1.0,
+        read_lidar_sweeps=False,
+        read_radar_sweeps=False,
+        read_map_api=False,
     )
-    if not perturbated.perturbated_scenes:
+    if not perturbated.any_perturbated_sensor_views:
         pytest.skip("Dataset has no perturbated split")
     assert len(normal) == len(perturbated)
 
@@ -355,22 +331,24 @@ def test_both_views_load_and_pair_by_timestamp(data_root):
     for index in sample_indices(len(perturbated))[:3]:
         anchor = anchor_us(perturbated, index)
         perturbated_frame = perturbated[index]
-        if perturbated_frame.perturbation is None:
+        if perturbated_frame.rig_perturbation is None:
             continue
         paired += 1
         normal_frame = normal[index]
-        assert normal_frame.perturbation is None
+        assert normal_frame.rig_perturbation is None
 
-        assert 0.0 < abs(perturbated_frame.perturbation.translation) <= 2.0
-        assert abs(perturbated_frame.perturbation.rotation) <= 20.0
+        assert (
+            0.0 < abs(perturbated_frame.rig_perturbation.lateral_translation_m) <= 2.0
+        )
+        assert abs(perturbated_frame.rig_perturbation.yaw_rotation_deg) <= 20.0
         for camera in (*perturbated_frame.cameras, *normal_frame.cameras):
             assert camera.timestamp.time_us == anchor
         assert not np.array_equal(
             perturbated_frame.cameras[0].image,
             normal_frame.cameras[0].image,
         )
-        assert perturbated_frame.semantics is not None
-        assert perturbated_frame.depths is not None
+        assert perturbated_frame.semantic_cameras is not None
+        assert perturbated_frame.depth_cameras is not None
         # Ego-frame outputs are re-projected into the perturbated rig's frame.
         assert not np.allclose(
             perturbated_frame.target_point,

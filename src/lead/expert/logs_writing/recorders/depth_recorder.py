@@ -35,7 +35,7 @@ class DepthRecorder(BaseRecorder):
             store_freq: Storage period of the stream in simulator steps.
         """
         super().__init__(expert, perturbated, store_freq=store_freq)
-        ego_metadata = py123d_log_api.get_carla_lincoln_mkz_2020_metadata()
+        ego_metadata = py123d_log_api.CARLA_LINCOLN_MKZ_2020_METADATA
         pinhole_metadatas = carla_to_123d.build_pinhole_camera_metadatas(
             expert.config_expert,
             ego_metadata,
@@ -71,7 +71,7 @@ class DepthRecorder(BaseRecorder):
         """
         depth_cameras: list[BaseModality] = []
         for cam_key in range(1, self.expert.config_expert.sensor_rig.num_cameras + 1):
-            camera_id = py123d_log_api.CAMERA_ID_MAPPING[cam_key]
+            camera_id = py123d_log_api.CAMERA_ID_BY_LEAD_INDEX[cam_key]
             metadata = self.depth_metadatas[camera_id]
             depth_cameras.append(
                 Camera(

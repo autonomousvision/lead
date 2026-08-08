@@ -2,9 +2,20 @@
 
 import carla
 
-from lead.common import constants
-from lead.common.constants import LeadSemanticSegmentationClass
 from lead.common.runtime_property_caching import step_cached_property
+
+
+def _is_static_car(box: dict) -> bool:
+    """Whether a static prop's mesh is a parked car.
+
+    Args:
+        box: A bounding box dict of a static prop.
+
+    Returns:
+        True if the mesh path names a car.
+    """
+    mesh_path = box.get("mesh_path")
+    return mesh_path is not None and "Car" in mesh_path
 
 
 class ActorsStateMixin:
@@ -127,10 +138,7 @@ class ActorsStateMixin:
             list: A list of static actors inside the BEV.
         """
         static_actors = self.actors.filter("*static*")
-        static_actors = [
-            actor for actor in static_actors if self.is_actor_inside_bev(actor)
-        ]
-        return static_actors
+        return [actor for actor in static_actors if self.is_actor_inside_bev(actor)]
 
     @step_cached_property
     def distance_to_pedestrian(self) -> float:
@@ -182,11 +190,7 @@ class ActorsStateMixin:
         for bb in self.stored_bounding_boxes_of_this_step:
             if not (-8 <= bb["position"][0] <= 32 and abs(bb["position"][1]) <= 10):
                 continue
-            if (
-                bb["class"] == "static"
-                and constants.semantic_class(bb)
-                == LeadSemanticSegmentationClass.VEHICLE
-            ):
+            if bb["class"] == "static" and _is_static_car(bb):
                 count += 1
             if bb["class"] == "static_prop_car":
                 count += 1
@@ -201,7 +205,7 @@ class ActorsStateMixin:
             speeds.append(vehicle.get_velocity().length())
         if len(speeds) == 0:
             return 0.0
-        elif len(speeds) == 1:
+        if len(speeds) == 1:
             return speeds[0]
         speeds = sorted(speeds, reverse=True)
         return speeds[1]
@@ -215,7 +219,7 @@ class ActorsStateMixin:
             speed_limits.append(vehicle.get_speed_limit() / 3.6)
         if len(speed_limits) == 0:
             return 0.0
-        elif len(speed_limits) == 1:
+        if len(speed_limits) == 1:
             return speed_limits[0]
         speed_limits = sorted(speed_limits, reverse=True)
         return speed_limits[1]

@@ -6,8 +6,7 @@ import typing
 import carla
 import numpy as np
 
-import lead.common.geometry as geometry
-from lead.common import constants
+from lead.common import constants, geometry
 from lead.expert.driving import occlusion
 from lead.expert.utils import roadgraph
 from lead.expert.world_state import static_actors
@@ -87,7 +86,7 @@ class BoundingBoxesMixin:
         )
         box_matrix = np.array(box_transform.get_matrix())
         relative_pos = geometry.get_relative_transform(ego_matrix, box_matrix)
-        relative_yaw = geometry.normalize_angle(
+        relative_yaw = geometry.normalize_angle_rad(
             np.deg2rad(bounding_box.rotation.yaw) - ego_yaw,
         )
         extent = bounding_box.extent
@@ -208,85 +207,84 @@ class BoundingBoxesMixin:
             if (
                 vehicle.get_location().distance(self.ego_location)
                 < self.config_expert.driving.bb_save_radius
-            ):
-                if vehicle.id != self.ego_vehicle.id:
-                    vehicle_transform = vehicle.get_transform()
-                    vehicle_rotation = vehicle_transform.rotation
-                    vehicle_matrix = np.array(vehicle_transform.get_matrix())
-                    vehicle_control: carla.VehicleControl = vehicle.get_control()
-                    vehicle_velocity = vehicle.get_velocity()
-                    vehicle_extent = vehicle.bounding_box.extent
-                    vehicle_id = vehicle.id
+            ) and vehicle.id != self.ego_vehicle.id:
+                vehicle_transform = vehicle.get_transform()
+                vehicle_rotation = vehicle_transform.rotation
+                vehicle_matrix = np.array(vehicle_transform.get_matrix())
+                vehicle_control: carla.VehicleControl = vehicle.get_control()
+                vehicle_velocity = vehicle.get_velocity()
+                vehicle_extent = vehicle.bounding_box.extent
+                vehicle_id = vehicle.id
 
-                    vehicle_extent_list = [
-                        vehicle_extent.x,
-                        vehicle_extent.y,
-                        vehicle_extent.z,
-                    ]
-                    yaw = np.deg2rad(vehicle_rotation.yaw)
+                vehicle_extent_list = [
+                    vehicle_extent.x,
+                    vehicle_extent.y,
+                    vehicle_extent.z,
+                ]
+                yaw = np.deg2rad(vehicle_rotation.yaw)
 
-                    relative_yaw = geometry.normalize_angle(yaw - ego_yaw)
-                    relative_pos = geometry.get_relative_transform(
-                        ego_matrix,
-                        vehicle_matrix,
-                    )
-                    vehicle_speed = self._get_forward_speed(
-                        transform=vehicle_transform,
-                        velocity=vehicle_velocity,
-                    )
-                    vehicle_brake = vehicle_control.brake
+                relative_yaw = geometry.normalize_angle_rad(yaw - ego_yaw)
+                relative_pos = geometry.get_relative_transform(
+                    ego_matrix,
+                    vehicle_matrix,
+                )
+                vehicle_speed = self._get_forward_speed(
+                    transform=vehicle_transform,
+                    velocity=vehicle_velocity,
+                )
+                vehicle_brake = vehicle_control.brake
 
-                    distance = np.linalg.norm(relative_pos)
+                distance = np.linalg.norm(relative_pos)
 
-                    # LiDAR hit count per bounding box; used to filter invisible boxes.
-                    vehicle_extent_array = np.array(vehicle_extent_list)
-                    if input_data.get("lidar") is not None:
-                        num_in_bbox_points = len(
-                            occlusion.get_points_in_actor_frame_and_in_bbox(
-                                ego_matrix,
-                                vehicle_matrix,
-                                vehicle_extent_array,
-                                input_data["lidar"],
-                                pad=True,
-                            ),
-                        )
-                    else:
-                        num_in_bbox_points = -1
-
-                    if input_data.get("radar") is not None:
-                        num_in_bb_radar_points = len(
-                            occlusion.get_points_in_actor_frame_and_in_bbox(
-                                ego_matrix,
-                                vehicle_matrix,
-                                vehicle_extent_array,
-                                input_data["radar"],
-                                pad=True,
-                            ),
-                        )
-                    else:
-                        num_in_bb_radar_points = -1
-
-                    result = {
-                        "class": "car",
-                        "extent": vehicle_extent_list,
-                        "position": [relative_pos[0], relative_pos[1], relative_pos[2]],
-                        "yaw": relative_yaw,
-                        "num_points": int(num_in_bbox_points),
-                        "num_radar_points": int(num_in_bb_radar_points),
-                        "distance": distance,
-                        "speed": vehicle_speed,
-                        "brake": vehicle_brake,
-                        "id": int(vehicle_id),
-                        "role_name": vehicle.attributes["role_name"],
-                        "type_id": vehicle.type_id,
-                        "matrix": vehicle_transform.get_matrix(),
-                        "visible_pixels": occlusion.visible_pixels_of_actor(
-                            pixel_counts,
-                            vehicle_id,
+                # LiDAR hit count per bounding box; used to filter invisible boxes.
+                vehicle_extent_array = np.array(vehicle_extent_list)
+                if input_data.get("lidar") is not None:
+                    num_in_bbox_points = len(
+                        occlusion.get_points_in_actor_frame_and_in_bbox(
+                            ego_matrix,
+                            vehicle_matrix,
+                            vehicle_extent_array,
+                            input_data["lidar"],
+                            pad=True,
                         ),
-                    }
-                    boxes.append(result)
-                    actor_map[int(vehicle_id)] = vehicle
+                    )
+                else:
+                    num_in_bbox_points = -1
+
+                if input_data.get("radar") is not None:
+                    num_in_bb_radar_points = len(
+                        occlusion.get_points_in_actor_frame_and_in_bbox(
+                            ego_matrix,
+                            vehicle_matrix,
+                            vehicle_extent_array,
+                            input_data["radar"],
+                            pad=True,
+                        ),
+                    )
+                else:
+                    num_in_bb_radar_points = -1
+
+                result = {
+                    "class": "car",
+                    "extent": vehicle_extent_list,
+                    "position": [relative_pos[0], relative_pos[1], relative_pos[2]],
+                    "yaw": relative_yaw,
+                    "num_points": int(num_in_bbox_points),
+                    "num_radar_points": int(num_in_bb_radar_points),
+                    "distance": distance,
+                    "speed": vehicle_speed,
+                    "brake": vehicle_brake,
+                    "id": int(vehicle_id),
+                    "role_name": vehicle.attributes["role_name"],
+                    "type_id": vehicle.type_id,
+                    "matrix": vehicle_transform.get_matrix(),
+                    "visible_pixels": occlusion.visible_pixels_of_actor(
+                        pixel_counts,
+                        vehicle_id,
+                    ),
+                }
+                boxes.append(result)
+                actor_map[int(vehicle_id)] = vehicle
 
         walkers = self._actors.filter("*walker*")
         for walker in walkers:
@@ -303,7 +301,7 @@ class BoundingBoxesMixin:
                 walker_extent = [walker_extent.x, walker_extent.y, walker_extent.z]
                 yaw = np.deg2rad(walker_rotation.yaw)
 
-                relative_yaw = geometry.normalize_angle(yaw - ego_yaw)
+                relative_yaw = geometry.normalize_angle_rad(yaw - ego_yaw)
                 relative_pos = geometry.get_relative_transform(
                     ego_matrix,
                     walker_matrix,
@@ -407,7 +405,7 @@ class BoundingBoxesMixin:
 
                     yaw = np.deg2rad(static_rotation.yaw)
 
-                    relative_yaw = geometry.normalize_angle(yaw - ego_yaw)
+                    relative_yaw = geometry.normalize_angle_rad(yaw - ego_yaw)
                     relative_pos = geometry.get_relative_transform(
                         ego_matrix,
                         static_matrix,
@@ -516,7 +514,7 @@ class BoundingBoxesMixin:
                     )
                     yaw = np.deg2rad(traffic_light_rotation.yaw)
 
-                    relative_yaw = geometry.normalize_angle(yaw - ego_yaw)
+                    relative_yaw = geometry.normalize_angle_rad(yaw - ego_yaw)
                     relative_pos = geometry.get_relative_transform(
                         ego_matrix,
                         traffic_light_matrix,
@@ -613,7 +611,7 @@ class BoundingBoxesMixin:
             stop_sign_matrix = np.array(stop_sign_transform.get_matrix())
             yaw = np.deg2rad(stop_sign_rotation.yaw)
 
-            relative_yaw = geometry.normalize_angle(yaw - ego_yaw)
+            relative_yaw = geometry.normalize_angle_rad(yaw - ego_yaw)
             relative_pos = geometry.get_relative_transform(
                 ego_matrix,
                 stop_sign_matrix,
@@ -722,7 +720,7 @@ class BoundingBoxesMixin:
                     np.array(matrix),
                 )
                 distance = np.linalg.norm(relative_pos)
-                relative_yaw = geometry.normalize_angle(
+                relative_yaw = geometry.normalize_angle_rad(
                     np.deg2rad(rotation.yaw) - ego_yaw,
                 )
                 result = {

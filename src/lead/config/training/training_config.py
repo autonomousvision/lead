@@ -3,38 +3,30 @@
 from typing import TYPE_CHECKING
 
 from lead.common import runtime_variables
-from lead.config.node import ConfigNode, child_node, overridable_property
+from lead.config.node import ConfigNode, config_child_node, overridable_property
 from lead.config.training.data_config import TrainingDataConfig
 from lead.config.training.experiment_config import ExperimentConfig
+from lead.config.training.lightning_config import LightningConfig
 from lead.config.training.optimization_config import OptimizationConfig
 
 if TYPE_CHECKING:
-    import torch
+    pass
 
 # Process-specific values excluded from serialized configs: they describe the
 # machine/job, not the experiment (see src/lead/common/runtime_variables.py).
-RUNTIME_KEYS: frozenset[str] = frozenset({"device", "assigned_cpu_cores"})
+PROCESS_RUNTIME_CONFIG_KEYS: frozenset[str] = frozenset({"num_assigned_cpu_cores"})
 
 
 class TrainingConfig(ConfigNode):
     """Configuration of a training run (experiment identity, optimization, data)."""
 
-    experiment = child_node(ExperimentConfig)
-    optimization = child_node(OptimizationConfig)
-    data = child_node(TrainingDataConfig)
-
-    @property
-    def is_pretraining(self) -> bool:
-        """If true indicates pretraining phase."""
-        return not self._root.policy.transfuser.use_planning_decoder
+    experiment = config_child_node(ExperimentConfig)
+    optimization = config_child_node(OptimizationConfig)
+    lightning = config_child_node(LightningConfig)
+    data = config_child_node(TrainingDataConfig)
 
     # --- Process runtime (delegated, excluded from serialization) ---
-    @property
-    def device(self) -> "torch.device":
-        """PyTorch device to use for training."""
-        return runtime_variables.device()
-
     @overridable_property
-    def assigned_cpu_cores(self) -> int:
+    def num_assigned_cpu_cores(self) -> int:
         """Number of CPU cores assigned to this job."""
-        return runtime_variables.assigned_cpu_cores()
+        return runtime_variables.num_assigned_cpu_cores()

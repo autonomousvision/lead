@@ -19,7 +19,7 @@ if typing.TYPE_CHECKING:
 
 # LEAD radar index (1-based; radar ``i`` is ``sensor_rig.radars[i - 1]``) → 123D
 # radar ID, derived from each radar's mounting position and yaw in the calibration.
-RADAR_ID_MAPPING = py123d_log_api.RADAR_ID_MAPPING
+RADAR_ID_BY_LEAD_INDEX = py123d_log_api.RADAR_ID_BY_LEAD_INDEX
 RADIAL_VELOCITY_FEATURE = py123d_log_api.RADIAL_VELOCITY_FEATURE
 
 
@@ -46,10 +46,10 @@ class RadarRecorder(BaseRecorder):
             store_freq: Storage period of the stream in simulator steps.
         """
         super().__init__(expert, perturbated, store_freq=store_freq)
-        self.ego_metadata = py123d_log_api.get_carla_lincoln_mkz_2020_metadata()
+        self.ego_metadata = py123d_log_api.CARLA_LINCOLN_MKZ_2020_METADATA
         # LEAD radar index of the input-data key → 123D radar ID of its points.
         self.recorded_radar_ids: dict[int, RadarID] = {
-            sensor_index: RADAR_ID_MAPPING[sensor_index]
+            sensor_index: RADAR_ID_BY_LEAD_INDEX[sensor_index]
             for sensor_index in range(
                 1,
                 len(expert.config_expert.sensor_rig.radars) + 1,

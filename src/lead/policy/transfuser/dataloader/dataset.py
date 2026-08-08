@@ -1,47 +1,48 @@
-"""TransFuser training dataset (layer 2 of the data pipeline).
-
-Reads the generic :class:`~lead.dataloader.frame.Frame` of each sample, adds
-what only TransFuser needs (meta fields, planning labels, per-box future poses)
-and runs the frame through the policy's shared featurization.
-"""
+"""TransFuser training dataset: sample parts over the generic scene data, with a
+per-part opt-in cache store."""
 
 import logging
-import time
 import typing
+from functools import partial
 
 import cv2
 import jaxtyping as jt
 import numpy as np
 import numpy.typing as npt
-from py123d.api.scene.scene_filter import SceneFilter
+from py123d.datatypes import EgoStateSE3
 
-if typing.TYPE_CHECKING:
-    from imgaug.augmenters import Sequential
-
-import lead.common.geometry as geometry
-from lead.api.abstract_policy import SizedDataset
+from lead.api.abstract_dataset import AbstractPolicyDataset
+from lead.api.driving_meta import DrivingMeta
 from lead.api.py123d_log_api import (
     BOX_ATTRIBUTES_KEY,
     LOCALIZED_EGO_STATE_KEY,
-    localized_position_yaw,
+    se3_matrix_to_localized_pose,
 )
-from lead.common import constants
-from lead.config import LeadConfig
-from lead.dataloader import Frame, box_decoding, view_geometry
-from lead.dataloader.py123d_data_loader import Py123DDataLoader
+from lead.api.training_sample import SamplePart
+from lead.common import constants, geometry
+from lead.config import LeadConfig, TransfuserConfig
+from lead.log_reader import SceneData, SceneLoadingSpec, carla_decoding, view_geometry
+from lead.log_reader.scene_loader import SceneLoader
 from lead.policy.transfuser.dataloader import route_smoothing
-from lead.policy.transfuser.dataloader.features import build_features
-from lead.policy.transfuser.dataloader.labels import build_labels
-
-if typing.TYPE_CHECKING:
-    from py123d.api.scene.scene_api import SceneAPI
-    from py123d.datatypes import BoxDetectionsSE3, EgoStateSE3
+from lead.policy.transfuser.dataloader.features import (
+    build_camera_features,
+    build_lidar_raster,
+    build_radar_features,
+)
+from lead.policy.transfuser.dataloader.label_builders import (
+    build_depth_target,
+    build_labels,
+)
+from lead.policy.transfuser.dataloader.sample import (
+    TransfuserOutputs,
+    TransfuserTrainingSample,
+)
 
 LOG = logging.getLogger(__name__)
 
 
-# Meta keys copied into the sample dict (non-numeric).
-_STRING_META_KEYS = [
+# Driving-driving_meta keys copied into the batch item verbatim.
+_VERBATIM_DRIVING_META_KEYS = [
     "current_active_scenario_type",
     "previous_active_scenario_type",
     "changed_route",
@@ -77,8 +78,8 @@ _STRING_META_KEYS = [
     "rear_adversarial_id",
 ]
 
-# Meta keys copied into the sample dict (numeric, None → inf).
-_NUMERIC_META_KEYS = [
+# Driving-driving_meta keys coerced to float in the batch item (None → inf).
+_FLOAT_COERCED_DRIVING_META_KEYS = [
     "steer",
     "throttle",
     "brake",
@@ -102,495 +103,407 @@ _NUMERIC_META_KEYS = [
 ]
 
 
-def _localized_yaw(meta: dict) -> float:
-    """The tick's localized ego yaw, read from its SE(3) pose matrix.
+# Distance of the first smoothed route point ahead of the ego, in meters.
+_SMOOTHED_ROUTE_FIRST_POINT_DISTANCE_M = 2.5
 
-    Args:
-        meta: Driving meta of the tick.
-
-    Returns:
-        The yaw angle in radians, wrapped to [-pi, pi].
-    """
-    _, yaw = localized_position_yaw(
-        np.asarray(meta[LOCALIZED_EGO_STATE_KEY], dtype=np.float64),
-    )
-    return yaw
-
-
-def _image_augmenter(lead_config: LeadConfig, prob: float = 0.2):
-    """Create an image augmenter for data perturbation.
-
-    Args:
-        lead_config: Root config tree.
-        prob: Probability of applying each perturbation.
-
-    Returns:
-        Image augmenter.
-    """
-    import imgaug
-    from imgaug import augmenters as ia
-
-    imgaug.imgaug.seed(lead_config.training.experiment.seed)
-    # imgaug's stubs declare per_channel as bool, but a float probability is a
-    # documented and intended usage.
-    perturbations = [
-        ia.Sometimes(prob, ia.GaussianBlur((0, 1.0))),
-        ia.Sometimes(
-            prob,
-            ia.AdditiveGaussianNoise(
-                loc=0,
-                scale=(0.0, 0.05 * 255),
-                per_channel=0.5,  # pyright: ignore[reportArgumentType]
-            ),
-        ),
-        ia.Sometimes(
-            prob,
-            ia.Dropout(
-                (0.01, 0.1),
-                per_channel=0.5,  # pyright: ignore[reportArgumentType]
-            ),
-        ),  # Strong
-        ia.Sometimes(
-            prob,
-            ia.Multiply(
-                (1 / 1.2, 1.2),
-                per_channel=0.5,  # pyright: ignore[reportArgumentType]
-            ),
-        ),
-        ia.Sometimes(
-            prob,
-            ia.LinearContrast(
-                (1 / 1.2, 1.2),
-                per_channel=0.5,  # pyright: ignore[reportArgumentType]
-            ),
-        ),
-        ia.Sometimes(prob, ia.ElasticTransformation(alpha=(0.5, 1.5), sigma=0.25)),
-    ]
-    return ia.Sequential(perturbations, random_order=True)
+# policy.transfuser fields a cacheable part reads to decide a cached tensor's
+# shape or content; see TransfuserDataset.cache_finger_print. Head
+# toggles (use_semantic, detect_boxes, ...) are deliberately excluded: they
+# decide what gets consumed from the store, never what gets written into it.
+_CACHE_FINGER_PRINT_FIELDS = (
+    # BEV raster geometry and LiDAR preprocessing (features.py, point_cloud.py).
+    "bev_pixels_per_meter",
+    "bev_min_x_meter",
+    "bev_max_x_meter",
+    "bev_min_y_meter",
+    "bev_max_y_meter",
+    "max_lidar_points_per_bev_pixel",
+    "lidar_max_height_meter",
+    "lidar_min_height_meter",
+    "accumulate_lidar_sweeps",
+    "past_lidar_tick_ages",
+    "past_radar_tick_ages",
+    "remove_lidar_ground_points",
+    "merge_radar_into_lidar",
+    "duplicate_radar_near_ego",
+    "duplicate_radar_radius_meter",
+    "duplicate_radar_repeat_count",
+    # BEV-semantic labels (label_builders.py, bev_raster.py).
+    "bev_downsample_factor",
+    "pedestrian_bev_extent_scale",
+    "pedestrian_bev_min_half_extent_meter",
+    "lane_marker_width_meter",
+    # Bounding-box labels (label_builders.py).
+    "max_num_boxes",
+    "num_box_classes",
+    "num_yaw_bins",
+    "detected_static_prop_type_ids",
+    "open_door_extra_width_meter",
+    "min_box_center_z_meter",
+    "max_box_center_z_meter",
+    # Radar-detection labels (label_builders.py).
+    "num_radar_queries",
+    # Stitched geometry of the semantic labels (label_builders.py).
+    "final_image_width",
+    "final_image_height",
+)
 
 
-def _not_town13(scene: "SceneAPI") -> bool:
-    """Whether a scene is outside the held-out Town13 routes.
-
-    Args:
-        scene: The scene to test.
-
-    Returns:
-        True when the scene's log is not a Town13 route.
-    """
-    return not scene.log_name.startswith("Town13")
-
-
-def build_scene_filter(config: LeadConfig) -> SceneFilter:
-    """The scenes TransFuser trains on.
-
-    Args:
-        config: Root config tree.
-
-    Returns:
-        The scene filter of the TransFuser data pipeline.
-    """
-    transfuser = config.policy.transfuser
-
-    # Future margin: planning labels need the full waypoint horizon; the
-    # skip_first/skip_last margins are the history/future minimum.
-    if config.training.is_pretraining:
-        future_num_iterations = config.training.data.skip_last
-    else:
-        future_num_iterations = (
-            transfuser.num_way_points_prediction * transfuser.waypoints_spacing
-        )
-
-    return SceneFilter(
-        split_names=[config.training.data.py123d_split_name],
-        history_num_iterations=config.training.data.skip_first,
-        future_num_iterations=future_num_iterations,
-        required_scene_modalities=[
-            "ego_state_se3",
-            "box_detections_se3@initial",
-            "custom.driving_meta@initial",
-            "camera:all@initial",
-        ],
-        custom_filter_fns=(
-            [_not_town13] if config.training.data.hold_out_town13_routes else None
-        ),
-    )
-
-
-def build_data_loader(config: LeadConfig) -> Py123DDataLoader:
-    """The generic loader configured for the TransFuser training pipeline.
-
-    Args:
-        config: Root config tree.
-
-    Returns:
-        The loader over the training scenes.
-    """
-    transfuser = config.policy.transfuser
-    return Py123DDataLoader(
-        config.training.data.py123d_data_root,
-        build_scene_filter(config),
-        perturbation_prob=config.training.data.use_sensor_perburtation_prob,
-        tp_pop_distance=transfuser.tp_pop_distance,
-        sweep_window_ticks=2 * config.expert.data_collection.lidar_stack_size,
-        tick_duration_us=round(1e6 / config.expert.simulation.carla_fps),
-        lidar_sweeps=not transfuser.LTF,
-        radar_sweeps=config.expert.sensor_rig.use_radars,
-        semantics=transfuser.use_semantic,
-        depths=transfuser.use_depth,
-        map=transfuser.use_bev_semantic,
-    )
-
-
-class TransfuserDataset(SizedDataset):
+class TransfuserDataset(AbstractPolicyDataset):
     """Training dataset producing the TransFuser model inputs and labels."""
 
-    def __init__(self, lead_config: LeadConfig) -> None:
-        """Construct the dataset over the 123D frames.
+    sample_class = TransfuserTrainingSample
+
+    def __init__(self, lead_config: LeadConfig, scene_loader: SceneLoader) -> None:
+        """Construct the dataset over the 123D scenes, opening the cache store if configured.
 
         Args:
             lead_config: Root config tree.
+            scene_loader: Loader over the scenes to train on, built by the
+                policy (see ``Transfuser.build_scene_loader``).
         """
-        self.lead_config = lead_config
-        self.image_augmenter_func: Sequential = _image_augmenter(
-            lead_config,
-            lead_config.training.data.use_color_aug_prob,
-        )
-        self.future_waypoint_indices: list[int] = [
-            lead_config.policy.transfuser.waypoints_spacing * (k + 1)
-            for k in range(lead_config.policy.transfuser.num_way_points_prediction)
-        ]
-        self.data_loader: Py123DDataLoader = build_data_loader(lead_config)
+        super().__init__(lead_config, scene_loader, lead_config.policy.transfuser)
 
-    def __len__(self) -> int:
-        return len(self.data_loader)
-
-    def __getitem__(self, index: int) -> dict[str, typing.Any]:
-        # Disable threading because the data loader will already split in threads.
+    def prepare_read(self) -> None:
+        super().prepare_read()
+        # Disable threading: the DataLoader already splits across workers.
         cv2.setNumThreads(0)
-        start_loading_time = time.time()
 
-        frame, data, boxes = self._load(index)
-        data.update(
-            build_features(
-                frame,
-                self.lead_config,
-                image_augmenter=(
-                    self.image_augmenter_func
-                    if self.lead_config.training.data.use_color_aug
-                    else None
-                ),
-            ),
+    @property
+    def cache_finger_print(self) -> dict[str, str]:
+        """Inherited, see superclass."""
+        transfuser_config = self.lead_config.policy.transfuser
+        finger_print = {
+            name: str(getattr(transfuser_config, name))
+            for name in _CACHE_FINGER_PRINT_FIELDS
+        }
+        # Which cameras feed the stitched semantic labels, in stitch order.
+        finger_print["input_cameras"] = str(
+            [camera.name for camera in transfuser_config.input_cameras],
         )
-        data.update(build_labels(frame, boxes, self.lead_config))
+        # The rig decides whether radar reaches the lidar raster and whether
+        # the radar targets exist at all.
+        finger_print["use_radars"] = str(self.lead_config.expert.sensor_rig.use_radars)
+        return finger_print
 
-        data["loading_time"] = time.time() - start_loading_time
-        return data
-
-    def _load(
-        self,
-        index: int,
-    ) -> tuple[Frame, dict[str, typing.Any], list[dict] | None]:
-        """Read one sample's frame and its TransFuser-specific sample entries.
-
-        Args:
-            index: Sample index into the frame sequence.
+    def get_sample_parts(self) -> dict[str, SamplePart]:
+        """The policy's sample parts, config-gated exactly like the featurization.
 
         Returns:
-            The frame, the dict of collate-safe sample entries (meta lifts,
-            planning labels) in the view frame, and the view-frame box dicts
-            carrying the grafted futures.
+            The parts, keyed by part name.
         """
-        start_loading_time: float = time.time()
-        config: LeadConfig = self.lead_config
-        frame: Frame = self.data_loader[index]
-        meta: dict | None = frame.meta
-        assert meta is not None
-        assert frame.log_metadata is not None
-        assert frame.scene_metadata is not None
-        perturbation = frame.perturbation
+        lead_config = self.lead_config
+        config = lead_config.policy.transfuser
+        use_radars = lead_config.expert.sensor_rig.use_radars
+        anchor_only = (0,)
 
-        sample: dict[str, typing.Any] = {
-            "perturbate_sensor": perturbation is not None,
+        parts: dict[str, SamplePart] = {
+            "camera_features": SamplePart(
+                reads=SceneLoadingSpec(rgb_tick_ages=config.past_rgb_tick_ages),
+                builds=partial(build_camera_features, lead_config=lead_config),
+            ),
+            "meta_features": SamplePart(
+                reads=SceneLoadingSpec(
+                    ego_pose_tick_ages=config.past_ego_pose_tick_ages,
+                ),
+                builds=self._build_meta_features,
+            ),
+        }
+        if use_radars:
+            parts["radar_features"] = SamplePart(
+                reads=SceneLoadingSpec(radar_tick_ages=anchor_only),
+                builds=partial(build_radar_features, lead_config=lead_config),
+            )
+        if not config.LTF:
+            parts["lidar_raster"] = SamplePart(
+                reads=SceneLoadingSpec(
+                    lidar_tick_ages=config.past_lidar_tick_ages,
+                    radar_tick_ages=config.past_radar_tick_ages if use_radars else (),
+                ),
+                builds=partial(build_lidar_raster, lead_config=lead_config),
+                # The splat holds exactly k / max_lidar_points_per_bev_pixel.
+                caches={
+                    "rasterized_lidar": {
+                        "name": "png",
+                        "quantization_scale": config.max_lidar_points_per_bev_pixel,
+                    },
+                },
+            )
+        if config.needs_planning_targets:
+            parts["planning_targets"] = SamplePart(
+                reads=SceneLoadingSpec(
+                    future_iterations=config.future_ego_pose_iterations,
+                ),
+                # Never cached: positions are cheap to read live, and caching
+                # them would couple the store's coverage to the planning head.
+                builds=self._build_planning_targets,
+            )
+        if config.detect_boxes or config.use_bev_semantic or config.use_semantic:
+            parts["privileged_targets"] = SamplePart(
+                reads=SceneLoadingSpec(
+                    read_semantic_cameras=config.use_semantic,
+                    read_map_api=config.use_bev_semantic,
+                    radar_tick_ages=anchor_only if use_radars else (),
+                ),
+                builds=self._build_privileged_targets,
+                caches=_privileged_codecs(config, use_radars=use_radars),
+            )
+        if config.use_depth:
+            parts["depth_target"] = SamplePart(
+                reads=SceneLoadingSpec(read_depth_cameras=True),
+                builds=build_depth_target,
+            )
+        return parts
+
+    # --- Builders ---
+    def _build_meta_features(self, scene_data: SceneData) -> dict[str, typing.Any]:
+        """Identity fields, driving_meta lifts and scenario ids of one scene."""
+        driving_meta = scene_data.driving_meta
+        assert driving_meta is not None
+        assert scene_data.log_metadata is not None
+        assert scene_data.scene_metadata is not None
+        rig_perturbation = scene_data.rig_perturbation
+
+        meta_entries: dict[str, typing.Any] = {
+            "perturbate_sensor": rig_perturbation is not None,
             "perturbation_translation": (
-                perturbation.translation if perturbation is not None else 0.0
+                rig_perturbation.lateral_translation_m
+                if rig_perturbation is not None
+                else 0.0
             ),
             "perturbation_rotation": (
-                perturbation.rotation if perturbation is not None else 0.0
+                rig_perturbation.yaw_rotation_deg
+                if rig_perturbation is not None
+                else 0.0
             ),
-            "index": index,
-            "global_index": index,
-            "route_number": frame.log_metadata.log_name,
-            "frame_number": frame.scene_metadata.initial_idx,
-            "scenario_type_dir": str(frame.log_metadata.split).split("/")[-1],
-            "town": frame.log_metadata.location,
+            "route_number": scene_data.log_metadata.log_name,
+            "frame_number": scene_data.scene_metadata.initial_idx,
+            "scenario_type_dir": str(scene_data.log_metadata.split).split("/")[-1],
+            "town": scene_data.log_metadata.location,
         }
 
-        # --- Meta lifts ---
-        for attr in _STRING_META_KEYS:
-            if attr == "vehicle_door_side" and meta.get(attr) is None:
-                sample[attr] = "NA"
-            elif attr == "vehicle_door_side":
-                value = meta[attr]
-                sample[attr] = value[0] if isinstance(value, list) else value
+        for meta_key in _VERBATIM_DRIVING_META_KEYS:
+            if meta_key == "vehicle_door_side" and driving_meta.get(meta_key) is None:
+                meta_entries[meta_key] = "NA"
+            elif meta_key == "vehicle_door_side":
+                door_side = driving_meta[meta_key]
+                meta_entries[meta_key] = (
+                    door_side[0] if isinstance(door_side, list) else door_side
+                )
             else:
-                sample[attr] = meta[attr]
+                meta_entries[meta_key] = driving_meta[meta_key]
 
-        for attr in _NUMERIC_META_KEYS:
-            if attr in meta and meta[attr] is None:
-                sample[attr] = np.inf
-            elif attr in meta:
-                sample[attr] = float(meta[attr])
-        assert frame.ego_state is not None
-        sample["speed"] = box_decoding.carla_forward_speed(frame.ego_state)
+        for meta_key in _FLOAT_COERCED_DRIVING_META_KEYS:
+            if meta_key in driving_meta and driving_meta[meta_key] is None:
+                meta_entries[meta_key] = np.inf
+            elif meta_key in driving_meta:
+                meta_entries[meta_key] = float(driving_meta[meta_key])
+        assert scene_data.ego_state is not None
+        meta_entries["speed"] = carla_decoding.carla_forward_speed(scene_data.ego_state)
 
-        # Scenario type
-        for attr in [
+        for meta_key in [
             "current_active_scenario_type",
             "previous_active_scenario_type",
         ]:
-            sample[attr] = "NA" if meta.get(attr) is None else meta[attr]
-        if sample["current_active_scenario_type"] != "NA":
-            sample["scenario_type"] = sample["current_active_scenario_type"]
-        elif sample["previous_active_scenario_type"] != "NA":
-            sample["scenario_type"] = sample["previous_active_scenario_type"]
-        else:
-            sample["scenario_type"] = "NA"
-        sample["scenario_type_id"] = constants.SCENARIO_TYPES.index(
-            sample["scenario_type"],
-        )
-
-        # --- Bounding boxes: dicts derived from the native detections ---
-        boxes: list[dict] | None = None
-        if frame.box_detections is not None:
-            boxes = box_decoding.box_detections_to_carla_frame(
-                frame.box_detections,
-                frame.ego_state,
-                meta[BOX_ATTRIBUTES_KEY],
+            meta_entries[meta_key] = (
+                "NA" if driving_meta.get(meta_key) is None else driving_meta[meta_key]
             )
-            if perturbation is not None:
+        if meta_entries["current_active_scenario_type"] != "NA":
+            meta_entries["scenario_type"] = meta_entries["current_active_scenario_type"]
+        elif meta_entries["previous_active_scenario_type"] != "NA":
+            meta_entries["scenario_type"] = meta_entries[
+                "previous_active_scenario_type"
+            ]
+        else:
+            meta_entries["scenario_type"] = "NA"
+        meta_entries["scenario_type_id"] = constants.SCENARIO_TYPES.index(
+            meta_entries["scenario_type"],
+        )
+        return meta_entries
+
+    def _build_planning_targets(self, scene_data: SceneData) -> TransfuserOutputs:
+        """The ego's future waypoints and the smoothed route of one scene."""
+        driving_meta = scene_data.driving_meta
+        assert driving_meta is not None
+        planning_entries: TransfuserOutputs = {}
+        self._add_future_waypoints(
+            planning_entries,
+            scene_data,
+            driving_meta,
+            scene_data.future_driving_metas or {},
+            scene_data.future_ego_states or {},
+        )
+        self._add_route(planning_entries, scene_data, driving_meta)
+        return planning_entries
+
+    def _build_privileged_targets(self, scene_data: SceneData) -> TransfuserOutputs:
+        """The detection, segmentation and BEV targets of one scene.
+
+        Decodes the tick's boxes into the view frame and builds the labels
+        from them.
+        """
+        lead_config = self.lead_config
+        driving_meta = scene_data.driving_meta
+        assert driving_meta is not None
+
+        boxes: list[dict] | None = None
+        if scene_data.box_detections is not None:
+            assert scene_data.ego_state is not None
+            boxes = carla_decoding.box_detections_to_carla_ego_frame(
+                scene_data.box_detections,
+                scene_data.ego_state,
+                driving_meta[BOX_ATTRIBUTES_KEY],
+            )
+            if scene_data.rig_perturbation is not None:
                 boxes = view_geometry.to_view_frame_boxes(
                     boxes,
-                    perturbation.translation,
-                    perturbation.rotation,
+                    scene_data.rig_perturbation.lateral_translation_m,
+                    scene_data.rig_perturbation.yaw_rotation_deg,
                 )
-
-        # --- Planning labels, derived from the future iterations ---
-        needs_futures: bool = (
-            config.policy.transfuser.use_planning_decoder
-            or config.training.experiment.visualize_dataset
-        )
-        if needs_futures:
-            self._add_future_waypoints(
-                sample,
-                frame,
-                meta,
-                self.data_loader.future_metas(index, self.future_waypoint_indices),
-                self.data_loader.future_ego_states(
-                    index,
-                    self.future_waypoint_indices,
-                ),
-            )
-            self._add_route(sample, frame, meta)
-
-        if boxes is not None and (
-            config.policy.transfuser.detect_boxes
-            or config.policy.transfuser.use_bev_semantic
-        ):
-            self._graft_box_futures(
-                frame,
-                meta,
-                boxes,
-                self.data_loader.future_box_detections(
-                    index,
-                    self.future_waypoint_indices,
-                ),
-            )
-
-        sample["loading_meta_time"] = time.time() - start_loading_time
-        return frame, sample, boxes
+        return build_labels(scene_data, boxes, lead_config)
 
     def _add_future_waypoints(
         self,
-        sample: dict[str, typing.Any],
-        frame: Frame,
-        meta: dict,
-        future_metas: dict[int, dict | None],
-        future_ego_states: dict[int, "EgoStateSE3 | None"],
+        planning_entries: TransfuserOutputs,
+        scene_data: SceneData,
+        driving_meta: DrivingMeta,
+        future_driving_metas: dict[int, DrivingMeta | None],
+        future_ego_states: dict[int, EgoStateSE3 | None],
     ) -> None:
-        """Add the ego's future poses as the planning labels of the sample.
+        """Add the ego's future poses as the planning labels of the planning_entries."""
+        assert scene_data.ego_state is not None
+        ego_position, _ = carla_decoding.carla_ego_pose(scene_data.ego_state)
+        ego_yaw = _localized_yaw(driving_meta)
 
-        Args:
-            sample: Sample dict to add the labels to, modified in place.
-            frame: The frame of the sample.
-            meta: Driving meta of the anchor tick.
-            future_metas: The metas of the future waypoint iterations.
-            future_ego_states: The ego states of the same iterations.
-        """
-        assert frame.ego_state is not None
-        ego_position, _ = box_decoding.carla_ego_pose(frame.ego_state)
-        ego_yaw = _localized_yaw(meta)
-
+        future_iterations = (
+            self.lead_config.policy.transfuser.future_ego_pose_iterations
+        )
         future_waypoints: list[jt.Float[npt.NDArray, " 2"]] = []
         future_yaws: list[float] = []
-        for k in self.future_waypoint_indices:
-            future_meta: dict | None = future_metas.get(k)
-            future_state = future_ego_states.get(k)
-            if future_meta is None or future_state is None:
-                continue
-            future_position, _ = box_decoding.carla_ego_pose(future_state)
+        for future_iteration in future_iterations:
+            future_driving_meta: DrivingMeta | None = future_driving_metas.get(
+                future_iteration,
+            )
+            future_state = future_ego_states.get(future_iteration)
+            # Skipping would shift every later waypoint into an earlier slot,
+            # silently mislabelling its time horizon.
+            if future_driving_meta is None or future_state is None:
+                raise ValueError(
+                    f"Missing future iteration {future_iteration} of "
+                    f"{future_iterations}; the scene filter must "
+                    f"only enumerate scenes whose full future is available.",
+                )
+            future_position, _ = carla_decoding.carla_ego_pose(future_state)
             future_waypoints.append(
-                geometry.inverse_conversion_2d(future_position, ego_position, ego_yaw),
+                geometry.to_local_frame_2d(future_position, ego_position, ego_yaw),
             )
             future_yaws.append(
-                geometry.normalize_angle(_localized_yaw(future_meta) - ego_yaw),
+                geometry.normalize_angle_rad(
+                    _localized_yaw(future_driving_meta) - ego_yaw,
+                ),
             )
-        if not future_waypoints:
-            return
 
         waypoints: jt.Float[npt.NDArray, "n 2"] = np.array(future_waypoints).reshape(
             -1,
             2,
         )
         yaws: jt.Float[npt.NDArray, " n"] = np.array(future_yaws).reshape(-1)
-        if frame.perturbation is not None:
+        if scene_data.rig_perturbation is not None:
             waypoints = view_geometry.to_view_frame_points(
                 waypoints,
-                frame.perturbation.translation,
-                frame.perturbation.rotation,
+                scene_data.rig_perturbation.lateral_translation_m,
+                scene_data.rig_perturbation.yaw_rotation_deg,
             )
             yaws = view_geometry.to_view_frame_yaws(
                 yaws,
-                frame.perturbation.rotation,
+                scene_data.rig_perturbation.yaw_rotation_deg,
             )
-        sample["future_waypoints"] = waypoints
-        sample["future_yaws"] = yaws
+        planning_entries["future_waypoints"] = waypoints
+        planning_entries["future_yaws"] = yaws
 
     def _add_route(
         self,
-        sample: dict[str, typing.Any],
-        frame: Frame,
-        meta: dict,
+        planning_entries: TransfuserOutputs,
+        scene_data: SceneData,
+        driving_meta: DrivingMeta,
     ) -> None:
-        """Add the route ahead of the ego, smoothed and in the view frame.
-
-        Args:
-            sample: Sample dict to add the route to, modified in place.
-            frame: The frame of the sample.
-            meta: Driving meta of the anchor tick.
-        """
-        config: LeadConfig = self.lead_config
-        transfuser = config.policy.transfuser
+        """Add the route ahead of the ego, smoothed and in the view frame."""
+        lead_config: LeadConfig = self.lead_config
+        transfuser_config = lead_config.policy.transfuser
 
         # The route is stored in the global frame; convert to the ego frame.
-        assert frame.ego_state is not None
-        ego_position, _ = box_decoding.carla_ego_pose(frame.ego_state)
-        ego_yaw = _localized_yaw(meta)
+        assert scene_data.ego_state is not None
+        ego_position, _ = carla_decoding.carla_ego_pose(scene_data.ego_state)
+        ego_yaw = _localized_yaw(driving_meta)
         route: jt.Float[npt.NDArray, "n 2"] = np.array(
             [
-                geometry.inverse_conversion_2d(
+                geometry.to_local_frame_2d(
                     np.array(point),
                     ego_position,
                     ego_yaw,
                 )
-                for point in meta["route"][: transfuser.num_route_points_smoothing]
+                for point in driving_meta["route"][
+                    : transfuser_config.num_route_points_smoothing
+                ]
             ],
         )
-        if transfuser.smooth_route:
-            route = route_smoothing.smooth_path(
-                config,
+        if transfuser_config.smooth_route:
+            route = route_smoothing.smooth_route(
+                lead_config,
                 route,
-                target_first_distance=2.5,
+                target_first_distance=_SMOOTHED_ROUTE_FIRST_POINT_DISTANCE_M,
             )
-        route = route[: transfuser.num_route_points_prediction]
-        if frame.perturbation is not None:
+        route = route[: transfuser_config.num_route_points_prediction]
+        if scene_data.rig_perturbation is not None:
             route = view_geometry.to_view_frame_points(
                 route,
-                frame.perturbation.translation,
-                frame.perturbation.rotation,
+                scene_data.rig_perturbation.lateral_translation_m,
+                scene_data.rig_perturbation.yaw_rotation_deg,
             )
-        sample["brake"] = meta["brake"]
-        sample["throttle"] = meta["throttle"]
-        sample["route"] = route
+        planning_entries["route"] = route
 
-    def _graft_box_futures(
-        self,
-        frame: Frame,
-        meta: dict,
-        json_boxes: list[dict],
-        future_box_detections: dict[int, "BoxDetectionsSE3 | None"],
-    ) -> None:
-        """Attach per-box future positions/yaws from the future iterations.
 
-        Future world poses of each box (matched by id) are transformed into the
-        view frame the frame's boxes already live in.
+# --- Module-level helpers ---
+def _privileged_codecs(
+    transfuser_config: TransfuserConfig,
+    *,
+    use_radars: bool,
+) -> dict[str, str | dict]:
+    """Codecs of the privileged targets each enabled head contributes.
 
-        Args:
-            frame: The frame whose boxes are grafted onto.
-            meta: Current driving meta with the ego heading.
-            json_boxes: Current tick's box dicts (modified in place).
-            future_box_detections: The native box detections of the future
-                waypoint iterations.
-        """
-        assert frame.ego_state is not None
-        ego_position, _ = box_decoding.carla_ego_pose(frame.ego_state)
-        ego_yaw = _localized_yaw(meta)
+    Args:
+        transfuser_config: The ``policy.transfuser`` config section.
+        use_radars: Whether the sensor rig records radars.
 
-        def to_view_frame(
-            position: jt.Float[npt.NDArray, " 2"],
-            yaw: float,
-        ) -> tuple[jt.Float[npt.NDArray, " 2"], float]:
-            if frame.perturbation is None:
-                return position, yaw
-            view_position = view_geometry.to_view_frame_points(
-                position[None],
-                frame.perturbation.translation,
-                frame.perturbation.rotation,
-            )[0]
-            view_yaw = float(
-                view_geometry.to_view_frame_yaws(
-                    np.array([yaw]),
-                    frame.perturbation.rotation,
-                )[0],
-            )
-            return view_position, view_yaw
+    Returns:
+        The tensor-name to codec-spec map of the privileged part.
+    """
+    codecs: dict[str, str | dict] = {}
+    if transfuser_config.detect_boxes:
+        codecs |= {
+            "center_net_heatmap": "zlib",
+            "center_net_wh": "zlib",
+            "center_net_offset": "zlib",
+            "center_net_yaw_class": "zlib",
+            "center_net_yaw_res": "zlib",
+            "center_net_velocity": "zlib",
+            "center_net_brake": "zlib",
+            "center_net_pixel_weight": "zlib",
+            "center_net_bounding_boxes": "zlib",
+            "center_net_avg_factor": "raw",
+        }
+    if use_radars:
+        codecs["radar_detections"] = "raw"
+    if transfuser_config.use_semantic:
+        codecs["semantic"] = {"name": "png", "quantization_scale": 1}
+    if transfuser_config.use_bev_semantic:
+        codecs["bev_semantic"] = {"name": "png", "quantization_scale": 1}
+    return codecs
 
-        future_boxes_by_id: dict[int, dict[str, list]] = {}
-        for k in self.future_waypoint_indices:
-            detections = future_box_detections.get(k)
-            if detections is None:
-                continue
-            global_poses = box_decoding.box_detections_to_carla_global(detections)
-            for box_id, (global_position, global_yaw) in global_poses.items():
-                position: jt.Float[npt.NDArray, " 2"] = geometry.inverse_conversion_2d(
-                    global_position,
-                    ego_position,
-                    ego_yaw,
-                )
-                yaw: float = geometry.normalize_angle(global_yaw - ego_yaw)
-                position, yaw = to_view_frame(position, yaw)
-                entry: dict[str, list] = future_boxes_by_id.setdefault(
-                    box_id,
-                    {"future_positions": [], "future_yaws": []},
-                )
-                entry["future_positions"].append(position.tolist())
-                entry["future_yaws"].append(float(yaw))
 
-        # Lay the sampled values out so that index spacing*k holds the k-th
-        # future sample; the filler entries in between are never read.
-        spacing: int = self.lead_config.policy.transfuser.waypoints_spacing
-        for bb in json_boxes:
-            box_entry: dict[str, list] | None = future_boxes_by_id.get(bb["id"])
-            if box_entry is None or not box_entry["future_positions"]:
-                continue
-            expanded_positions: list[list[float]] = [box_entry["future_positions"][0]]
-            expanded_yaws: list[float] = [box_entry["future_yaws"][0]]
-            for future_position, future_yaw in zip(
-                box_entry["future_positions"],
-                box_entry["future_yaws"],
-                strict=True,
-            ):
-                expanded_positions.extend([future_position] * spacing)
-                expanded_yaws.extend([future_yaw] * spacing)
-            bb["future_positions"] = expanded_positions
-            bb["future_yaws"] = expanded_yaws
+def _localized_yaw(driving_meta: DrivingMeta) -> float:
+    """The tick's localized ego yaw, read from its SE(3) pose matrix."""
+    _, yaw = se3_matrix_to_localized_pose(
+        np.asarray(driving_meta[LOCALIZED_EGO_STATE_KEY], dtype=np.float64),
+    )
+    return yaw

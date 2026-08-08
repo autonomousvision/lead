@@ -21,7 +21,7 @@ class PIDController:
         k_p: float = 1.0,
         k_i: float = 0.0,
         k_d: float = 0.0,
-        n: int = 20,
+        error_window_size: int = 20,
     ) -> None:
         """Initialize the PID controller with gain parameters.
 
@@ -29,13 +29,16 @@ class PIDController:
             k_p: Proportional gain coefficient.
             k_i: Integral gain coefficient.
             k_d: Derivative gain coefficient.
-            n: Size of the sliding window for error history.
+            error_window_size: Size of the sliding window for error history.
         """
         self.k_p = k_p
         self.k_i = k_i
         self.k_d = k_d
 
-        self._window: deque[float] = deque([0.0 for _ in range(n)], maxlen=n)
+        self._window: deque[float] = deque(
+            [0.0 for _ in range(error_window_size)],
+            maxlen=error_window_size,
+        )
 
     def step(self, error: float) -> float:
         """Compute the PID control output for the given error.
@@ -160,15 +163,13 @@ class LateralPIDController:
         integral = np.mean(self.error_history)
 
         # Compute the steering angle using the PID control law
-        steering = np.clip(
+        return np.clip(
             self.lateral_pid_kp * heading_error
             + self.lateral_pid_kd * derivative
             + self.lateral_pid_ki * integral,
             -1.0,
             1.0,
         ).item()
-
-        return steering
 
 
 class LongitudinalController:
@@ -214,7 +215,7 @@ class LongitudinalController:
         """
         if target_speed < 1e-5 or hazard_brake:
             return 0.0, True
-        elif target_speed < self.minimum_target_speed:  # Avoid very small target speeds
+        if target_speed < self.minimum_target_speed:  # Avoid very small target speeds
             target_speed = self.minimum_target_speed
 
         current_speed = current_speed * 3.6
@@ -273,7 +274,7 @@ class LongitudinalController:
         if speed_error > self.maximum_acceleration:
             return 1.0
         # Maximum deceleration -4.82 m/tick
-        elif speed_error < self.maximum_deceleration:
+        if speed_error < self.maximum_deceleration:
             return 0.0
 
         throttle = 0.0
@@ -296,6 +297,4 @@ class LongitudinalController:
             ],
         ).flatten()
 
-        throttle = np.clip(features @ params[:-1], 0.0, 1.0)
-
-        return throttle
+        return float(np.clip(features @ params[:-1], 0.0, 1.0))

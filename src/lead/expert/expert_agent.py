@@ -14,7 +14,7 @@ import matplotlib
 import numpy as np
 
 from lead.api import py123d_log_api
-from lead.common.logging import setup_logging
+from lead.common.logging_setup import setup_logging
 from lead.common.pid import LateralPIDController
 from lead.expert.driving.path_planning import PathPlanningMixin
 from lead.expert.driving.speed_planning import SpeedPlanningMixin
@@ -81,7 +81,7 @@ class Expert(PathPlanningMixin, SpeedPlanningMixin, ExpertData):
             s = io.StringIO()
             self.episode_stats.stream = s
             self.episode_stats.sort_stats("cumulative").print_stats("src/lead/")
-            print(s.getvalue())
+            LOG.info(s.getvalue())
         super().destroy(results)
 
     def run_step(
@@ -342,7 +342,7 @@ class Expert(PathPlanningMixin, SpeedPlanningMixin, ExpertData):
             "rear_adversarial_id": -1
             if self.rear_adversarial_actor is None
             else self.rear_adversarial_actor.id,
-            "localized_ego_state_se3": py123d_log_api.localized_ego_state_se3(
+            "localized_ego_state_se3": py123d_log_api.localized_pose_to_se3_matrix(
                 tick_data["localized_position"],
                 self.ego_orientation_rad,
             ),

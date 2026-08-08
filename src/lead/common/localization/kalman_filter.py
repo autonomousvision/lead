@@ -8,20 +8,23 @@ import numpy.typing as npt
 from filterpy.kalman import MerweScaledSigmaPoints
 from filterpy.kalman import UnscentedKalmanFilter as UKF
 
-import lead.common.geometry as geometry
+from lead.common import geometry
 from lead.config import ExpertConfig
 
 
 class KalmanFilter:
     """Unscented Kalman Filter for less noisy GPS localization."""
 
-    def __init__(self, config: ExpertConfig) -> None:
+    def __init__(self, config: ExpertConfig, history_length: int) -> None:
         """Constructor.
 
         Args:
             config: Object containing the configuration parameters.
+            history_length: Ticks of filtered states to keep, covering the
+                consumer's sweep alignment window.
         """
         self.config = config
+        self.history_length = history_length
         self.points = MerweScaledSigmaPoints(
             n=4,
             alpha=0.00001,
@@ -52,9 +55,7 @@ class KalmanFilter:
         # Used to set the filter state equal the first measurement
         self.filter_initialized = False
 
-        maxlen = self.config.data_collection.ego_history_length
-
-        self.history_x = deque(maxlen=maxlen)  # filtered states
+        self.history_x = deque(maxlen=self.history_length)  # filtered states
 
         # Scaling factors to avoid working with large numbers
         self.start_x = None
@@ -62,7 +63,7 @@ class KalmanFilter:
 
     def step(
         self,
-        noisy_position: npt.NDArray,
+        noisy_position: npt.NDArray[np.floating],
         compass: float,
         speed: float,
         control: carla.VehicleControl,
@@ -86,7 +87,7 @@ class KalmanFilter:
             [
                 noisy_position[0] - self.start_x,
                 noisy_position[1] - self.start_y,
-                geometry.normalize_angle(compass),
+                geometry.normalize_angle_rad(compass),
                 speed,
             ],
         )
@@ -159,9 +160,7 @@ class KalmanFilter:
         next_speed = speed + accel * dt
         next_speed = next_speed * (next_speed > 0.0)  # Fast ReLU
 
-        next_state_x = np.array([next_locs_0, next_locs_1, next_yaws, next_speed])
-
-        return next_state_x
+        return np.array([next_locs_0, next_locs_1, next_yaws, next_speed])
 
     def _measurement_function_hx(
         self,
@@ -228,8 +227,8 @@ class KalmanFilter:
 
     def _residual_state_x(
         self,
-        a: npt.NDArray,
-        b: npt.NDArray,
+        a: npt.NDArray[np.floating],
+        b: npt.NDArray[np.floating],
     ) -> npt.NDArray[np.floating]:
         """Residual function
 
@@ -241,13 +240,13 @@ class KalmanFilter:
             The residual.
         """
         y = a - b
-        y[2] = geometry.normalize_angle(y[2])
+        y[2] = geometry.normalize_angle_rad(y[2])
         return y
 
     def _residual_measurement_h(
         self,
-        a: npt.NDArray,
-        b: npt.NDArray,
+        a: npt.NDArray[np.floating],
+        b: npt.NDArray[np.floating],
     ) -> npt.NDArray[np.floating]:
         """Residual function
 
@@ -259,5 +258,5 @@ class KalmanFilter:
             The residual.
         """
         y = a - b
-        y[2] = geometry.normalize_angle(y[2])
+        y[2] = geometry.normalize_angle_rad(y[2])
         return y

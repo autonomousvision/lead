@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Any
 
-from lead.common.logging import setup_logging
+from lead.common.logging_setup import setup_logging
 from lead.config import EvaluationConfig
 
 setup_logging()

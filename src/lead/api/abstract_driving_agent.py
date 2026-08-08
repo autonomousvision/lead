@@ -25,24 +25,24 @@ from py123d.geometry import PoseSE3, Vector3D
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
 from lead.api.abstract_policy import AbstractPolicy
+from lead.api.point_cloud_transforms import (
+    lidar_sweep_from_carla_ego_frame,
+    radar_returns_from_carla_ego_frame,
+)
 from lead.api.py123d_log_api import (
-    CAMERA_ID_MAPPING,
-    RADAR_ID_MAPPING,
+    CAMERA_ID_BY_LEAD_INDEX,
+    CARLA_LINCOLN_MKZ_2020_METADATA,
+    RADAR_ID_BY_LEAD_INDEX,
     RADIAL_VELOCITY_FEATURE,
-    get_carla_lincoln_mkz_2020_metadata,
     ordered_target_points,
 )
+from lead.api.scene_data import SceneData
 from lead.common import carla_to_123d, geometry
-from lead.common.base_agent import BaseAgent
+from lead.common.base_agent import BaseAgent, CarlaSensorData
 from lead.common.planning import RoutePlanner
 from lead.common.sensors import ransac
-from lead.common.sensors.av_sensor_setup import av_sensor_setup
+from lead.common.sensors.av_sensor_setup import SensorSpec, av_sensor_setup
 from lead.config import load_lead_config
-from lead.dataloader import Frame
-from lead.dataloader.sensor_decoding import (
-    lidar_sweep_from_carla_ego_frame,
-    radar_from_carla_ego_frame,
-)
 from lead.evaluation.inference.policy_runner import PolicyRunner
 from lead.evaluation.recorder.infraction_recorder import InfractionRecorder
 from lead.evaluation.recorder.video_recorder import VideoRecorder
@@ -53,13 +53,15 @@ LOG = logging.getLogger(__name__)
 class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC):
     """CARLA leaderboard protocol adapter around a driving policy.
 
-    Assembles one :class:`~lead.dataloader.frame.Frame` per tick from the simulator's
+    Assembles one :class:`~lead.api.scene_data.SceneData` per tick from the simulator's
     sensors and owns everything policy-agnostic: config, sensor rig, infraction and
     video recording, the :meth:`run_step` skeleton. Subclasses supply the policy and
     turn its predictions into a control (:meth:`setup_policy`, :meth:`compute_control`).
     """
 
-    def setup(
+    # The leaderboard entry point deliberately shadows `BaseAgent.setup`'s
+    # internal (lead_config, sensor_agent) signature.
+    def setup(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         path_to_conf_file: str,
         route_index: str | None = None,
@@ -75,36 +77,17 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
             encoding="utf-8",
         ) as f:
             stored_config = yaml.safe_load(f)
+        # The stored tree describes how the model was trained; how it is
+        # evaluated is decided by the running code and its overrides.
+        stored_config.pop("evaluation", None)
         lead_config = load_lead_config(
             loaded_config=stored_config,
-            raise_error_on_missing_key=False,
+            raise_on_unknown_key=False,
         )
 
-        super().setup(lead_config, sensor_agent=True)
         self.step = -1
         self.initialized = False
         self.device = torch.device("cuda:0")
-
-        # Sweep history for the LiDAR accumulation, the temporal window training reads.
-        lidar_stack_size = lead_config.expert.data_collection.lidar_stack_size
-        self.lidar_sweep_queue: deque = deque(maxlen=2 * lidar_stack_size)
-        self.radar_sweep_queue: deque = deque(maxlen=2 * lidar_stack_size)
-        ransac.remove_ground(
-            np.random.rand(1000, 3),
-            lead_config.expert,
-        )  # Pre-compile numba code
-
-        # The rig's calibration, identical to what the logs are written with.
-        self._camera_metadatas = carla_to_123d.build_pinhole_camera_metadatas(
-            lead_config.expert,
-            get_carla_lincoln_mkz_2020_metadata(),
-            perturbation_translation=0.0,
-            perturbation_rotation=0.0,
-        )
-        self._lidar_metadata = carla_to_123d.build_lidar_metadata(lead_config.expert)
-        self._radar_metadatas, self._merged_radar_metadata = (
-            carla_to_123d.build_radar_metadatas(lead_config.expert)
-        )
 
         # The policy named by ``policy.target``, loaded from the checkpoint.
         self.policy_runner = PolicyRunner(
@@ -113,6 +96,39 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
             device=self.device,
         )
         self.policy: AbstractPolicy = self.policy_runner.policy
+        policy_config = self.policy.get_policy_config()
+
+        super().setup(
+            lead_config,
+            sensor_agent=True,
+            past_window_num_iterations=policy_config.past_window_num_iterations,
+        )
+
+        # Sweep history matching the temporal window the policy trains on; a
+        # length of N ticks back means N + 1 buffered sweeps.
+        self.lidar_sweep_queue: deque = deque(
+            maxlen=policy_config.past_lidar_num_iterations + 1,
+        )
+        self.radar_sweep_queue: deque = deque(
+            maxlen=policy_config.past_radar_num_iterations + 1,
+        )
+        ransac.remove_ground(
+            np.random.rand(1000, 3),
+            lead_config.expert,
+        )  # Pre-compile numba code
+
+        # The rig's calibration, identical to what the logs are written with.
+        self._camera_metadatas = carla_to_123d.build_pinhole_camera_metadatas(
+            lead_config.expert,
+            CARLA_LINCOLN_MKZ_2020_METADATA,
+            perturbation_translation=0.0,
+            perturbation_rotation=0.0,
+        )
+        self._lidar_metadata = carla_to_123d.build_lidar_metadata(lead_config.expert)
+        self._radar_metadatas, self._merged_radar_metadata = (
+            carla_to_123d.build_radar_metadatas(lead_config.expert)
+        )
+
         self.setup_policy(checkpoint_dir)
 
         self.metric_info = {}
@@ -155,12 +171,13 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
         Returns:
             The vehicle control to apply this step.
         """
+        raise NotImplementedError
 
-    def save_step_visualizations(self, input_data: dict) -> None:
+    def save_step_visualizations(self, sensor_data: CarlaSensorData) -> None:
         """Save per-step visualizations of the last control computation; no-op by default.
 
         Args:
-            input_data: Sensor data processed by :meth:`tick`.
+            sensor_data: Sensor data processed by :meth:`tick`.
         """
 
     def save_input_log(self) -> None:
@@ -179,34 +196,31 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
             ),
         )
 
-    def tick(self, input_data: dict) -> dict:
+    def tick(self, sensor_data: CarlaSensorData) -> CarlaSensorData:
         """Pre-process the tick's sensors and record the sweep history.
 
         Args:
-            input_data: Raw sensor data provided by the leaderboard.
+            sensor_data: Raw sensor data provided by the leaderboard.
 
         Returns:
             The pre-processed sensor data.
         """
-        input_data = super().tick(input_data)
+        sensor_data = super().tick(sensor_data)
 
-        # The frame carries the per-tick sweeps as the logs store them; the
+        # The scene data carries the per-tick sweeps as the logs store them; the
         # policy's featurization owns the merging and ground removal.
-        self.lidar_sweep_queue.append(self._lidar_sweep(input_data))
-        if self.lead_config.expert.sensor_rig.use_radars:
-            self.radar_sweep_queue.append(self._merged_radar_sweep(input_data))
-        return input_data
+        if self.lidar_sweep_queue.maxlen:
+            self.lidar_sweep_queue.append(self._lidar_sweep(sensor_data))
+        if (
+            self.radar_sweep_queue.maxlen
+            and self.lead_config.expert.sensor_rig.use_radars
+        ):
+            self.radar_sweep_queue.append(self._merged_radar_sweep(sensor_data))
+        return sensor_data
 
-    def _lidar_sweep(self, input_data: dict) -> Lidar:
-        """The tick's lidar sweep in the 123D IMU frame, as the modality the logs store.
-
-        Args:
-            input_data: Sensor data pre-processed by :meth:`tick`.
-
-        Returns:
-            The sweep of this tick, in the 123D IMU frame.
-        """
-        points = self._quantize(input_data["lidar_sweep"])
+    def _lidar_sweep(self, sensor_data: CarlaSensorData) -> Lidar:
+        """The tick's lidar sweep in the 123D IMU frame, as the modality the logs store."""
+        points = self._quantize(sensor_data["lidar_sweep"])
         return Lidar(
             timestamp=self._timestamp(),
             timestamp_end=self._timestamp(),
@@ -225,12 +239,6 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
 
         Training sweeps pass through the writer's laspy quantization; applying it here
         keeps the simulator input free of a train-test mismatch.
-
-        Args:
-            points: Raw sweep in the CARLA ego frame.
-
-        Returns:
-            The sweep at storage precision.
         """
         storage = self.lead_config.expert.storage
         precision = np.array(
@@ -244,75 +252,63 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
         quantized[:, :3] = np.round(quantized[:, :3] / precision) * precision
         return quantized
 
-    def build_frame(self, input_data: dict) -> Frame:
+    def build_scene_data(self, sensor_data: CarlaSensorData) -> SceneData:
         """Assemble this tick's simulator data into the policy's input contract.
 
-        Produces the same :class:`~lead.dataloader.frame.Frame` training reads from a
+        Produces the same :class:`~lead.api.scene_data.SceneData` training reads from a
         123D log, minus the privileged fields the simulator cannot provide.
 
         Args:
-            input_data: Sensor data pre-processed by :meth:`tick`.
+            sensor_data: Sensor data pre-processed by :meth:`tick`.
 
         Returns:
-            The frame of this tick.
+            The scene data of this tick.
         """
         target_points = self._target_points()
-        return Frame(
-            cameras=self._cameras(input_data),
+        return SceneData(
+            cameras=self._cameras(sensor_data),
             lidar_sweeps=dict(enumerate(reversed(self.lidar_sweep_queue))),
             radar_sweeps=(
                 dict(enumerate(reversed(self.radar_sweep_queue)))
                 if self.lead_config.expert.sensor_rig.use_radars
                 else None
             ),
-            ego_state=self._ego_state(input_data),
+            ego_state=self._ego_state(sensor_data),
             log_metadata=LogMetadata(
                 dataset=self.lead_config.expert.data_collection.py123d_dataset,
                 split="",
                 log_name="",
                 location=self._world.get_map().name.split("/")[-1],
             ),
-            past_positions=np.array(self.ego_past_positions[::-1]),
-            past_yaws=np.array(self.ego_past_yaws[::-1]),
-            target_point_previous=target_points["target_point_previous"],
+            past_ego_positions=np.array(self.ego_past_positions[::-1]),
+            past_ego_yaws=np.array(self.ego_past_yaws[::-1]),
+            previous_target_point=target_points["previous_target_point"],
             target_point=target_points["target_point"],
-            target_point_next=target_points["target_point_next"],
+            next_target_point=target_points["next_target_point"],
         )
 
-    def _ego_state(self, input_data: dict) -> EgoStateSE3:
+    def _ego_state(self, sensor_data: CarlaSensorData) -> EgoStateSE3:
         """The ego state the sensors provide: identity pose, speedometer velocity.
 
         The simulator's true pose is privileged, so the online ego state
         carries only what the featurization reads of it — the forward speed.
-
-        Args:
-            input_data: Sensor data pre-processed by :meth:`tick`.
-
-        Returns:
-            The ego state of this tick.
         """
         return EgoStateSE3.from_center(
             center_se3=PoseSE3.identity(),
-            metadata=get_carla_lincoln_mkz_2020_metadata(),
+            metadata=CARLA_LINCOLN_MKZ_2020_METADATA,
             timestamp=self._timestamp(),
             dynamic_state_se3=DynamicStateSE3(
-                velocity=Vector3D(x=float(input_data["speed"]), y=0.0, z=0.0),
+                velocity=Vector3D(x=float(sensor_data["speed"]), y=0.0, z=0.0),
                 acceleration=Vector3D(x=0.0, y=0.0, z=0.0),
                 angular_velocity=Vector3D(x=0.0, y=0.0, z=0.0),
             ),
         )
 
-    def _cameras(self, input_data: dict) -> list[Camera]:
-        """The tick's cameras in LEAD camera order, as 123D modalities.
+    def _cameras(self, sensor_data: CarlaSensorData) -> list[Camera]:
+        """The tick's cameras of the active policy, in stitch order, as 123D modalities.
 
         Each image passes the storage JPEG round-trip so the model sees the same
         compression artifacts as in training.
-
-        Args:
-            input_data: Sensor data pre-processed by :meth:`tick`.
-
-        Returns:
-            One camera per LEAD index (1..num_cameras).
         """
         quality = self.lead_config.evaluation.inference.jpeg_quality
         timestamp = Timestamp.from_us(
@@ -320,20 +316,26 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
                 self.step * 1e6 / self.lead_config.expert.simulation.carla_fps,
             ),
         )
+        lead_indices = {
+            camera_id: index for index, camera_id in CAMERA_ID_BY_LEAD_INDEX.items()
+        }
 
         cameras: list[Camera] = []
-        for camera_idx in range(1, self.lead_config.expert.sensor_rig.num_cameras + 1):
-            image = input_data[f"rgb_{camera_idx}"]
+        for camera_id in self.policy.input_cameras:
+            image = sensor_data[f"rgb_{lead_indices[camera_id]}"]
             _, encoded = cv2.imencode(
                 ".jpg",
                 cv2.cvtColor(image, cv2.COLOR_BGR2RGB),
                 [int(cv2.IMWRITE_JPEG_QUALITY), quality],
             )
-            metadata = self._camera_metadatas[CAMERA_ID_MAPPING[camera_idx]]
+            metadata = self._camera_metadatas[camera_id]
             cameras.append(
                 Camera(
                     metadata=metadata,
-                    image=cv2.imdecode(encoded, cv2.IMREAD_UNCHANGED),
+                    image=typing.cast(
+                        "npt.NDArray[np.uint8]",
+                        cv2.imdecode(encoded, cv2.IMREAD_UNCHANGED),
+                    ),
                     camera_to_global_se3=metadata.camera_to_imu_se3,
                     timestamp=timestamp,
                 ),
@@ -348,16 +350,8 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
             ),
         )
 
-    def _radars(self, input_data: dict) -> list[Radar] | None:
-        """The tick's radars in LEAD radar order, as 123D modalities.
-
-        Args:
-            input_data: Sensor data pre-processed by :meth:`tick`.
-
-        Returns:
-            One radar per LEAD index, carrying the per-point radial velocity,
-            or None when the rig carries no radars.
-        """
+    def _radars(self, sensor_data: CarlaSensorData) -> list[Radar] | None:
+        """The tick's radars in LEAD radar order, as 123D modalities."""
         if not self.lead_config.expert.sensor_rig.use_radars:
             return None
 
@@ -367,12 +361,12 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
             1,
             self.lead_config.expert.sensor_rig.num_radar_sensors + 1,
         ):
-            returns = input_data[f"radar{radar_idx}"]
+            returns = sensor_data[f"radar{radar_idx}"]
             radars.append(
                 Radar(
                     timestamp=timestamp,
-                    metadata=self._radar_metadatas[RADAR_ID_MAPPING[radar_idx]],
-                    point_cloud_3d=radar_from_carla_ego_frame(
+                    metadata=self._radar_metadatas[RADAR_ID_BY_LEAD_INDEX[radar_idx]],
+                    point_cloud_3d=radar_returns_from_carla_ego_frame(
                         returns[:, :3],
                     ).astype(np.float32),
                     point_cloud_features={
@@ -382,17 +376,11 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
             )
         return radars
 
-    def _merged_radar_sweep(self, input_data: dict) -> Radar:
+    def _merged_radar_sweep(self, sensor_data: CarlaSensorData) -> Radar:
         """The tick's radar returns of all sensors merged into one 123D radar, like the
         merged radar stream of the logs.
-
-        Args:
-            input_data: Sensor data pre-processed by :meth:`tick`.
-
-        Returns:
-            The merged returns of this tick.
         """
-        radars = self._radars(input_data) or []
+        radars = self._radars(sensor_data) or []
         points = [radar.point_cloud_3d for radar in radars]
         velocities = []
         ids = []
@@ -402,7 +390,7 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
             ids.append(
                 np.full(
                     radar.point_cloud_3d.shape[0],
-                    int(RADAR_ID_MAPPING[radar_idx].value),
+                    int(RADAR_ID_BY_LEAD_INDEX[radar_idx].value),
                     dtype=np.uint8,
                 ),
             )
@@ -431,9 +419,6 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
 
         The pop distance adapts when the route bunches target points together,
         and a far-away next point is dropped.
-
-        Returns:
-            The three target points, keyed as the frame names them.
         """
         controller = self.lead_config.evaluation.controller
         points = self._plan_target_points(controller.route_planner_min_distance)
@@ -446,75 +431,67 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
         # Ignore the next target point if it's too far away.
         if (
             controller.sensor_agent_skip_distant_target_point
-            and np.linalg.norm(points["target_point_next"])
+            and np.linalg.norm(points["next_target_point"])
             > controller.sensor_agent_skip_distant_target_point_threshold
         ):
-            points["target_point_next"] = points["target_point"]
+            points["next_target_point"] = points["target_point"]
         return points
 
     def _plan_target_points(
         self,
         pop_distance: float,
     ) -> dict[str, jt.Float[npt.NDArray, " 2"]]:
-        """Read the target points of one route planner into the ego frame.
-
-        Args:
-            pop_distance: Distance threshold of the route planner to read.
-
-        Returns:
-            The previous, current and next target point.
-        """
+        """Read the target points of one route planner into the ego frame."""
         planner: RoutePlanner = self.gps_waypoint_planners_dict[pop_distance]
-        previous_tp, current_tp, next_tp = ordered_target_points(
-            planner.target_points,
-            planner.target_point_index,
+        previous_target_point, current_target_point, next_target_point = (
+            ordered_target_points(
+                planner.target_points,
+                planner.target_point_index,
+            )
         )
 
         compass = self.compass
-        assert compass is not None, "tick() must run before build_frame()"
+        assert compass is not None, "tick() must run before build_scene_data()"
 
         def transform(
             point: jt.Float[npt.NDArray, " 3"],
         ) -> jt.Float[npt.NDArray, " 2"]:
-            return geometry.inverse_conversion_2d(
+            return geometry.to_local_frame_2d(
                 point[:2],
                 self.localized_position,
                 compass,
             )
 
         return {
-            "target_point_previous": transform(previous_tp),
-            "target_point": transform(current_tp),
-            "target_point_next": transform(next_tp),
+            "previous_target_point": transform(previous_target_point),
+            "target_point": transform(current_target_point),
+            "next_target_point": transform(next_target_point),
         }
 
     @staticmethod
     def _points_are_dense(points: dict[str, jt.Float[npt.NDArray, " 2"]]) -> bool:
-        """Whether the route's target points bunch up around the ego.
-
-        Args:
-            points: The previous, current and next target point.
-
-        Returns:
-            Whether a closer pop distance should be used.
-        """
-        previous_tp = points["target_point_previous"]
-        current_tp = points["target_point"]
-        next_tp = points["target_point_next"]
+        """Whether the route's target points bunch up around the ego."""
+        previous_target_point = points["previous_target_point"]
+        current_target_point = points["target_point"]
+        next_target_point = points["next_target_point"]
         close_to_ego = (
-            min(np.linalg.norm(previous_tp), np.linalg.norm(current_tp)) < 10.0
+            min(
+                np.linalg.norm(previous_target_point),
+                np.linalg.norm(current_target_point),
+            )
+            < 10.0
         )
         return bool(
             close_to_ego
             and (
-                np.linalg.norm(current_tp - next_tp) < 10.0
-                or np.linalg.norm(previous_tp - current_tp) < 10.0
+                np.linalg.norm(current_target_point - next_target_point) < 10.0
+                or np.linalg.norm(previous_target_point - current_target_point) < 10.0
             ),
         )
 
     def set_global_plan(
         self,
-        global_plan_gps: typing.Any,
+        global_plan_gps: list[tuple[dict[str, float], RoadOption]],
         privileged_org_dense_route_world_coord: list[
             tuple[carla.Transform, RoadOption]
         ],
@@ -538,7 +515,7 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
         )
         super().set_global_plan(global_plan_gps, privileged_org_dense_route_world_coord)
 
-    def set_scenario(self, scenario) -> None:
+    def set_scenario(self, scenario: typing.Any) -> None:
         """Set the scenario reference to track infractions; called by the leaderboard
         after loading the scenario."""
         self.infraction_recorder.set_scenario(scenario)
@@ -563,7 +540,7 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
 
         self.initialized = True
 
-    def sensors(self) -> list[dict]:
+    def sensors(self) -> list[SensorSpec]:
         return av_sensor_setup(
             config=self.lead_config.expert,
             lidar=True,
@@ -582,11 +559,16 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
         )
 
     @torch.inference_mode()
-    def run_step(self, input_data: dict, _, __=None) -> carla.VehicleControl:
+    def run_step(
+        self,
+        sensor_data: CarlaSensorData,
+        _,
+        __=None,
+    ) -> carla.VehicleControl:
         """Drive one simulation step: tick, run the policy, record the outcome.
 
         Args:
-            input_data: Raw sensor data provided by the leaderboard.
+            sensor_data: Raw sensor data provided by the leaderboard.
 
         Returns:
             The vehicle control to apply this step.
@@ -596,7 +578,7 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
         if not self.initialized:
             self._init()
             self.control = carla.VehicleControl(steer=0.0, throttle=0.0, brake=1.0)
-            input_data = self.tick(input_data)
+            sensor_data = self.tick(sensor_data)
             return self.control
 
         # Update video recorder step and demo cameras
@@ -605,13 +587,13 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
             self.video_recorder.move_demo_cameras_with_ego()
 
         # Need to run this every step for GPS filtering
-        input_data = self.tick(input_data)
+        sensor_data = self.tick(sensor_data)
 
-        # One featurization path with training: the simulator's tick becomes a
-        # frame, the policy turns it into its model inputs.
-        frame = self.build_frame(input_data)
-        self.features = self.policy.batch_features(
-            self.policy.build_features(frame),
+        # One featurization path with training: the simulator's tick becomes
+        # scene data, the policy turns it into its model inputs.
+        scene_data = self.build_scene_data(sensor_data)
+        self.features = self.policy.features_to_batch(
+            self.policy.build_features(scene_data),
             self.device,
         )
         self.save_input_log()
@@ -619,10 +601,10 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
         self.control = self.compute_control(prediction, self.features)
 
         self.meters_travelled += (
-            input_data["speed"].item()
+            sensor_data["speed"].item()
             * self.lead_config.expert.simulation.carla_frame_rate
         )
-        input_data["meters_travelled"] = self.meters_travelled
+        sensor_data["meters_travelled"] = self.meters_travelled
 
         # CARLA will not let the car drive in the initial frames. This help the filter not get confused.
         if self.step < self.lead_config.expert.simulation.inital_frames_delay:
@@ -631,7 +613,7 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
         # Check for infractions at this step
         self.check_infractions()
 
-        self.save_step_visualizations(input_data)
+        self.save_step_visualizations(sensor_data)
 
         # Save metric info if in Bench2Drive mode
         if self.lead_config.evaluation.is_bench2drive and hasattr(
@@ -647,7 +629,7 @@ class AbstractDrivingAgent(BaseAgent, autonomous_agent.AutonomousAgent, abc.ABC)
                 json.dump(self.metric_info, outfile, indent=4)
         return self.control
 
-    def destroy(self, results=None) -> None:
+    def destroy(self, results: object = None) -> None:
         LOG.info(results)
 
         # Clean up video recorder

@@ -22,7 +22,7 @@ class ControllerConfig(ConfigNode):
 
     # --- PID Controller Parameters ---
     # Maximum change in speed input to longitudinal controller
-    wp_delta_clip: float = 0.99
+    waypoint_speed_delta_clip: float = 0.99
     # Aim distance for fast driving (meters)
     aim_distance_fast: float = 3.0
     # Aim distance for slow driving (meters)
@@ -36,7 +36,7 @@ class ControllerConfig(ConfigNode):
     # Turn PID controller derivative gain
     turn_kd: float = 0.3
     # Turn PID controller buffer size
-    turn_n: int = 20
+    turn_error_window: int = 20
     # Speed PID controller proportional gain
     speed_kp: float = 1.75
     # Speed PID controller integral gain
@@ -44,7 +44,7 @@ class ControllerConfig(ConfigNode):
     # Speed PID controller derivative gain
     speed_kd: float = 2.0
     # Speed PID controller buffer size
-    speed_n: int = 20
+    speed_error_window: int = 20
     # Desired speed below which brake is triggered
     brake_speed: float = 0.4
     # Ratio of speed to desired speed at which brake is triggered

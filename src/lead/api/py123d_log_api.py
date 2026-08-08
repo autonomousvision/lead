@@ -21,7 +21,7 @@ from py123d.geometry import PoseSE3
 # LEAD camera index (1-based; camera ``i`` is ``sensor_rig.cameras[i - 1]``) → 123D camera ID.
 # Assigned by mount yaw: index 1 front-left (-57.5°), 2 front (0°), 3 front-right
 # (57.5°), 4 rear-right (122.5°), 5 rear (180°), 6 rear-left (-122.5°).
-CAMERA_ID_MAPPING: dict[int, CameraID] = {
+CAMERA_ID_BY_LEAD_INDEX: dict[int, CameraID] = {
     1: CameraID.PCAM_L0,
     2: CameraID.PCAM_F0,
     3: CameraID.PCAM_R0,
@@ -31,7 +31,7 @@ CAMERA_ID_MAPPING: dict[int, CameraID] = {
 }
 
 # LEAD radar index (1-based) → 123D radar ID.
-RADAR_ID_MAPPING: dict[int, RadarID] = {
+RADAR_ID_BY_LEAD_INDEX: dict[int, RadarID] = {
     1: RadarID.RADAR_FRONT_LEFT,
     2: RadarID.RADAR_FRONT_RIGHT,
     3: RadarID.RADAR_BACK_RIGHT,
@@ -41,10 +41,11 @@ RADAR_ID_MAPPING: dict[int, RadarID] = {
 # Feature key for CARLA's per-point radial (Doppler) velocity in m/s.
 RADIAL_VELOCITY_FEATURE = "radial_velocity"
 
-# Split of the nominal sensor rig, and the opt-in split re-recording the
-# view-dependent sensors with a perturbated rig.
-NORMAL_VIEW_SPLIT = "normal_view"
-PERTURBATED_VIEW_SPLIT = "perturbated_view"
+# Sensor-view names: the nominal rig's split, and the opt-in split re-recording
+# the view-dependent sensors with a perturbated rig. Also the per-view
+# subdirectory names of a cache store.
+NORMAL_SENSOR_VIEW = "normal_view"
+PERTURBATED_SENSOR_VIEW = "perturbated_view"
 
 # Name of the custom modality stream holding LEAD's per-tick driving state:
 # what the expert knew and decided (route, localization, hazards, target speed).
@@ -52,7 +53,7 @@ DRIVING_META_MODALITY_ID = "driving_meta"
 
 # Metadata key of the driving-meta stream holding the log's target points, the
 # ones the per-tick target point indices index into.
-TARGET_POINTS_KEY = "target_points"
+TARGET_POINTS_METADATA_KEY = "target_points"
 
 # Per-tick driving-meta key holding the box fields the box-detections stream has
 # no slot for, keyed by the box's track token.
@@ -62,8 +63,24 @@ BOX_ATTRIBUTES_KEY = "box_attributes"
 # pose the policy observes — as an SE(3) matrix in the global frame.
 LOCALIZED_EGO_STATE_KEY = "localized_ego_state_se3"
 
+# Per-box fields the box-detections stream carries natively (geometry, label,
+# identity, velocity, lidar hits); everything else is a box attribute.
+NATIVE_BOX_DETECTION_FIELDS = frozenset(
+    {
+        "class",
+        "extent",
+        "position",
+        "yaw",
+        "matrix",
+        "distance",
+        "speed",
+        "id",
+        "num_points",
+    },
+)
 
-def localized_ego_state_se3(
+
+def localized_pose_to_se3_matrix(
     position: jt.Float[npt.NDArray, " 2"],
     yaw: float,
 ) -> jt.Float[npt.NDArray, "4 4"]:
@@ -86,7 +103,7 @@ def localized_ego_state_se3(
     return matrix
 
 
-def localized_position_yaw(
+def se3_matrix_to_localized_pose(
     matrix: jt.Float[npt.NDArray, "4 4"],
 ) -> tuple[jt.Float[npt.NDArray, " 2"], float]:
     """Position and yaw of a localized ego-state SE(3) matrix.
@@ -100,26 +117,9 @@ def localized_position_yaw(
     return matrix[:2, 3], float(np.arctan2(matrix[1, 0], matrix[0, 0]))
 
 
-# Per-box fields the box-detections stream carries natively (geometry, label,
-# identity, velocity, lidar hits); everything else is a box attribute.
-NATIVE_BOX_KEYS = frozenset(
-    {
-        "class",
-        "extent",
-        "position",
-        "yaw",
-        "matrix",
-        "distance",
-        "speed",
-        "id",
-        "num_points",
-    },
-)
-
-
 def ordered_target_points(
     target_points: jt.Float[npt.NDArray, "n 3"],
-    target_point_index: int,
+    previous_target_point_index: int,
 ) -> tuple[
     jt.Float[npt.NDArray, " 3"],
     jt.Float[npt.NDArray, " 3"],
@@ -131,45 +131,40 @@ def ordered_target_points(
 
     Args:
         target_points: The route's target points.
-        target_point_index: Index of the previous target point.
+        previous_target_point_index: Index of the previous target point.
 
     Returns:
         The previous, current and next target point.
     """
-    last = len(target_points) - 1
+    last_index = len(target_points) - 1
     return (
-        target_points[min(target_point_index, last)],
-        target_points[min(target_point_index + 1, last)],
-        target_points[min(target_point_index + 2, last)],
+        target_points[min(previous_target_point_index, last_index)],
+        target_points[min(previous_target_point_index + 1, last_index)],
+        target_points[min(previous_target_point_index + 2, last_index)],
     )
 
 
-def get_carla_lincoln_mkz_2020_metadata() -> EgoStateSE3Metadata:
-    """The ego vehicle every LEAD log is recorded with.
-
-    Returns:
-        The geometry of the CARLA Lincoln MKZ 2020, whose frames the logs'
-        sensor and ego poses are expressed against.
-    """
-    # Parameters from the CARLA vehicle model; the rear-axle-to-center transform
-    # is derived from them.
-    return EgoStateSE3Metadata(
-        vehicle_name="carla_lincoln_mkz_2020",
-        width=1.83671,
-        length=4.89238,
-        height=1.49028,
-        wheel_base=2.86048,
-        center_to_imu_se3=PoseSE3(
-            x=1.64855,
-            y=0.0,
-            z=0.38579,
-            qw=1.0,
-            qx=0.0,
-            qy=0.0,
-            qz=0.0,
-        ),
-        rear_axle_to_imu_se3=PoseSE3.identity(),
-    )
+# The ego vehicle every LEAD log is recorded with: the geometry of the CARLA
+# Lincoln MKZ 2020, whose frames the logs' sensor and ego poses are expressed
+# against. Parameters from the CARLA vehicle model; the rear-axle-to-center
+# transform is derived from them.
+CARLA_LINCOLN_MKZ_2020_METADATA = EgoStateSE3Metadata(
+    vehicle_name="carla_lincoln_mkz_2020",
+    width=1.83671,
+    length=4.89238,
+    height=1.49028,
+    wheel_base=2.86048,
+    center_to_imu_se3=PoseSE3(
+        x=1.64855,
+        y=0.0,
+        z=0.38579,
+        qw=1.0,
+        qx=0.0,
+        qy=0.0,
+        qz=0.0,
+    ),
+    rear_axle_to_imu_se3=PoseSE3.identity(),
+)
 
 
 @register_box_detection_label

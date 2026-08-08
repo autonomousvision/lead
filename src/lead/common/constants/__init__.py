@@ -16,12 +16,8 @@ from lead.common.constants.meshes import (
 from lead.common.constants.radar import RadarDataIndex, RadarLabels
 from lead.common.constants.scenarios import SCENARIO_TYPES
 from lead.common.constants.semantics import (
-    BOX_CLASS_TO_SEMANTIC,
     INSTANCE_ID_MASK,
-    SEMANTIC_SEGMENTATION_CONVERTER,
     CarlaSemanticSegmentationClass,
-    LeadSemanticSegmentationClass,
-    semantic_class,
 )
 from lead.common.constants.towns import (
     ALL_TOWNS,
@@ -35,7 +31,6 @@ from lead.common.constants.towns import (
 __all__ = [
     "ALL_TOWNS",
     "BIKER_MESHES",
-    "BOX_CLASS_TO_SEMANTIC",
     "CARLA_MAP_PATHS",
     "CONSTRUCTION_CONE_BB_SIZE",
     "CONSTRUCTION_MESHES",
@@ -46,13 +41,10 @@ __all__ = [
     "NON_SIGN_TRAFFIC_TYPES",
     "OLD_TOWNS",
     "SCENARIO_TYPES",
-    "SEMANTIC_SEGMENTATION_CONVERTER",
     "SUBURBAN_MAX_SPEED_LIMIT",
     "TRAFFIC_WARNING_BB_SIZE",
     "URBAN_MAX_SPEED_LIMIT",
     "CarlaSemanticSegmentationClass",
-    "LeadSemanticSegmentationClass",
     "RadarDataIndex",
     "RadarLabels",
-    "semantic_class",
 ]

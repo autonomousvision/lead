@@ -10,7 +10,7 @@ from lead.config.expert.sensor_rig_config import SensorRigConfig
 from lead.config.expert.simulation_config import SimulationConfig
 from lead.config.expert.storage_config import StorageConfig
 from lead.config.expert.visualization_config import ExpertVisualizationConfig
-from lead.config.node import ConfigNode, child_node
+from lead.config.node import ConfigNode, config_child_node
 
 
 class ExpertConfig(ConfigNode):
@@ -22,17 +22,13 @@ class ExpertConfig(ConfigNode):
     shared values always match the data.
     """
 
-    # Name of the expert config profile (yaml in ``config/profiles/expert/``)
-    # whose deltas are applied over these defaults.
-    config_profile: str = "default"
-
-    simulation = child_node(SimulationConfig)
-    sensor_rig = child_node(SensorRigConfig)
-    bicycle_model = child_node(BicycleModelConfig)
-    perturbation = child_node(PerturbationConfig)
-    storage = child_node(StorageConfig)
-    driving = child_node(ExpertDrivingConfig)
-    pid = child_node(ExpertPidConfig)
-    occlusion = child_node(ExpertOcclusionConfig)
-    data_collection = child_node(DataCollectionConfig)
-    visualization = child_node(ExpertVisualizationConfig)
+    simulation = config_child_node(SimulationConfig)
+    sensor_rig = config_child_node(SensorRigConfig)
+    bicycle_model = config_child_node(BicycleModelConfig)
+    perturbation = config_child_node(PerturbationConfig)
+    storage = config_child_node(StorageConfig)
+    driving = config_child_node(ExpertDrivingConfig)
+    pid = config_child_node(ExpertPidConfig)
+    occlusion = config_child_node(ExpertOcclusionConfig)
+    data_collection = config_child_node(DataCollectionConfig)
+    visualization = config_child_node(ExpertVisualizationConfig)

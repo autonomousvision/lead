@@ -229,43 +229,48 @@ class TestKinematicBicycleModel:
             np.testing.assert_allclose(frame_locations, locations, atol=1e-6)
         assert np.all(future_speeds >= 0.0)
 
-    def test_forecast_consistency(self, bicycle_model):
-        """Test that ego and other vehicle forecasts are consistent for same inputs."""
-        location = np.array([0.0, 0.0, 0.0])
-        heading = 0.0
+    @pytest.mark.parametrize(
+        "action",
+        [
+            [0.2, 0.5, 0.0],
+            [-0.4, 0.0, 1.0],
+            [0.0, 0.9, 0.0],
+            [0.35, 0.1, 0.0],
+        ],
+    )
+    def test_forecast_consistency(self, bicycle_model, action):
+        """Test that ego and other vehicle forecasts agree on the pose update."""
+        location = np.array([1.0, -2.0, 0.5])
+        heading = 0.7
         speed = 5.0
-        action = np.array([0.2, 0.5, 0.0])
+        action = np.array(action)
 
-        # Forecast ego vehicle
-        next_loc_ego, _, next_speed_ego = bicycle_model.forecast_ego_vehicle(
+        next_loc_ego, next_heading_ego, _ = bicycle_model.forecast_ego_vehicle(
             location,
             heading,
             speed,
             action,
         )
 
-        # Forecast as "other vehicle" with same parameters
-        locations = np.array([location])
-        headings = np.array([heading])
-        speeds = np.array([speed])
-        actions = np.array([action])
-
-        future_locs_other, _, future_speeds_other = (
+        future_locs_other, future_headings_other, _ = (
             bicycle_model.forecast_other_vehicles(
-                locations,
-                headings,
-                speeds,
-                actions,
+                location[None],
+                np.array([heading]),
+                np.array([speed]),
+                action[None],
                 num_future_frames=1,
             )
         )
 
-        # Results should be similar (may differ slightly due to ego-specific throttle model)
-        # Testing that both produce reasonable outputs
-        assert next_loc_ego.shape == (3,)
-        assert future_locs_other.shape == (1, 1, 3)
-        assert next_speed_ego > 0
-        assert future_speeds_other[0, 0] > 0
+        # The two implementations share the slip-angle geometry and integrate
+        # the first step from the pre-step speed; only the speed models differ,
+        # which cannot affect the first step's pose.
+        np.testing.assert_allclose(future_locs_other[0, 0], next_loc_ego, atol=1e-9)
+        np.testing.assert_allclose(
+            future_headings_other[0, 0],
+            next_heading_ego,
+            atol=1e-9,
+        )
 
     def test_speed_never_negative(self, bicycle_model):
         """Test that speed is always clamped to non-negative values."""

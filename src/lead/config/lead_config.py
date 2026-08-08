@@ -4,7 +4,6 @@ import enum
 import logging
 import os
 import sys
-from pathlib import Path
 from typing import Any, cast
 
 import yaml
@@ -12,7 +11,7 @@ from omegaconf import OmegaConf
 
 from lead.config.evaluation.evaluation_config import EvaluationConfig
 from lead.config.expert.expert_config import ExpertConfig
-from lead.config.node import ConfigNode, child_node
+from lead.config.node import ConfigNode, config_child_node
 from lead.config.policy.policy_config import PolicyConfig
 from lead.config.training.training_config import TrainingConfig
 
@@ -20,68 +19,25 @@ LOG = logging.getLogger(__name__)
 
 # Environment variable holding a space-separated dotlist of overrides with
 # fully qualified paths, e.g.
-# ``LEAD_CONFIG="debug_mode=true expert.config_profile=default"``.
+# ``LEAD_CONFIG="debug_mode=true training.data.read_from_cache_store=true"``.
 ENV_KEY = "LEAD_CONFIG"
-
-# Config sections selectable via yaml profiles in ``src/lead/config/profiles/<section>/``.
-PROFILE_SECTIONS = ("expert", "policy")
-
-CONFIG_PROFILES_ROOT = Path(__file__).resolve().parent / "profiles"
 
 
 class LeadConfig(ConfigNode):
     """Root of the config tree, the single config object passed around.
 
     Override sources (highest priority first): CLI dotlist, ``LEAD_CONFIG``
-    environment dotlist, loaded config file, yaml config profile, class
-    default.
+    environment dotlist, loaded config file, class default.
     """
 
     # If true, run code in debug mode with settings that allow for
     # faster iteration and easier debugging (e.g., lower resolution, fewer data points saved, etc.)
     debug_mode: bool = False
 
-    expert = child_node(ExpertConfig)
-    policy = child_node(PolicyConfig)
-    training = child_node(TrainingConfig)
-    evaluation = child_node(EvaluationConfig)
-
-
-# --- Config profiles ---
-def available_config_profiles(section: str) -> list[str]:
-    """Names of the yaml profiles available for a config section.
-
-    Args:
-        section: Profile directory name, e.g. ``"expert"`` or ``"policy"``.
-
-    Returns:
-        Sorted profile names (yaml file stems).
-    """
-    section_dir = CONFIG_PROFILES_ROOT / section
-    return sorted(path.stem for path in section_dir.glob("*.yaml"))
-
-
-def load_config_profile(section: str, name: str) -> dict[str, Any]:
-    """Load a yaml config profile as a nested override dict.
-
-    Args:
-        section: Profile directory name, e.g. ``"expert"`` or ``"policy"``.
-        name: Profile name (yaml file stem).
-
-    Returns:
-        The profile's overrides; an empty dict for an empty yaml file.
-    """
-    path = CONFIG_PROFILES_ROOT / section / f"{name}.yaml"
-    if not path.is_file():
-        raise FileNotFoundError(
-            f"Unknown {section} config profile '{name}'. "
-            f"Available profiles: {available_config_profiles(section)}",
-        )
-    loaded = cast(
-        "dict[str, Any] | None",
-        OmegaConf.to_container(OmegaConf.load(path), resolve=True),
-    )
-    return loaded or {}
+    expert = config_child_node(ExpertConfig)
+    policy = config_child_node(PolicyConfig)
+    training = config_child_node(TrainingConfig)
+    evaluation = config_child_node(EvaluationConfig)
 
 
 # --- Override sources ---
@@ -124,8 +80,8 @@ def apply_stored_expert_config(
     """
     config.expert.apply_overrides(
         stored_config,
-        user_override=False,
-        raise_error_on_missing_key=False,
+        is_user_override=False,
+        raise_on_unknown_key=False,
     )
 
 
@@ -133,13 +89,12 @@ def load_lead_config(
     loaded_config: dict[str, Any] | None = None,
     dataset_expert_config: dict[str, Any] | None = None,
     use_cli: bool = False,
-    raise_error_on_missing_key: bool = True,
+    raise_on_unknown_key: bool = True,
 ) -> LeadConfig:
-    """Build the config tree from defaults, profiles and override sources.
+    """Build the config tree from defaults and override sources.
 
-    Application order (later wins): class defaults, yaml config profiles,
-    ``dataset_expert_config``, ``loaded_config``, ``LEAD_CONFIG`` environment
-    dotlist, CLI dotlist.
+    Application order (later wins): class defaults, ``dataset_expert_config``,
+    ``loaded_config``, ``LEAD_CONFIG`` environment dotlist, CLI dotlist.
 
     Args:
         loaded_config: Nested config dict from a stored file, e.g. a
@@ -147,7 +102,7 @@ def load_lead_config(
         dataset_expert_config: Expert config stored with the dataset being
             loaded; applied onto the ``expert`` section only.
         use_cli: Whether to read overrides from ``sys.argv``.
-        raise_error_on_missing_key: Whether unknown keys in ``loaded_config``
+        raise_on_unknown_key: Whether unknown keys in ``loaded_config``
             raise.
 
     Returns:
@@ -157,46 +112,24 @@ def load_lead_config(
     cli_overrides = _cli_overrides() if use_cli else {}
     config = LeadConfig()
 
-    # Profiles first: their deltas are the base other sources override.
-    for section_name in PROFILE_SECTIONS:
-        profile_name = None
-        for source in (cli_overrides, env_overrides, loaded_config or {}):
-            section_overrides = source.get(section_name)
-            if isinstance(section_overrides, dict):
-                profile_name = profile_name or section_overrides.get("config_profile")
-        section = getattr(config, section_name)
-        profile_name = profile_name or section.config_profile
-        section.apply_overrides(
-            load_config_profile(section_name, profile_name),
-            user_override=False,
-        )
-        section.config_profile = profile_name
-
     if dataset_expert_config:
         apply_stored_expert_config(config, dataset_expert_config)
 
     if loaded_config:
         config.apply_overrides(
             loaded_config,
-            user_override=False,
-            raise_error_on_missing_key=raise_error_on_missing_key,
+            is_user_override=False,
+            raise_on_unknown_key=raise_on_unknown_key,
         )
 
-    config.apply_overrides(env_overrides, user_override=True)
-    config.apply_overrides(cli_overrides, user_override=True)
+    config.apply_overrides(env_overrides, is_user_override=True)
+    config.apply_overrides(cli_overrides, is_user_override=True)
     return config
 
 
 # --- Serialization ---
 def _yaml_serializable(value: Any) -> bool:
-    """Check whether a value can be serialized to yaml.
-
-    Args:
-        value: Value to check.
-
-    Returns:
-        True if ``yaml.safe_dump`` accepts the value.
-    """
+    """Check whether a value can be serialized to yaml."""
     try:
         yaml.safe_dump(value)
         return True

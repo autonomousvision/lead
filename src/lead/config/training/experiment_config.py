@@ -1,6 +1,6 @@
 """Experiment identity, logging, and visualization configuration."""
 
-from lead.common.dotenv import read_dotenv_int
+from lead.common.env import read_dotenv_int
 from lead.config.node import ConfigNode, overridable_property
 
 
@@ -9,28 +9,22 @@ class ExperimentConfig(ConfigNode):
 
     # Training Seed
     seed: int = 0
-    # Unique experiment identifier.
-    id: str = "Experiment 1"
     # Description of the experiment.
-    description: str = "An example experiment description."
-    # Directory to log data to.
-    logdir: str | None = None
+    wandb_run_name: str = "An example experiment description."
     # File to continue training from
-    load_file: str | None = None
+    initial_weights_file: str | None = None
     # If true continue the training from a failed training checkpoint.
-    continue_failed_training: bool = False
+    resume_from_last_checkpoint: bool = False
+
+    # The one directory a run writes to: checkpoints, configs, logs, visualizations.
+    output_dir: str | None = None
 
     # WandB ID for the experiment. If None, it will be generated automatically.
     wandb_id: str | None = None
     # must, allow, never
-    wandb_resume: str = "never"
-
-    @property
-    def wandb_project_name(self) -> str:
-        """Name of the WandB project based on the training phase."""
-        if self._root.training.is_pretraining:
-            return "lead_pretrain"
-        return "lead_posttrain"
+    wandb_resume_mode: str = "never"
+    # Name of the WandB project to log to.
+    wandb_project_name: str = "lead"
 
     @overridable_property
     def log_wandb(self) -> bool:
@@ -43,11 +37,9 @@ class ExperimentConfig(ConfigNode):
     visualize_training: bool = True
     # Flag to visualize the dataset and deactivate randomization and augmentation.
     visualize_dataset: bool = False
-    # Flag to visualize the failed scenarios and deactivate randomization and augmentation.
-    visualize_failed_scenarios: bool = False
 
     @property
-    def log_scalars_frequency(self) -> int:
+    def log_scalars_every_n_steps(self) -> int:
         """How often to log scalar values during training.
 
         Live-adjustable: re-read from ``.env`` on each access so the frequency
@@ -55,13 +47,13 @@ class ExperimentConfig(ConfigNode):
         """
         if self._root.debug_mode:
             return 1
-        return read_dotenv_int("WANDB_LOG_FREQUENCY_TRAINING_SCALAR", default=1)
+        return read_dotenv_int("WANDB_LOG_FREQUENCY_TRAINING_SCALAR", default=50)
 
     @property
-    def log_images_frequency(self) -> int:
+    def log_images_every_n_steps(self) -> int:
         """How often to log images during training.
 
-        Live-adjustable like ``log_scalars_frequency``; falls back to 100.
+        Live-adjustable like ``log_scalars_every_n_steps``; falls back to 100.
         """
         if self._root.debug_mode:
             return 100

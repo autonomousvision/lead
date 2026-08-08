@@ -7,7 +7,7 @@ import numpy as np
 import torch
 
 from lead.api.abstract_driving_agent import AbstractDrivingAgent
-from lead.common.logging import setup_logging
+from lead.common.logging_setup import setup_logging
 from lead.evaluation.inference.trackers import PathSpeedTracker, WaypointTracker
 from lead.policy.transfuser.transfuser import AgentPrediction, Prediction
 from lead.policy.transfuser.visualization.agent_prediction_visualizer import (
@@ -80,14 +80,14 @@ class TransfuserAgent(AbstractDrivingAgent):
             The target speed to track, or None if the model does not predict it.
         """
         if (
-            prediction.pred_target_speed_scalar is None
-            or prediction.pred_target_speed_distribution is None
+            prediction.target_speed_scalar is None
+            or prediction.target_speed_distribution is None
         ):
             return None
 
-        target_speed = prediction.pred_target_speed_scalar.reshape(1, 1)
+        target_speed = prediction.target_speed_scalar.reshape(1, 1)
         target_speed_distribution = torch.softmax(
-            prediction.pred_target_speed_distribution.float(),
+            prediction.target_speed_distribution.float(),
             dim=-1,
         )
         if (
@@ -123,18 +123,18 @@ class TransfuserAgent(AbstractDrivingAgent):
             waypoints_brake
         ) = route_steer = target_speed_throttle = target_speed_brake = None
 
-        if prediction.pred_route is not None and target_speed is not None:
+        if prediction.route is not None and target_speed is not None:
             route_steer, target_speed_throttle, target_speed_brake = (
                 self.path_speed_tracker.step(
-                    prediction.pred_route,
+                    prediction.route,
                     target_speed,
                     ego_speed,
                 )
             )
-        if prediction.pred_future_waypoints is not None:
+        if prediction.future_waypoints is not None:
             waypoints_steer, waypoints_throttle, waypoints_brake = (
                 self.waypoint_tracker.step(
-                    prediction.pred_future_waypoints,
+                    prediction.future_waypoints,
                     ego_speed,
                 )
             )
@@ -198,11 +198,11 @@ class TransfuserAgent(AbstractDrivingAgent):
             target_speed_brake=target_speed_brake,
         )
 
-    def save_step_visualizations(self, input_data: dict) -> None:
+    def save_step_visualizations(self, sensor_data: dict) -> None:
         """Save the input, demo and debug images and videos of this step.
 
         Args:
-            input_data: Sensor data processed by :meth:`tick`.
+            sensor_data: Sensor data processed by :meth:`tick`.
         """
         evaluation = self.lead_config.evaluation
         if evaluation.save_path is None:
@@ -226,7 +226,7 @@ class TransfuserAgent(AbstractDrivingAgent):
         # The uncompressed cameras of this tick, as the simulator produced them.
         input_image = np.concatenate(
             [
-                input_data[f"rgb_{camera_idx}"]
+                sensor_data[f"rgb_{camera_idx}"]
                 for camera_idx in range(
                     1,
                     self.lead_config.expert.sensor_rig.num_cameras + 1,
@@ -239,14 +239,14 @@ class TransfuserAgent(AbstractDrivingAgent):
 
         # Get predicted route and waypoints (if available)
         pred_waypoints = (
-            self.agent_prediction.prediction.pred_future_waypoints[0]
-            if self.agent_prediction.prediction.pred_future_waypoints is not None
+            self.agent_prediction.prediction.future_waypoints[0]
+            if self.agent_prediction.prediction.future_waypoints is not None
             else None
         )
         target_points = {
-            "previous": self.features["target_point_previous"][0].cpu().numpy(),
+            "previous": self.features["previous_target_point"][0].cpu().numpy(),
             "current": self.features["target_point"][0].cpu().numpy(),
-            "next": self.features["target_point_next"][0].cpu().numpy(),
+            "next": self.features["next_target_point"][0].cpu().numpy(),
         }
         self.video_recorder.save_demo_cameras(pred_waypoints, target_points)
         self.video_recorder.save_grid_image_and_video(

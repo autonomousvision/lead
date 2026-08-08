@@ -1,4 +1,4 @@
-"""Tests for the LeadConfig tree: hierarchy, profiles, overrides and serialization."""
+"""Tests for the LeadConfig tree: hierarchy, overrides and serialization."""
 
 import pytest
 import yaml
@@ -28,11 +28,11 @@ class TestHierarchy:
     def test_cross_section_derived_values(self, config):
         sensor_rig = config.expert.sensor_rig
         assert sensor_rig.num_cameras == len(sensor_rig.cameras)
-        assert config.policy.transfuser.final_image_width == sensor_rig.image_width
-        data_collection = config.expert.data_collection
-        assert config.policy.transfuser.lidar_horz_anchors == (
-            data_collection.lidar_width_pixel // 32
+        transfuser = config.policy.transfuser
+        assert transfuser.final_image_width == (
+            len(transfuser.input_cameras) * sensor_rig.camera_width
         )
+        assert transfuser.lidar_bev_grid_cols == (transfuser.lidar_width_pixel // 32)
 
     def test_points_per_meter_propagates(self, config):
         config.expert.simulation.points_per_meter = 20
@@ -44,56 +44,23 @@ class TestHierarchy:
             config.expert.pid.lateral_pid_kpp = 1.0
 
 
-class TestProfiles:
-    """Yaml config profile selection and application."""
-
-    def test_default_profile_is_the_six_camera_rig(self, config):
-        assert config.expert.config_profile == "default"
-        assert config.expert.sensor_rig.num_cameras == 6
-        assert config.policy.transfuser.final_image_width == 6 * 384
-
-    def test_expert_profile_changes_camera_rig(self, monkeypatch):
-        monkeypatch.setenv(
-            "LEAD_CONFIG",
-            "expert.config_profile=leaderboard2_3cameras",
-        )
-        config = load_lead_config()
-        assert config.expert.config_profile == "leaderboard2_3cameras"
-        assert config.expert.sensor_rig.num_cameras == 3
-        assert config.policy.transfuser.final_image_width == 3 * 384
-
-    def test_unknown_profile_raises(self, monkeypatch):
-        monkeypatch.setenv("LEAD_CONFIG", "expert.config_profile=nope")
-        with pytest.raises(FileNotFoundError, match="Available profiles"):
-            load_lead_config()
-
-    def test_policy_profile_overrides_architecture(self, monkeypatch):
-        monkeypatch.setenv(
-            "LEAD_CONFIG",
-            "policy.config_profile=transfuser_regnety032",
-        )
-        config = load_lead_config()
-        assert config.policy.transfuser.image_architecture == "regnety_032"
-        assert config.policy.target == "lead.policy.transfuser.transfuser:Transfuser"
-
-
 class TestOverrides:
     """Env/CLI dotlist override resolution."""
 
     def test_fully_qualified_keys(self, monkeypatch):
         monkeypatch.setenv(
             "LEAD_CONFIG",
-            "training.experiment.logdir=/tmp/x "
+            "training.experiment.output_dir=/tmp/x "
             "expert.pid.lateral_pid_kp=1.5 "
             "expert.sensor_rig.use_radars=false",
         )
         config = load_lead_config()
-        assert config.training.experiment.logdir == "/tmp/x"
+        assert config.training.experiment.output_dir == "/tmp/x"
         assert config.expert.pid.lateral_pid_kp == 1.5
         assert config.expert.sensor_rig.use_radars is False
 
     def test_abbreviated_key_raises(self, monkeypatch):
-        monkeypatch.setenv("LEAD_CONFIG", "logdir=/tmp/x")
+        monkeypatch.setenv("LEAD_CONFIG", "output_dir=/tmp/x")
         with pytest.raises(AttributeError, match="Unknown"):
             load_lead_config()
 
@@ -113,10 +80,10 @@ class TestOverrides:
         assert config.training.optimization.batch_size == 8
 
     def test_lossy_int_override_raises(self, monkeypatch):
-        monkeypatch.setenv("LEAD_CONFIG", "training.optimization.epochs=0.5")
+        monkeypatch.setenv("LEAD_CONFIG", "training.optimization.num_epochs=0.5")
         config = load_lead_config()
         with pytest.raises(TypeError, match="integer"):
-            _ = config.training.optimization.epochs
+            _ = config.training.optimization.num_epochs
 
     def test_per_index_list_override_raises(self, monkeypatch):
         monkeypatch.setenv(
@@ -140,16 +107,12 @@ class TestSerialization:
         assert reloaded.expert.pid.lateral_pid_kp == config.expert.pid.lateral_pid_kp
         assert reloaded.expert.sensor_rig.num_cameras == 6
 
-    def test_profile_survives_round_trip(self, monkeypatch):
-        monkeypatch.setenv(
-            "LEAD_CONFIG",
-            "expert.config_profile=leaderboard2_3cameras",
-        )
+    def test_env_override_survives_round_trip(self, monkeypatch):
+        monkeypatch.setenv("LEAD_CONFIG", "expert.simulation.carla_fps=10")
         dump = yaml_filtered(load_lead_config().to_dict())
         monkeypatch.delenv("LEAD_CONFIG")
         reloaded = load_lead_config(loaded_config=yaml.safe_load(yaml.safe_dump(dump)))
-        assert reloaded.expert.config_profile == "leaderboard2_3cameras"
-        assert reloaded.expert.sensor_rig.num_cameras == 3
+        assert reloaded.expert.simulation.carla_fps == 10
 
 
 class TestDatasetExpertConfig:
@@ -157,24 +120,24 @@ class TestDatasetExpertConfig:
 
     def test_nested_dataset_store(self, config):
         stored = yaml_filtered(config.expert.to_dict())
-        stored["data_collection"]["pixels_per_meter"] = 8.0
+        stored["simulation"]["carla_fps"] = 10
         loaded = load_lead_config(dataset_expert_config=stored)
-        assert loaded.expert.data_collection.pixels_per_meter == 8.0
-        assert loaded.expert.data_collection.lidar_width_pixel == int(96 * 8.0)
+        assert loaded.expert.simulation.carla_fps == 10
+        assert loaded.expert.simulation.carla_frame_rate == 1.0 / 10
 
     def test_env_override_beats_dataset_store(self, monkeypatch):
         monkeypatch.setenv(
             "LEAD_CONFIG",
-            "expert.data_collection.pixels_per_meter=2.0",
+            "expert.simulation.carla_fps=2",
         )
         config = load_lead_config(
-            dataset_expert_config={"data_collection": {"pixels_per_meter": 8.0}},
+            dataset_expert_config={"simulation": {"carla_fps": 10}},
         )
-        assert config.expert.data_collection.pixels_per_meter == 2.0
+        assert config.expert.simulation.carla_fps == 2
 
     def test_stored_config_tolerates_renamed_knobs(self, config):
         apply_stored_expert_config(
             config,
-            {"data_collection": {"pixels_per_meter": 8.0, "old_gone_key": True}},
+            {"simulation": {"carla_fps": 10, "old_gone_key": True}},
         )
-        assert config.expert.data_collection.pixels_per_meter == 8.0
+        assert config.expert.simulation.carla_fps == 10

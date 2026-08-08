@@ -4,6 +4,7 @@ import copy
 import logging
 import os
 import subprocess
+import typing
 
 import carla
 import cv2
@@ -198,7 +199,7 @@ class VideoRecorder:
                 y=camera_config["y"],
                 z=camera_config["z"],
             )
-            world_camera_location = geometry.get_world_coordinate_2d(
+            world_camera_location = geometry.world_coordinate_2d(
                 self.vehicle.get_transform(),
                 demo_camera_location,
             )
@@ -211,7 +212,11 @@ class VideoRecorder:
                 ),
             )
 
-            demo_camera = self.world.spawn_actor(camera_bp, demo_camera_transform)
+            # spawn_actor's stub returns the Actor base, which lacks listen.
+            demo_camera = typing.cast(
+                "carla.Sensor",
+                self.world.spawn_actor(camera_bp, demo_camera_transform),
+            )
 
             # Create callback to store image in buffer
             def _make_image_callback(camera_idx):
@@ -257,7 +262,7 @@ class VideoRecorder:
                     y=camera_config["y"],
                     z=camera_config["z"],
                 )
-                world_camera_location = geometry.get_world_coordinate_2d(
+                world_camera_location = geometry.world_coordinate_2d(
                     self.vehicle.get_transform(),
                     demo_camera_location,
                 )
@@ -372,7 +377,7 @@ class VideoRecorder:
         Returns:
             Image copy with yellow waypoints and connecting lines.
         """
-        img_with_viz = image.copy()
+        image_with_visualization = image.copy()
         camera_height = image.shape[0]
         camera_width = image.shape[1]
 
@@ -405,7 +410,7 @@ class VideoRecorder:
             for pt, inside in zip(projected_route, points_inside_image, strict=True):
                 if inside:
                     cv2.circle(
-                        img_with_viz,
+                        image_with_visualization,
                         (int(pt[0]), int(pt[1])),
                         radius=3,
                         color=(255, 255, 0),
@@ -418,7 +423,7 @@ class VideoRecorder:
                 pt2, inside2 = projected_route[i + 1], points_inside_image[i + 1]
                 if inside1 and inside2:
                     cv2.line(
-                        img_with_viz,
+                        image_with_visualization,
                         (int(pt1[0]), int(pt1[1])),
                         (int(pt2[0]), int(pt2[1])),
                         (255, 255, 0),  # Blue in BGR
@@ -426,7 +431,7 @@ class VideoRecorder:
                         lineType=cv2.LINE_AA,
                     )
 
-        return img_with_viz
+        return image_with_visualization
 
     def draw_target_points(
         self,
@@ -542,7 +547,7 @@ class VideoRecorder:
 
         return img_with_targets
 
-    def save_input_image(self, input_image: npt.NDArray) -> None:
+    def save_input_image(self, input_image: jt.UInt8[npt.NDArray, "h w c"]) -> None:
         """Save input image as PNG.
 
         Args:
@@ -568,7 +573,10 @@ class VideoRecorder:
             compress_level=0,
         )
 
-    def save_input_video_frame(self, input_image: npt.NDArray) -> None:
+    def save_input_video_frame(
+        self,
+        input_image: jt.UInt8[npt.NDArray, "h w c"],
+    ) -> None:
         """Add frame to input video.
 
         Args:
@@ -591,7 +599,7 @@ class VideoRecorder:
             )
         self.input_video_writer.write(input_image)
 
-    def save_debug_image(self, image: npt.NDArray) -> None:
+    def save_debug_image(self, image: jt.UInt8[npt.NDArray, "h w c"]) -> None:
         """Save debug visualization image as PNG.
 
         Args:
@@ -612,7 +620,7 @@ class VideoRecorder:
             compress_level=0,
         )
 
-    def save_debug_video_frame(self, image: npt.NDArray) -> None:
+    def save_debug_video_frame(self, image: jt.UInt8[npt.NDArray, "h w c"]) -> None:
         """Add frame to debug video.
 
         Args:
@@ -638,8 +646,8 @@ class VideoRecorder:
 
     def save_grid_image_and_video(
         self,
-        demo_image: npt.NDArray | None = None,
-        input_image: npt.NDArray | None = None,
+        demo_image: jt.UInt8[npt.NDArray, "_ _ 3"] | None = None,
+        input_image: jt.UInt8[npt.NDArray, "_ _ 3"] | None = None,
         pred_waypoints: jt.Float[torch.Tensor, "n_waypoints 2"] | None = None,
         target_points: dict[str, jt.Float[npt.NDArray, " 2"] | None] | None = None,
     ) -> None:
@@ -675,7 +683,7 @@ class VideoRecorder:
             return
 
         # Draw waypoints and target points on input image if provided
-        input_with_viz = input_image.copy()
+        input_with_visualization = input_image.copy()
         if (
             pred_waypoints is not None or target_points is not None
         ) and self.lead_config is not None:
@@ -723,7 +731,7 @@ class VideoRecorder:
                 # Extract this camera's section from the stitched image
                 x_start = section_idx * camera_width
                 x_end = (section_idx + 1) * camera_width
-                camera_section = input_with_viz[:, x_start:x_end, :].copy()
+                camera_section = input_with_visualization[:, x_start:x_end, :].copy()
 
                 # Draw visualizations on this camera section
                 if pred_waypoints is not None:
@@ -741,7 +749,7 @@ class VideoRecorder:
                     )
 
                 # Put the modified section back into the stitched image
-                input_with_viz[:, x_start:x_end, :] = camera_section
+                input_with_visualization[:, x_start:x_end, :] = camera_section
 
         # Process demo image: crop 20% from top and bottom
         demo_h = demo_image.shape[0]
@@ -750,10 +758,13 @@ class VideoRecorder:
         demo_cropped = demo_image[crop_demo_top : demo_h - crop_demo_bottom, :]
 
         # Process input image: crop 10% from top and bottom (use visualized version)
-        input_h = input_with_viz.shape[0]
+        input_h = input_with_visualization.shape[0]
         crop_input_top = int(input_h * 0.078125)
         crop_input_bottom = int(input_h * 0.078125)
-        input_cropped = input_with_viz[crop_input_top : input_h - crop_input_bottom, :]
+        input_cropped = input_with_visualization[
+            crop_input_top : input_h - crop_input_bottom,
+            :,
+        ]
 
         # Resize demo image down to match input image width while maintaining aspect ratio
         demo_cropped_h, demo_cropped_w = demo_cropped.shape[:2]

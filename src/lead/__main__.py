@@ -15,9 +15,11 @@ import xml.etree.ElementTree as ET
 from enum import Enum
 from pathlib import Path
 
+import yaml
+
 from lead.common import runtime_variables
-from lead.common.dotenv import read_dotenv
-from lead.common.logging import setup_logging
+from lead.common.env import read_dotenv
+from lead.common.logging_setup import setup_logging
 
 setup_logging()
 LOG = logging.getLogger(__name__)
@@ -30,12 +32,15 @@ def _resolve_repo_relative(path: str) -> str:
         path: Possibly relative path as given on the command line.
 
     Returns:
-        The unchanged path if absolute or existing relative to the CWD,
-        otherwise the path anchored at the repository root.
+        The unchanged path if absolute, the resolved absolute path if it
+        exists relative to the CWD, otherwise the path anchored at the
+        repository root.
     """
     p = Path(path)
-    if p.is_absolute() or p.exists():
+    if p.is_absolute():
         return path
+    if p.exists():
+        return str(p.resolve())
     return str(runtime_variables.project_root() / p)
 
 
@@ -46,6 +51,24 @@ class LeaderboardType(Enum):
     BENCH2DRIVE = "bench2drive"
     FAIL2DRIVE = "fail2drive"
     AUTOPILOT = "autopilot"
+
+
+def _policy_agent_module(checkpoint_dir: str) -> str:
+    """The driving agent of the checkpoint's policy, by convention.
+
+    ``policy.target = lead.policy.<name>...`` maps to
+    ``src/lead/evaluation/agents/<name>/<name>_agent.py``.
+
+    Args:
+        checkpoint_dir: Directory holding the checkpoint's ``config.yaml``.
+
+    Returns:
+        The repository-relative agent file path.
+    """
+    with open(os.path.join(checkpoint_dir, "config.yaml"), encoding="utf-8") as f:
+        target: str = yaml.safe_load(f)["policy"]["target"]
+    policy_name = target.removeprefix("lead.policy.").split(".", 1)[0]
+    return f"src/lead/evaluation/agents/{policy_name}/{policy_name}_agent.py"
 
 
 # Mode-specific constants
@@ -93,7 +116,7 @@ class ModeConfig:
         assert checkpoint is not None
         return (
             _resolve_leaderboard_type(),
-            "src/lead/evaluation/agents/transfuser/transfuser_agent.py",
+            _policy_agent_module(checkpoint),
             checkpoint,
             checkpoint,
             "SENSORS",
@@ -176,7 +199,7 @@ class LeaderboardWrapper:
                 "evaluator_module": "leaderboard.leaderboard_evaluator",
                 "carla_path": carla_path,
             }
-        elif self.leaderboard_type == LeaderboardType.FAIL2DRIVE:
+        if self.leaderboard_type == LeaderboardType.FAIL2DRIVE:
             return {
                 "leaderboard_root": self.workspace_root
                 / "3rd_party/leaderboard/fail2drive/leaderboard",
@@ -188,7 +211,7 @@ class LeaderboardWrapper:
                 "carla_path": self.workspace_root
                 / "3rd_party/CARLA/fail2drive_0915/PythonAPI/carla",
             }
-        elif self.leaderboard_type == LeaderboardType.AUTOPILOT:
+        if self.leaderboard_type == LeaderboardType.AUTOPILOT:
             return {
                 "leaderboard_root": self.workspace_root
                 / "3rd_party/leaderboard/expert/leaderboard",
@@ -199,17 +222,17 @@ class LeaderboardWrapper:
                 "evaluator_module": "leaderboard.leaderboard_evaluator_local",
                 "carla_path": carla_path,
             }
-        else:  # STANDARD
-            return {
-                "leaderboard_root": self.workspace_root
-                / "3rd_party/leaderboard/standard/leaderboard",
-                "scenario_runner_root": self.workspace_root
-                / "3rd_party/leaderboard/standard/scenario_runner",
-                "evaluator_script": self.workspace_root
-                / "3rd_party/leaderboard/standard/leaderboard/leaderboard/leaderboard_evaluator.py",
-                "evaluator_module": "leaderboard.leaderboard_evaluator",
-                "carla_path": carla_path,
-            }
+        # STANDARD
+        return {
+            "leaderboard_root": self.workspace_root
+            / "3rd_party/leaderboard/standard/leaderboard",
+            "scenario_runner_root": self.workspace_root
+            / "3rd_party/leaderboard/standard/scenario_runner",
+            "evaluator_script": self.workspace_root
+            / "3rd_party/leaderboard/standard/leaderboard/leaderboard/leaderboard_evaluator.py",
+            "evaluator_module": "leaderboard.leaderboard_evaluator",
+            "carla_path": carla_path,
+        }
 
     def _build_pythonpath(self, paths: dict) -> str:
         """Build PYTHONPATH string from leaderboard paths for subprocess environment.
@@ -253,12 +276,8 @@ class LeaderboardWrapper:
         if self.args.expert:
             # Expert evaluation: debug directory
             return runtime_variables.output_dir_root() / "expert_evaluation/"
-        else:
-            # Model evaluation: organize by scenario and route
-            return (
-                runtime_variables.output_dir_root()
-                / f"local_evaluation/{self.route_id}"
-            )
+        # Model evaluation: organize by scenario and route
+        return runtime_variables.output_dir_root() / f"local_evaluation/{self.route_id}"
 
     def _setup_leaderboard_environment(
         self,

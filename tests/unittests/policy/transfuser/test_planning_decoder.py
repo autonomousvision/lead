@@ -16,6 +16,12 @@ def config():
 
 
 @pytest.fixture
+def class_values(config):
+    """The target-speed class bins as the tensor the encoders consume."""
+    return torch.tensor(config.target_speed_classes)
+
+
+@pytest.fixture
 def device():
     """Fixture providing CPU device."""
     return torch.device("cpu")
@@ -43,10 +49,11 @@ class TestPlanningDecoder:
         """
         input_tensor = torch.tensor([input_speed])
         brake = torch.tensor([input_brake]).bool()
+        class_values = torch.tensor(config.target_speed_classes)
 
         # Encode and decode
-        encoded = encode_two_hot(input_tensor, config.target_speed_classes, brake=brake)
-        decoded = decode_two_hot(encoded, config.target_speed_classes, device)
+        encoded = encode_two_hot(input_tensor, class_values, brake=brake)
+        decoded = decode_two_hot(encoded, class_values)
 
         # Verify encoding
         tt.assert_close(
@@ -127,12 +134,12 @@ class TestPlanningDecoder:
             [1.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
         )
 
-    def test_two_hot_interpolation(self, config, device):
+    def test_two_hot_interpolation(self, config, class_values, device):
         """Test that two-hot encoding correctly interpolates between bins."""
         speed = torch.tensor([6.0])  # Should interpolate between bins
         brake = torch.tensor([False]).bool()
 
-        encoded = encode_two_hot(speed, config.target_speed_classes, brake=brake)
+        encoded = encode_two_hot(speed, class_values, brake=brake)
 
         # Check that exactly two adjacent bins are non-zero
         non_zero = (encoded > 0).sum()
@@ -143,13 +150,13 @@ class TestPlanningDecoder:
             "Encoded weights should sum to 1"
         )
 
-    def test_brake_overrides_speed(self, config, device):
+    def test_brake_overrides_speed(self, config, class_values, device):
         """Test that brake flag overrides any speed value."""
         for speed_val in [0.0, 5.0, 10.0, 20.0]:
             speed = torch.tensor([speed_val])
             brake = torch.tensor([True]).bool()
 
-            encoded = encode_two_hot(speed, config.target_speed_classes, brake=brake)
+            encoded = encode_two_hot(speed, class_values, brake=brake)
 
             # When brake is True, should encode as first bin only
             expected = torch.zeros(len(config.target_speed_classes))
@@ -157,7 +164,7 @@ class TestPlanningDecoder:
 
             tt.assert_close(encoded[0], expected, rtol=1e-4, atol=1e-4)
 
-    def test_decode_round_trip(self, config, device):
+    def test_decode_round_trip(self, config, class_values, device):
         """Test that decode(encode(x)) ≈ x for various speeds."""
         test_speeds = [0.0, 1.0, 2.5, 5.0, 7.5, 10.0, 15.0, 20.0]
 
@@ -165,7 +172,7 @@ class TestPlanningDecoder:
             speed = torch.tensor([speed_val])
             brake = torch.tensor([False]).bool()
 
-            encoded = encode_two_hot(speed, config.target_speed_classes, brake=brake)
-            decoded = decode_two_hot(encoded, config.target_speed_classes, device)
+            encoded = encode_two_hot(speed, class_values, brake=brake)
+            decoded = decode_two_hot(encoded, class_values)
 
             tt.assert_close(decoded, speed, rtol=1e-4, atol=1e-4)

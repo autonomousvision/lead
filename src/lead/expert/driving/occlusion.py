@@ -51,12 +51,12 @@ def visible_pixels_of_actor(
 
 
 def transform_points_to_actor_frame(
-    ego_matrix: npt.NDArray,
-    actor_matrix: npt.NDArray,
-    ego_point_cloud: npt.NDArray,
-) -> npt.NDArray:
+    ego_matrix: jt.Float[npt.NDArray, "4 4"],
+    actor_matrix: jt.Float[npt.NDArray, "4 4"],
+    ego_point_cloud: jt.Float[npt.NDArray, "n dims"],
+) -> jt.Float[npt.NDArray, "n 3"]:
     if ego_point_cloud.shape[0] == 0:
-        return np.array([])
+        return np.empty((0, 3))
 
     ego_point_cloud = ego_point_cloud[:, :3]  # Only xyz
 
@@ -79,12 +79,12 @@ def transform_points_to_actor_frame(
 
 
 def get_points_in_actor_frame_and_in_bbox(
-    ego_matrix: npt.NDArray,
-    actor_matrix: npt.NDArray,
-    actor_extent: npt.NDArray,
-    ego_point_cloud: npt.NDArray,
+    ego_matrix: jt.Float[npt.NDArray, "4 4"],
+    actor_matrix: jt.Float[npt.NDArray, "4 4"],
+    actor_extent: jt.Float[npt.NDArray, " 3"],
+    ego_point_cloud: jt.Float[npt.NDArray, "n dims"],
     pad: bool = False,
-) -> npt.NDArray:
+) -> jt.Float[npt.NDArray, "m 3"]:
     """Return the LiDAR points, in the actor's frame, that lie inside its bounding box.
 
     Args:
@@ -115,7 +115,7 @@ def get_points_in_actor_frame_and_in_bbox(
         ego_point_cloud,
     )
     if len(vehicle_lidar) == 0:
-        return np.array([])
+        return np.empty((0, 3))
 
     # Count points inside bounding box
     mask = (
