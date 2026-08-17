@@ -11,7 +11,8 @@ class ExperimentConfig(ConfigNode):
     seed: int = 0
     # Description of the experiment.
     wandb_run_name: str = "An example experiment description."
-    # File to continue training from
+    # Weights to start training from: a model_*.pth file, or a training output
+    # dir, which resolves to its latest model_*.pth.
     initial_weights_file: str | None = None
     # If true continue the training from a failed training checkpoint.
     resume_from_last_checkpoint: bool = False

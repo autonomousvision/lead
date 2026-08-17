@@ -14,7 +14,21 @@ set -u
 
 checkpoint_dir=$1
 shift
-output_root="${RUNNER_TEMP:-/tmp}/checkpoint_evaluation"
+
+# Record everything the agent can draw: with one route per checkpoint the
+# videos carry more signal than extra routes would.
+export LEAD_CONFIG="\
+evaluation.produce_demo_image=true \
+evaluation.produce_demo_video=true \
+evaluation.produce_debug_image=true \
+evaluation.produce_debug_video=true \
+evaluation.produce_input_image=true \
+evaluation.produce_input_video=true \
+evaluation.produce_grid_image=true \
+evaluation.produce_grid_video=true"
+# Basename keys the output per checkpoint, so evaluating several seeds in one
+# run cannot mix their route results.
+output_root="${RUNNER_TEMP:-/tmp}/checkpoint_evaluation/$(basename "$checkpoint_dir")"
 
 CARLA_PORT=$(random_free_port)
 TM_PORT=$(random_free_port)

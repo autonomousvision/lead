@@ -27,8 +27,7 @@ the launcher only collects what is missing.
 The rig is `SensorRigConfig` in
 [sensor_rig_config.py](../src/lead/config/expert/sensor_rig_config.py): two lidars, a
 list of cameras, a list of radars, edited in place. It both spawns the CARLA sensors and
-becomes the calibration written into the log, so collecting with your own rig is that
-edit plus a re-run of the expert.
+becomes the calibration written into the log.
 
 <details>
 <summary>Mounting a different camera rig</summary>
@@ -48,16 +47,15 @@ cameras: list[CameraSpec] = [
 ```
 
 Camera `i` is stored under the ID that `CAMERA_ID_BY_LEAD_INDEX` in
-[py123d_log_api.py](../src/lead/api/py123d_log_api.py) maps it to, so more than the six
+[py123d_log_api.py](../src/lead/api/py123d_log_api.py) maps it to; more than the six
 mapped cameras (or four radars) needs an entry each. All cameras share the resolution of
 `cameras[0]`, and the rig is always two lidars. Depth, instance and perturbated cameras
-are derived from the RGB list on their own; a policy's camera selection,
-`policy.transfuser.camera.input_cameras` for TransFuser, is not. Scalar knobs need no
-edit at all: the expert also reads the `LEAD_CONFIG` dotlist, e.g.
-`export LEAD_CONFIG="expert.sensor_rig.use_radars=false"`.
+are derived from the RGB list; a policy's camera selection
+(`policy.transfuser.camera.input_cameras`) is not. Scalar knobs also work via the
+`LEAD_CONFIG` dotlist, e.g. `export LEAD_CONFIG="expert.sensor_rig.use_radars=false"`.
 
 Training reads `<PY123D_DATA_ROOT>/config.yaml` as its expert section, so store the
-config with the data. `scripts/slurm/collect_data.py` does it; after a local run:
+config with the data. `scripts/slurm/collect_data.py` does this; after a local run:
 
 ```python
 import yaml
@@ -74,13 +72,11 @@ with open("data/lead/123D/config.yaml", "w", encoding="utf-8") as f:
 ## Add a modality offline
 
 A log is one Arrow file per modality stream plus `sync.arrow`, which holds one row per
-tick with the row index each stream sits at. A modality computed after collection —
-reasoning traces, captions, auto-labels — is therefore just another file: write
-`custom.<id>.arrow` next to the others, and closing the writer rebuilds the sync table
-from every `*.arrow` in the directory, leaving the existing streams as they are. It
-reads back like any other stream,
-`scene.get_custom_modality_at_iteration(0, "reasoning").data`, and LEAD's own
-`custom.driving_meta` is nothing more than that.
+tick with the row index each stream sits at. To add a modality after collection
+(reasoning traces, captions, auto-labels), write `custom.<id>.arrow` next to the
+others; closing the writer rebuilds the sync table from every `*.arrow` in the
+directory. It reads back like any other stream:
+`scene.get_custom_modality_at_iteration(0, "reasoning").data`.
 
 <details>
 <summary>Example code</summary>
@@ -99,7 +95,6 @@ from py123d.datatypes import CustomModality, CustomModalityMetadata, Timestamp
 logs_root = Path("data/lead/123D/logs")
 log_dir = logs_root / "normal_view/Accident/Town03_Rep0_route_001783_route0"
 
-# The log's own metadata; the writer resolves the same directory back from it.
 scenes = ArrowSceneBuilder(
     logs_root=str(logs_root),
     maps_root="data/lead/123D/maps",
@@ -113,7 +108,6 @@ scenes = ArrowSceneBuilder(
 )
 log_metadata = scenes[0].get_log_metadata()
 
-# The tick timestamps the sync table already defines.
 sync = pa.ipc.open_file(pa.memory_map(str(log_dir / "sync.arrow"))).read_all()
 timestamps = sync.column("sync.timestamp_us").to_pylist()
 
@@ -141,9 +135,8 @@ writer.close()
 ```
 
 Values go through msgpack, so numpy arrays are fine and numpy scalars such as `np.bool_`
-are not. Timestamps must be non-decreasing and need not cover every tick; ticks without
-a row keep a null column, exactly like the camera streams at 4 Hz. `reference_column`
-has to stay the stream the log was written against, and the rebuild overwrites
-`sync.arrow` in place.
+are not. Timestamps must be non-decreasing and need not cover every tick.
+`reference_column` has to stay the stream the log was written against, and the rebuild
+overwrites `sync.arrow` in place.
 
 </details>

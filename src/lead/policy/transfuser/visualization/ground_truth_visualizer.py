@@ -142,8 +142,9 @@ class GroundTruthVisualizer:
             interpolation=cv2.INTER_NEAREST,
         )
 
-        self.meta_panel: jt.UInt8[npt.NDArray, "h w 3"] = 255 * np.ones(
+        self.meta_panel: jt.UInt8[npt.NDArray, "h w 3"] = np.full(
             (self.meta_panel_height, 1492, 3),
+            255,
             dtype=np.uint8,
         )
         self.perspectives: dict[str, jt.UInt8[npt.NDArray, "h w 3"]] = {}
@@ -156,7 +157,7 @@ class GroundTruthVisualizer:
         """
         self._process_all_perspectives()
         self._draw_bev()
-        self.bev_image = np.ascontiguousarray(np.rot90(self.bev_image, k=1))
+        self.bev_image = cv2.rotate(self.bev_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
         self._meta()
         return self._concatenate_all_perspectives_and_bev()
 
@@ -196,10 +197,8 @@ class GroundTruthVisualizer:
             return self._depth_to_color(metric_depth.numpy())
         if modality == "semantic":
             perspective = perspective.unsqueeze(0)
-        image = (
-            perspective.permute(1, 2, 0).detach().cpu().float().numpy().astype(np.uint8)
-        )
-        image = np.ascontiguousarray(image)
+        image = perspective.permute(1, 2, 0).detach().cpu().numpy()
+        image = np.ascontiguousarray(image, dtype=np.uint8)
         if modality == "semantic":
             image = self._semantic_to_color(image[..., 0])
         return image
@@ -221,7 +220,7 @@ class GroundTruthVisualizer:
             list(colors.TRANSFUSER_SEMANTIC_COLORS.values()),
             dtype=np.uint8,
         )
-        return converter[semantic]
+        return drawing.color_by_class(semantic, converter)
 
     # --- BEV semantic ---
 
@@ -230,40 +229,57 @@ class GroundTruthVisualizer:
         bev_semantic = self.data.get("bev_semantic")
         if bev_semantic is None:
             return
-        labels = bev_semantic[0].detach().cpu().float().numpy().astype(np.int32)
+        labels = bev_semantic[0].detach().cpu().numpy().astype(np.uint8)
         self._overlay_bev_semantic(labels)
 
     def _overlay_bev_semantic(
         self,
-        bev_semantic: jt.Int[npt.NDArray, "h w"],
+        bev_semantic: jt.UInt8[npt.NDArray, "h w"],
     ) -> None:
-        """Alpha-blend a BEV semantic class map onto the BEV image."""
+        """Alpha-blend a BEV semantic class map onto the BEV image.
+
+        Blending on the raster the BEV image was scaled up from and scaling the
+        result up again is equivalent to blending on the scaled-up image, at a
+        scale factor squared less work.
+        """
         converter = np.array(
             list(colors.CARLA_TRANSFUSER_BEV_SEMANTIC_COLOR_CONVERTER.values()),
+            dtype=np.uint8,
         )
         converter[1][0:3] = 40
-        bev_semantic_image = converter[bev_semantic, ...].astype("uint8")
-        alpha = (np.ones_like(bev_semantic) * 0.33).astype(np.float32)
+        bev_semantic_image = drawing.color_by_class(bev_semantic, converter)
+        alpha = np.full(bev_semantic.shape, 0.33, dtype=np.float32)
         alpha[bev_semantic == 0] = 0.0
         alpha[bev_semantic == 1] = 0.15
 
-        alpha = cv2.resize(
-            alpha,
-            dsize=(
-                alpha.shape[1] * self.scale_factor,
-                alpha.shape[0] * self.scale_factor,
-            ),
-            interpolation=cv2.INTER_NEAREST,
+        scaled_size = (self.bev_image.shape[1], self.bev_image.shape[0])
+        raster_size = (
+            scaled_size[0] // self.scale_factor,
+            scaled_size[1] // self.scale_factor,
         )
-        alpha = np.expand_dims(alpha, 2)
         bev_semantic_image = cv2.resize(
             bev_semantic_image,
-            dsize=(self.bev_image.shape[1], self.bev_image.shape[0]),
+            dsize=raster_size,
             interpolation=cv2.INTER_NEAREST,
         )
-        self.bev_image = (
-            bev_semantic_image * alpha + (1 - alpha) * self.bev_image
-        ).astype(np.uint8)
+        alpha = cv2.resize(
+            alpha,
+            dsize=raster_size,
+            interpolation=cv2.INTER_NEAREST,
+        )[..., np.newaxis]
+        bev_raster = cv2.resize(
+            self.bev_image,
+            dsize=raster_size,
+            interpolation=cv2.INTER_NEAREST,
+        )
+        blended = (bev_semantic_image * alpha + (1 - alpha) * bev_raster).astype(
+            np.uint8,
+        )
+        self.bev_image = cv2.resize(
+            blended,
+            dsize=scaled_size,
+            interpolation=cv2.INTER_NEAREST,
+        )
 
     # --- Shared drawing primitives ---
 
@@ -274,6 +290,15 @@ class GroundTruthVisualizer:
             int(float(y) * self.loc_pixels_per_meter + self.origin[1]),
         )
 
+    def _to_pixels(
+        self,
+        points: jt.Float[npt.NDArray, "n 2"],
+    ) -> jt.Int32[npt.NDArray, "n 2"]:
+        """Convert ego-frame positions to BEV pixel coordinates."""
+        return (
+            points[:, :2] * self.loc_pixels_per_meter + np.asarray(self.origin)
+        ).astype(np.int32)
+
     def _draw_waypoints(
         self,
         waypoints: jt.Float[npt.NDArray, "n 2"],
@@ -281,10 +306,10 @@ class GroundTruthVisualizer:
         radius: int,
     ) -> None:
         """Draw a scatter of ego-frame waypoints, lightening along the sequence."""
-        for i, waypoint in enumerate(waypoints):
+        for i, (x_pixel, y_pixel) in enumerate(self._to_pixels(waypoints)):
             cv2.circle(
                 self.bev_image,
-                self._to_pixel(waypoint[0], waypoint[1]),
+                (int(x_pixel), int(y_pixel)),
                 radius=radius,
                 color=drawing.lighter_shade(base_color, i, len(waypoints)),
                 thickness=-1,
@@ -455,18 +480,16 @@ class GroundTruthVisualizer:
         """Draw radar returns as markers sized by radial velocity."""
         min_r = self.radar_min_radius_pixel
         max_r = self.radar_max_radius_pixel
-        for xm, ym, vk in zip(x, y, velocity, strict=True):
-            px, py = self._to_pixel(xm, ym)
-            rpx = radius_offset + int(
-                np.clip(
-                    min_r + (abs(vk) / self.radar_velocity_max) * (max_r - min_r),
-                    min_r,
-                    max_r,
-                ),
-            )
+        pixels = self._to_pixels(np.stack((x, y), axis=1))
+        radii = radius_offset + np.clip(
+            min_r + (np.abs(velocity) / self.radar_velocity_max) * (max_r - min_r),
+            min_r,
+            max_r,
+        ).astype(np.int32)
+        for (px, py), rpx, vk in zip(pixels, radii, velocity, strict=True):
             # Ring = approaching, cross = receding.
             draw = drawing.draw_ring if vk > 0 else drawing.draw_cross
-            draw(self.bev_image, px, py, rpx, color)
+            draw(self.bev_image, int(px), int(py), int(rpx), color)
 
     def _radar_detections(self) -> None:
         """Draw the ground-truth radar detections and their waypoints."""
@@ -498,31 +521,23 @@ class GroundTruthVisualizer:
             valid_num_waypoints,
             strict=True,
         ):
-            pixel_points = [
-                self._to_pixel(waypoints[i, 0], waypoints[i, 1])
-                for i in range(int(num_wps))
-            ]
+            pixel_points = self._to_pixels(waypoints[: int(num_wps)])
             for point in pixel_points:
                 cv2.circle(
                     self.bev_image,
-                    point,
+                    (int(point[0]), int(point[1])),
                     radius=3,
                     color=colors.RADAR_DETECTION_COLOR,
                     thickness=-1,
                 )
-            for point, next_point in zip(
-                pixel_points[:-1],
-                pixel_points[1:],
-                strict=True,
-            ):
-                cv2.line(
-                    self.bev_image,
-                    point,
-                    next_point,
-                    color=colors.RADAR_DETECTION_COLOR,
-                    thickness=1,
-                    lineType=cv2.LINE_AA,
-                )
+            cv2.polylines(
+                self.bev_image,
+                [pixel_points],
+                isClosed=False,
+                color=colors.RADAR_DETECTION_COLOR,
+                thickness=1,
+                lineType=cv2.LINE_AA,
+            )
 
     # --- Meta panel ---
 
@@ -585,9 +600,16 @@ class GroundTruthVisualizer:
             split_idx = text.find(" ")
             return text[:split_idx], text[split_idx:].strip()
 
+        # Measuring a string costs as much as drawing it, and the layout below
+        # measures each of them more than once.
+        measured: dict[tuple[str, bool], int] = {}
+
         def text_width(text: str, font: ImageFont.FreeTypeFont) -> int:
-            bbox = draw.textbbox((0, 0), text, font=font)
-            return bbox[2] - bbox[0]
+            key = (text, font is font_bold)
+            if key not in measured:
+                bbox = draw.textbbox((0, 0), text, font=font)
+                measured[key] = bbox[2] - bbox[0]
+            return measured[key]
 
         def fits(text: str, width: int) -> bool:
             """Whether a name/value pair fits side by side in the given width."""
@@ -600,8 +622,11 @@ class GroundTruthVisualizer:
 
         # Entries too wide for one column are laid out in double-width columns.
         wide_column_width = column_width * WIDE_COLUMN_SPAN
-        grid_lines = [text for text in text_lines if fits(text, column_width)]
-        wide_lines = [text for text in text_lines if not fits(text, column_width)]
+        grid_lines: list[str] = []
+        wide_lines: list[str] = []
+        for text in text_lines:
+            target = grid_lines if fits(text, column_width) else wide_lines
+            target.append(text)
 
         def draw_line(text: str, x: int, y: int, width: int) -> None:
             if " " not in text:
@@ -662,56 +687,44 @@ class GroundTruthVisualizer:
 
         # Resize all perspectives to the BEV width.
         perspective_images: list[jt.UInt8[npt.NDArray, "h w 3"]] = []
-        target_width = lidar_image.shape[1]
+        perspective_width = lidar_image.shape[1]
         for modality in self.perspective_modalities:
             if modality not in self.perspectives:
                 continue
             img = np.ascontiguousarray(self.perspectives[modality], dtype=np.uint8)
-            target_height = int(img.shape[0] * (target_width / img.shape[1]))
-            perspective_images.append(cv2.resize(img, (target_width, target_height)))
+            target_height = int(img.shape[0] * (perspective_width / img.shape[1]))
+            perspective_images.append(
+                cv2.resize(img, (perspective_width, target_height)),
+            )
 
-        def horizontal_border(width: int) -> jt.UInt8[npt.NDArray, "h w 3"]:
-            return np.full((border_size, width, 3), border_color, dtype=np.uint8)
-
-        def vertical_border(height: int) -> jt.UInt8[npt.NDArray, "h w 3"]:
-            return np.full((height, border_size, 3), border_color, dtype=np.uint8)
-
-        # Stack perspectives vertically with borders in between.
-        bordered_perspectives: list[jt.UInt8[npt.NDArray, "h w 3"]] = []
-        for i, img in enumerate(perspective_images):
-            if i > 0:
-                bordered_perspectives.append(horizontal_border(img.shape[1]))
-            bordered_perspectives.append(img)
-        stacked_perspectives = np.concatenate(bordered_perspectives, axis=0)
-        stacked_perspectives = np.concatenate(
-            (stacked_perspectives, vertical_border(stacked_perspectives.shape[0])),
-            axis=1,
+        stack_height = sum(img.shape[0] for img in perspective_images) + border_size * (
+            len(perspective_images) - 1
         )
-
-        # Resize the BEV to the stacked perspectives height and border it.
-        target_height = stacked_perspectives.shape[0]
-        bev_width = int(lidar_image.shape[1] * (target_height / lidar_image.shape[0]))
-        lidar_resized = cv2.resize(lidar_image, (bev_width, target_height))
-        lidar_bordered = np.concatenate(
-            (vertical_border(target_height), lidar_resized),
-            axis=1,
-        )
-
-        ret = np.concatenate(
-            (lidar_bordered, vertical_border(target_height), stacked_perspectives),
-            axis=1,
-        )
-        ret = np.concatenate(
-            (horizontal_border(ret.shape[1]), ret, horizontal_border(ret.shape[1])),
-            axis=0,
-        )
-
-        # Append the meta panel at the bottom.
+        bev_width = int(lidar_image.shape[1] * (stack_height / lidar_image.shape[0]))
         meta_panel = np.ascontiguousarray(self.meta_panel, dtype=np.uint8)
-        target_width = ret.shape[1]
-        target_height = int(meta_panel.shape[0] * (target_width / meta_panel.shape[1]))
-        meta_panel_resized = cv2.resize(meta_panel, (target_width, target_height))
-        return np.concatenate(
-            (ret, horizontal_border(target_width), meta_panel_resized),
-            axis=0,
+        width = 3 * border_size + bev_width + perspective_width
+        meta_height = int(meta_panel.shape[0] * (width / meta_panel.shape[1]))
+
+        # The borders are what the canvas is not painted over with.
+        height = stack_height + 3 * border_size + meta_height
+        canvas = np.empty((height, width, 3), dtype=np.uint8)
+        cv2.rectangle(canvas, (0, 0), (width, height), border_color, thickness=-1)
+        canvas[
+            border_size : border_size + stack_height,
+            border_size : border_size + bev_width,
+        ] = cv2.resize(lidar_image, (bev_width, stack_height))
+
+        perspective_left = 2 * border_size + bev_width
+        row = border_size
+        for img in perspective_images:
+            canvas[
+                row : row + img.shape[0],
+                perspective_left : perspective_left + perspective_width,
+            ] = img
+            row += img.shape[0] + border_size
+
+        canvas[stack_height + 3 * border_size :] = cv2.resize(
+            meta_panel,
+            (width, meta_height),
         )
+        return canvas

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import typing
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -21,15 +20,15 @@ from lead.config.policy.transfuser.transfuser_config import TransfuserConfig
 from lead.log_reader import SceneData
 from lead.log_reader.scene_loader import SceneLoader
 from lead.policy.transfuser.dataloader.sample import TransfuserForwardBatch
-from lead.policy.transfuser.decoder.bev_decoder import BEVDecoder
-from lead.policy.transfuser.decoder.center_net_decoder import (
+from lead.policy.transfuser.network.bev_decoder import BEVDecoder
+from lead.policy.transfuser.network.center_net_decoder import (
     CenterNetBoundingBoxPrediction,
     CenterNetDecoder,
 )
-from lead.policy.transfuser.decoder.perspective_decoder import PerspectiveDecoder
-from lead.policy.transfuser.decoder.planning_decoder import PlanningDecoder
-from lead.policy.transfuser.decoder.radar_detector import RadarDetector
-from lead.policy.transfuser.encoder.transfuser_backbone import TransfuserBackbone
+from lead.policy.transfuser.network.perspective_decoder import PerspectiveDecoder
+from lead.policy.transfuser.network.planning_decoder import PlanningDecoder
+from lead.policy.transfuser.network.radar_detector import RadarDetector
+from lead.policy.transfuser.network.transfuser_backbone import TransfuserBackbone
 from lead.policy.transfuser.utils import precision
 from lead.policy.transfuser.utils.gpu_augmentation import augment_rgb_batch
 
@@ -48,22 +47,11 @@ if typing.TYPE_CHECKING:
 class Transfuser(AbstractPolicy[TransfuserForwardBatch, "Prediction"]):
     """TransFuser policy: image + LiDAR fusion backbone with task-specific decoders."""
 
-    # Declared so the type checker resolves it through the class rather than
-    # nn.Module.__getattr__, which types every attribute as Tensor | Module.
-    backbone: TransfuserBackbone
-
     def __init__(self, lead_config: LeadConfig) -> None:
         super().__init__(lead_config)
         self.config = lead_config.policy.transfuser
 
-        module_name, _, class_name = self.config.backbone_target.partition(":")
-        backbone_class = getattr(importlib.import_module(module_name), class_name)
-        if not issubclass(backbone_class, TransfuserBackbone):
-            raise TypeError(
-                f"backbone_target '{self.config.backbone_target}' is not a "
-                f"TransfuserBackbone subclass.",
-            )
-        self.backbone = backbone_class(lead_config)
+        self.backbone = TransfuserBackbone(lead_config)
 
         if self.config.use_semantic:
             self.semantic_decoder = PerspectiveDecoder(

@@ -31,7 +31,7 @@ from lead.config.policy.transfuser.label_classes import (
 from lead.log_reader import SceneData, view_geometry
 from lead.policy.transfuser.dataloader import bev_raster
 from lead.policy.transfuser.dataloader.sample import TransfuserOutputs
-from lead.policy.transfuser.decoder import center_net_decoder
+from lead.policy.transfuser.network import center_net_decoder
 from lead.policy.transfuser.utils import semantics
 
 LOG = logging.getLogger(__name__)
@@ -91,9 +91,9 @@ def build_labels(
     else:
         scenario_type = "NA"
 
-    # Bounding boxes
+    # Bounding boxes, the source of the detection, BEV and radar labels.
     box_rows_pixel_frame = None
-    if config.detect_boxes or config.use_bev_semantic:
+    if config.detect_boxes or config.use_bev_semantic or config.use_radar_detection:
         assert view_boxes is not None
         box_rows_pixel_frame = _build_bounding_box_rows(
             scenario_type,

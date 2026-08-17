@@ -131,6 +131,8 @@ jobs:
           "no_boxes|true|policy.transfuser.detect_boxes=false"
           "no_radar|true|policy.transfuser.use_radar_detection=false"
           "perception_off|true|policy.transfuser.use_depth=false policy.transfuser.use_semantic=false policy.transfuser.use_bev_semantic=false policy.transfuser.detect_boxes=false policy.transfuser.use_radar_detection=false"
+          # Radar outlives both box-row producers: its labels are built from them.
+          "radar_without_box_heads|true|policy.transfuser.use_bev_semantic=false policy.transfuser.detect_boxes=false"
           "no_target_speed|true|policy.transfuser.predict_target_speed=false"
           "no_spatial_path|true|policy.transfuser.predict_spatial_path=false"
           "no_waypoints|true|policy.transfuser.predict_temporal_spatial_waypoints=false"
@@ -140,6 +142,7 @@ jobs:
           # Cache off is the only path the label builders are on.
           "live_labels|false|"
           "no_boxes_live_labels|false|policy.transfuser.detect_boxes=false"
+          "radar_without_box_heads_live_labels|false|policy.transfuser.use_bev_semantic=false policy.transfuser.detect_boxes=false"
           # Preprocessing and BEV geometry only show with the cache off: the
           # store holds rasters built at the default settings.
           "raw_sensor_preprocessing|false|policy.transfuser.accumulate_lidar_sweeps=false policy.transfuser.merge_radar_into_lidar=false policy.transfuser.remove_lidar_ground_points=false policy.transfuser.duplicate_radar_near_ego=false"
@@ -267,15 +270,37 @@ jobs:
         fi
         echo "All ${#variants[@]} normal-view-only variants passed."
 
-    - name: Evaluate the released checkpoint on benchmark routes
-      # The route tier scales with the branch, like data collection above.
+    - name: Evaluate the released checkpoint on one benchmark route per seed
+      # One route per checkpoint with full visualization output (the script
+      # turns on every evaluation.produce_* flag); the videos say more than
+      # extra routes would. Each seed drives a different route, so one run
+      # still covers three of the scenario types the checkpoint completes at
+      # driving score 100 — the three fastest.
       run: |
         micromamba run -n lead hf download ln2697/transfuser-carla-123d \
+          --revision ce8185f03ce3448e22f2d4fb36c572ad8f9636bd \
+          --include "resnet34_v1.5.0/*" \
           --local-dir "$RUNNER_TEMP/hf_checkpoint"
-        case "$GITHUB_REF_NAME" in
-          pre-release) bash .github/scripts/evaluate_checkpoint_pre_release.sh "$RUNNER_TEMP/hf_checkpoint/transfuser" ;;
-          *)           bash .github/scripts/evaluate_checkpoint_main.sh "$RUNNER_TEMP/hf_checkpoint/transfuser" ;;
-        esac
+        routes=(
+          2390  # VanillaNonSignalizedTurn
+          24340 # ControlLoss
+          23901 # InterurbanActorFlow
+        )
+        i=0
+        for seed in "$RUNNER_TEMP"/hf_checkpoint/resnet34_v1.5.0/seed*; do
+          bash .github/scripts/evaluate_checkpoint.sh "$seed" "${routes[i % ${#routes[@]}]}"
+          i=$((i + 1))
+        done
+
+    - name: Upload evaluation visualizations
+      # The videos are the point of the evaluation step; a failed route is
+      # exactly when they matter, hence always().
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: checkpoint-evaluation
+        path: ${{ runner.temp }}/checkpoint_evaluation/
+        if-no-files-found: ignore
 
     - name: Stop CARLA server
       if: always()

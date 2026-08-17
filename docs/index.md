@@ -19,7 +19,11 @@ To understand the data layout and how the data is processed:
 To understand how TransFuser is trained, and how to implement your own policy:
 
 - [Training](training.md): building the cache, pretraining, post-training, config overrides.
-- [Add your own policy](add_a_policy.md): shortest path to add your own policy.
+- [Add your own policy](add_a_policy.md): a walkthrough of the smallest policy in the repo.
+
+To drive a benchmark with a trained policy:
+
+- [Evaluation](eval.md): closed-loop runs, scaling them on SLURM, aggregating scores.
 
 To generate your own data, see:
 
@@ -27,8 +31,5 @@ To generate your own data, see:
 
 ## Further documents
 
-Our repository follows tested software-engineering practice, with one deliberate
-bias: where clean abstraction and data-loading throughput conflict, we trade a
-little abstraction for throughput.
-
 - [Architecture](architecture.md): understand the design of the repository and how data is loaded and processed.
+- [Training speed](speed.md): options for faster training.

@@ -26,7 +26,7 @@ class EvaluationConfig(ConfigNode):
     @overridable_property
     def produce_demo_video(self) -> bool:
         """If true produce demo video output."""
-        return True
+        return False
 
     @overridable_property
     def produce_debug_image(self) -> bool:

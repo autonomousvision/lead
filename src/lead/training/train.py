@@ -2,6 +2,7 @@ import datetime
 import faulthandler
 import glob
 import logging
+import math
 import os
 import sys
 import time
@@ -13,6 +14,7 @@ import lightning.pytorch as pl
 import matplotlib
 import torch
 import torch._inductor.config
+from lightning.fabric.utilities.throughput import get_available_flops
 from lightning.pytorch import Callback
 from lightning.pytorch.callbacks import ThroughputMonitor, TQDMProgressBar
 from lightning.pytorch.callbacks.progress.tqdm_progress import Tqdm
@@ -20,8 +22,9 @@ from lightning.pytorch.loggers import Logger, WandbLogger
 from lightning.pytorch.strategies import DDPStrategy
 from lightning.pytorch.utilities.types import OptimizerLRSchedulerConfig
 from torch.distributed.elastic.multiprocessing.errors import record
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
+from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
+from torch.utils.flop_counter import FlopCounterMode
 
 from lead.api.abstract_policy import AbstractPolicy, build_policy
 from lead.common.logging_setup import setup_logging
@@ -67,6 +70,79 @@ warnings.filterwarnings(
 torch.set_float32_matmul_precision("high")
 
 
+class CosineAnnealingWarmRestartsWithWarmup(LRScheduler):
+    """Cosine annealing with warm restarts whose cycles open with a linear ramp.
+
+    Cycle ``i`` runs for ``T_0 * T_mult**i`` steps: its first
+    ``warmup_fraction`` of steps ramp linearly to the base learning rate and the
+    rest anneal to ``eta_min``. A zero fraction is plain
+    :class:`~torch.optim.lr_scheduler.CosineAnnealingWarmRestarts`.
+    """
+
+    def __init__(
+        self,
+        optimizer: torch.optim.Optimizer,
+        T_0: int,  # noqa: N803 - torch spells the cycle length this way.
+        T_mult: int = 1,  # noqa: N803
+        warmup_fraction: float = 0.0,
+        eta_min: float = 0.0,
+        last_epoch: int = -1,
+    ) -> None:
+        """Build the schedule.
+
+        Args:
+            optimizer: Optimizer whose learning rates are set.
+            T_0: Steps in the first cycle.
+            T_mult: Factor each cycle's length grows by.
+            warmup_fraction: Share of a cycle spent ramping up, in [0, 1).
+            eta_min: Learning rate a cycle anneals down to.
+            last_epoch: Step to resume from, or -1 to start fresh.
+
+        Raises:
+            ValueError: If the cycle length, growth factor or fraction is out of range.
+        """
+        if T_0 < 1 or T_mult < 1:
+            raise ValueError(f"T_0 and T_mult must be at least 1, got {T_0}, {T_mult}")
+        if not 0.0 <= warmup_fraction < 1.0:
+            raise ValueError(
+                f"warmup_fraction must be in [0, 1), got {warmup_fraction}",
+            )
+        self.T_0 = T_0
+        self.T_mult = T_mult
+        self.warmup_fraction = warmup_fraction
+        self.eta_min = eta_min
+        super().__init__(optimizer, last_epoch)
+
+    def _cycle_position(self) -> tuple[int, int]:
+        """Locate the current step within its cycle.
+
+        Returns:
+            The current cycle's length in steps and the step's index into it.
+        """
+        step = max(0, self.last_epoch)
+        length = self.T_0
+        while step >= length:
+            step -= length
+            length *= self.T_mult
+        return length, step
+
+    # Torch's stubs annotate LRScheduler.get_lr's return type differently across
+    # the versions we straddle; the ignore absorbs the mismatch on either side.
+    def get_lr(self) -> list[float]:  # pyright: ignore[reportIncompatibleMethodOverride]
+        """Inherited, see superclass."""
+        length, step = self._cycle_position()
+        warmup_steps = int(length * self.warmup_fraction)
+        if step < warmup_steps:
+            scale = (step + 1) / (warmup_steps + 1)
+        else:
+            progress = (step - warmup_steps) / max(1, length - warmup_steps)
+            scale = (1.0 + math.cos(math.pi * progress)) / 2.0
+        return [
+            float(self.eta_min + (base - self.eta_min) * scale)
+            for base in self.base_lrs
+        ]
+
+
 class LeadLightningModule(pl.LightningModule):
     """Training wrapper around the configured :class:`~lead.api.abstract_policy.AbstractPolicy`.
 
@@ -84,7 +160,13 @@ class LeadLightningModule(pl.LightningModule):
         model = build_policy(config)
         model.prepare_for_training()
 
-        if config.training.experiment.initial_weights_file is not None:
+        # Resuming restores every weight from the run's own checkpoint, so the initial
+        # weights would only be overwritten. They are loaded non-strictly: they come
+        # from an earlier stage whose model lacks this one's heads.
+        if (
+            config.training.experiment.initial_weights_file is not None
+            and not config.training.experiment.resume_from_last_checkpoint
+        ):
             LOG.info(
                 f"Loading model weights from {config.training.experiment.initial_weights_file}",
             )
@@ -94,7 +176,7 @@ class LeadLightningModule(pl.LightningModule):
                     map_location="cpu",
                     weights_only=True,
                 ),
-                strict=config.training.experiment.resume_from_last_checkpoint,
+                strict=False,
             )
 
         LOG.info(
@@ -142,6 +224,8 @@ class LeadLightningModule(pl.LightningModule):
         self._last_logged_step = 0
         self._h2d_stream: torch.cuda.Stream | None = None
         self._h2d_event: torch.cuda.Event | None = None
+        self._flops_per_batch = 0
+        self._available_flops: float | None = None
 
     @property
     def _raw_model(self) -> "AbstractPolicy[typing.Any, typing.Any]":
@@ -205,10 +289,12 @@ class LeadLightningModule(pl.LightningModule):
             "Trainer must be built with max_epochs set"
         )
         steps_per_epoch = max(1, total_steps // max(1, self.trainer.max_epochs))
-        scheduler = CosineAnnealingWarmRestarts(
+        scheduler = CosineAnnealingWarmRestartsWithWarmup(
             optimizer,
             T_0=steps_per_epoch,
             T_mult=2,
+            warmup_fraction=self.config.training.optimization.lr_warmup_fraction,
+            eta_min=self.config.training.optimization.lr_min,
         )
         return {
             "optimizer": optimizer,
@@ -236,6 +322,11 @@ class LeadLightningModule(pl.LightningModule):
             f"prefetch {data.prefetch_batches_per_worker} batches per worker | "
             f"cache store {data.read_from_cache_store}",
         )
+        self._available_flops = get_available_flops(
+            self.trainer.strategy.root_device,
+            optimization.torch_dtype,
+        )
+        LOG.info(f"Device peak: {(self._available_flops or 0) / 1e12:.0f} TFLOP/s")
         self._step_timer = time.perf_counter()
         self._last_logged_step = 0
 
@@ -266,9 +357,15 @@ class LeadLightningModule(pl.LightningModule):
             return
         elapsed = now - self._step_timer
         batch_size = self.config.training.optimization.batch_size
+        mfu = (
+            self._flops_per_batch * steps / elapsed / self._available_flops
+            if self._available_flops
+            else 0.0
+        )
         LOG.info(
             f"step {self.global_step} | {steps / elapsed:5.2f} it/s | "
             f"{steps * batch_size / elapsed:6.0f} samples/s | "
+            f"{100 * mfu:4.1f} % MFU | "
             f"{torch.cuda.max_memory_allocated() / 1e9:4.1f} GB peak GPU memory",
         )
         self._step_timer = now
@@ -354,24 +451,67 @@ class LeadLightningModule(pl.LightningModule):
         self._h2d_event.record(self._h2d_stream)
         return moved
 
+    @property
+    def flops_per_batch(self) -> int:
+        """Floating point operations one device spends on one training step.
+
+        Lightning's ``ThroughputMonitor`` divides this by the measured step time
+        and the device's peak rate to log the model FLOPs utilization. Zero
+        until the first batch measures it.
+        """
+        return self._flops_per_batch
+
+    def _measure_flops_per_batch(self, batch: dict) -> None:
+        """Count the forward FLOPs on ``batch`` and take three times that as the step.
+
+        Backward computes an input and a weight gradient per matmul and
+        convolution, each the size of the forward, so the step is three times
+        the forward. Only matmul-shaped work counts: a step whose time goes into
+        memory-bound kernels reads as a low utilization.
+
+        Args:
+            batch: The first batch of the run, already on this rank's device.
+        """
+        optimization = self.config.training.optimization
+        counter = FlopCounterMode(display=False)
+        with (
+            torch.no_grad(),
+            counter,
+            torch.autocast(
+                device_type=self.device.type,
+                dtype=optimization.torch_dtype,
+                enabled=optimization.use_mixed_precision_training,
+            ),
+        ):
+            self._raw_model({**batch, "current_gradient_step": 0})
+        self._flops_per_batch = 3 * counter.get_total_flops()
+        if self.device.type == "cuda":
+            torch.cuda.reset_peak_memory_stats()
+        LOG.info(
+            f"Step costs {self._flops_per_batch / 1e12:.2f} TFLOP per device, "
+            f"{self._flops_per_batch * self.trainer.world_size / 1e12:.2f} TFLOP in total",
+        )
+
     def on_train_batch_start(self, batch: dict, batch_idx: int) -> None:
         """Make the compute stream wait for the batch upload to finish.
 
         Also marks every batch tensor as used by the compute stream, so the
         caching allocator does not hand their side-stream memory to the next
-        upload while this step still reads it.
+        upload while this step still reads it. The first batch is measured for
+        its FLOPs, after the fence and before anything else reads it.
 
         Args:
             batch: The batch ``transfer_batch_to_device`` returned.
             batch_idx: Index of the batch within the epoch.
         """
-        if self._h2d_event is None:
-            return
-        compute_stream = torch.cuda.current_stream()
-        self._h2d_event.wait(compute_stream)
-        for value in batch.values():
-            if isinstance(value, torch.Tensor):
-                value.record_stream(compute_stream)
+        if self._h2d_event is not None:
+            compute_stream = torch.cuda.current_stream()
+            self._h2d_event.wait(compute_stream)
+            for value in batch.values():
+                if isinstance(value, torch.Tensor):
+                    value.record_stream(compute_stream)
+        if self._flops_per_batch == 0:
+            self._measure_flops_per_batch(batch)
 
     def training_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
         """Run forward pass, weight the losses, and log scalars and images.
@@ -685,48 +825,52 @@ def _build_loggers(config: LeadConfig) -> list[Logger]:
     ]
 
 
-class _BatchesPerSecondPostfix:
-    """Live per-iteration rate readout for a bar's postfix.
+class _SamplesPerSecondPostfix:
+    """Live samples/s readout for a bar's postfix.
 
     An object rather than a string because tqdm prefixes ``", "`` to any
     string postfix; a non-string object is rendered verbatim.
     """
 
-    def __init__(self, bar: Tqdm) -> None:
+    def __init__(self, bar: Tqdm, samples_per_iteration: int) -> None:
         self._bar = bar
+        self._samples_per_iteration = samples_per_iteration
 
     def __str__(self) -> str:
-        # tqdm keeps its smoothed rate in raw per-iteration units; only the
-        # rendered main rate is scaled by unit_scale. The rate is None between
-        # smoothing updates, where tqdm itself falls back to the overall
-        # average.
+        # tqdm keeps its smoothed rate in per-iteration units. The rate is
+        # None between smoothing updates, where tqdm itself falls back to the
+        # overall average.
         bar_state = self._bar.format_dict
         rate = bar_state["rate"]
         if rate is None and bar_state["elapsed"]:
             rate = bar_state["n"] / bar_state["elapsed"]
-        return f" {rate:.2f} batches/s" if rate else ""
+        if not rate:
+            return ""
+        return f" {rate * self._samples_per_iteration:.1f} samples/s"
 
 
-class _SamplesProgressBar(TQDMProgressBar):
-    """Progress bar counting samples instead of iterations.
+class _BatchesProgressBar(TQDMProgressBar):
+    """Progress bar counting batches, with a samples/s postfix.
 
-    The global batch size scales the main rate, so runs with different batch
-    sizes report directly comparable samples/s; the per-iteration rate follows
-    as a ``batches/s`` readout.
+    Batch counts keep the ``n/total`` readout short; the postfix scales the
+    rate by the global batch size, so runs with different batch sizes report
+    directly comparable samples/s.
     """
 
     def __init__(self, samples_per_iteration: int) -> None:
         super().__init__()
         self._samples_per_iteration = samples_per_iteration
-        self._rate_postfix: _BatchesPerSecondPostfix | None = None
+        self._rate_postfix: _SamplesPerSecondPostfix | None = None
 
     def init_train_tqdm(self) -> Tqdm:
         """Inherited, see superclass."""
         bar = super().init_train_tqdm()
         # The leading space separates the rate number from its unit.
-        bar.unit = " samples"
-        bar.unit_scale = self._samples_per_iteration
-        self._rate_postfix = _BatchesPerSecondPostfix(bar)
+        bar.unit = " batches"
+        self._rate_postfix = _SamplesPerSecondPostfix(
+            bar,
+            self._samples_per_iteration,
+        )
         bar.postfix = self._rate_postfix
         return bar
 
@@ -815,7 +959,7 @@ def _build_trainer(config: LeadConfig) -> pl.Trainer:
     ]
     if config.training.lightning.enable_progress_bar:
         callbacks.append(
-            _SamplesProgressBar(config.training.optimization.batch_size),
+            _BatchesProgressBar(config.training.optimization.batch_size),
         )
     lightning_config = config.training.lightning
     return pl.Trainer(

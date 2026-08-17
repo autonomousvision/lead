@@ -3,7 +3,7 @@ import torch
 import torch.testing as tt
 
 from lead.config import TransfuserConfig, load_lead_config
-from lead.policy.transfuser.decoder.planning_decoder import (
+from lead.policy.transfuser.network.planning_decoder import (
     decode_two_hot,
     encode_two_hot,
 )

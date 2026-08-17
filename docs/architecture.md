@@ -113,16 +113,3 @@ flowchart TB
     style featurize fill:transparent,stroke:#88888855
     style step fill:transparent,stroke:#88888855
 ```
-
-A `SamplePart` declares three things: what it `reads` from a scene, what it `builds` out of that,
-and what a prebuilt store `caches` for it. The reads of the parts that still have to compute are
-merged into one, so a part served from the store costs no disk read at all. What may be cached is
-the policy's choice; no part caches sensors, which read in milliseconds but dominate storage.
-
-Augmentation runs on the merged outputs, once every part is in and before the sample is built, so
-`builds` stays a pure function of the scene data and its outputs remain cacheable.
-
-At inference the same `SceneData` is assembled live from the simulator and handed to the same
-policy, so training and evaluation cannot drift apart. There the model inputs come from one call to
-`build_features()`, which composes the same three feature builders training uses; labels have no
-inference counterpart.

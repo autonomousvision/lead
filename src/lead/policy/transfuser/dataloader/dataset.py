@@ -238,7 +238,12 @@ class TransfuserDataset(AbstractPolicyDataset):
                 # them would couple the store's coverage to the planning head.
                 builds=self._build_planning_targets,
             )
-        if config.detect_boxes or config.use_bev_semantic or config.use_semantic:
+        if (
+            config.detect_boxes
+            or config.use_bev_semantic
+            or config.use_semantic
+            or config.use_radar_detection
+        ):
             parts["privileged_targets"] = SamplePart(
                 reads=SceneLoadingSpec(
                     read_semantic_cameras=config.use_semantic,

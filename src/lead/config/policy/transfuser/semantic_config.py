@@ -21,6 +21,10 @@ class TransfuserSemanticConfig(ConfigNode):
     deconv_scale_factor_0: int = 4
     # Fraction of the down-sampling factor that will be up-sampled in the second Up-sample.
     deconv_scale_factor_1: int = 8
+    # If true the last deconvolution block runs before the final up-sample, so
+    # class logits are up-sampled rather than the wider feature map. The
+    # prediction keeps its full resolution either way.
+    upsample_perspective_logits: bool = False
 
     # --- Depth ---
     # If true use depth prediction as auxiliary task.

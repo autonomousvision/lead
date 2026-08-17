@@ -11,15 +11,12 @@ concurrency:
 
 jobs:
   unit-tests:
-    runs-on: ${{ matrix.ubuntu }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
-        ubuntu: [ ubuntu-22.04, ubuntu-24.04, ubuntu-26.04 ]
         python: [ "3.10", "3.11", "3.12" ]
-        # numpy 2.2 is the newest 2.x the pinned stack accepts: numba 0.61
-        # caps at 2.2, scipy 1.14 at <2.3.
         numpy: [ "1.26", "2.2" ]
 
     steps:
@@ -38,7 +35,7 @@ jobs:
         environment-name: lead
         create-args: python=${{ matrix.python }} -c conda-forge ffmpeg gcc git-lfs uv
         cache-environment: true
-        cache-environment-key: matrix-${{ matrix.ubuntu }}-py${{ matrix.python }}-${{ hashFiles('.github/workflows/ci_matrix.yml') }}
+        cache-environment-key: matrix-py${{ matrix.python }}-${{ hashFiles('.github/workflows/ci_matrix.yml') }}
 
     - name: Install project
       run: micromamba run -n lead uv pip install -e "." --reinstall-package lead

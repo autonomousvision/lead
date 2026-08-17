@@ -197,7 +197,10 @@ class SceneLoader:
         # sweeps and move them into the view frame themselves.
         lidar_sweeps: dict[int, Lidar] | None = None
         if loading_spec.lidar_tick_ages:
-            lidar_sweeps = self._read_lidar_sweeps(scene, loading_spec.lidar_tick_ages)
+            lidar_sweeps = self._read_lidar_sweeps(
+                scene,
+                loading_spec.lidar_tick_ages,
+            )
 
         radar_sweeps: dict[int, Radar] | None = None
         if loading_spec.radar_tick_ages:
@@ -241,7 +244,9 @@ class SceneLoader:
                 resolved_view.sensor_scene.get_camera_depth_at_iteration,
             )
 
-        map_api = scene.get_map_api() if loading_spec.read_map_api else None
+        map_api = None
+        if loading_spec.read_map_api:
+            map_api = scene.get_map_api()
 
         target_points = self._target_points_in_view(scene, driving_meta, resolved_view)
         # Dense over every age any modality of this read touches: the sweep

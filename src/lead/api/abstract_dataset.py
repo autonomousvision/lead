@@ -169,7 +169,6 @@ class AbstractPolicyDataset(SizedDataset, abc.ABC):
             scene_index,
             use_perturbated_view=sensor_view == PERTURBATED_SENSOR_VIEW,
         )
-
         outputs = self.postprocess_outputs(
             outputs,
             scene_index,

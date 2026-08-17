@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import glob
 import logging
 import os
 
@@ -32,7 +33,9 @@ def initialize_config() -> LeadConfig:
     bootstrap_config = load_lead_config(use_cli=True)
 
     checkpoint_config = None
-    initial_weights_file = bootstrap_config.training.experiment.initial_weights_file
+    initial_weights_file = _resolve_initial_weights_file(
+        bootstrap_config.training.experiment.initial_weights_file,
+    )
     if initial_weights_file is not None:
         with open(
             os.path.join(os.path.dirname(initial_weights_file), "config.yaml"),
@@ -40,13 +43,32 @@ def initialize_config() -> LeadConfig:
         ) as f:
             checkpoint_config = yaml.safe_load(f)
 
-    return load_lead_config(
+    config = load_lead_config(
         loaded_config=checkpoint_config,
         dataset_expert_config=_read_dataset_expert_config(bootstrap_config),
         use_cli=True,
         # Tolerate checkpoint configs whose keys don't match the current schema.
         raise_on_unknown_key=checkpoint_config is None,
     )
+    config.training.experiment.initial_weights_file = initial_weights_file
+    return config
+
+
+def _resolve_initial_weights_file(path: str | None) -> str | None:
+    """Resolve a training output dir to its latest ``model_*.pth``.
+
+    Args:
+        path: A weights file, a training output dir, or None.
+
+    Returns:
+        The weights file, or None if ``path`` is None.
+    """
+    if path is None or not os.path.isdir(path):
+        return path
+    model_files = sorted(glob.glob(os.path.join(path, "model_*.pth")))
+    if not model_files:
+        raise FileNotFoundError(f"No model_*.pth under {path}")
+    return model_files[-1]
 
 
 def to_serializable_dict(config: LeadConfig) -> dict:

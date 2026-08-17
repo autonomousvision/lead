@@ -86,6 +86,11 @@ repos:
       - id: shellcheck
         args: [--severity=error]
 
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+
   - repo: local
     hooks:
       - id: forbid-merge-leftovers

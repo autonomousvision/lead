@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import torch
 
-from lead.policy.transfuser.decoder.center_net_decoder import (
+from lead.policy.transfuser.network.center_net_decoder import (
     gather_feat,
     gaussian2d,
     gaussian_focal_loss,

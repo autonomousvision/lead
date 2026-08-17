@@ -15,6 +15,11 @@ class OptimizationConfig(ConfigNode):
     learning_rate: float = 3e-4
     # Weight decay for regularization.
     weight_decay: float = 0.01
+    # Fraction of every cosine cycle spent ramping the learning rate up to
+    # ``learning_rate`` before the cycle anneals; 0 restarts at the full rate.
+    lr_warmup_fraction: float = 0.0
+    # Learning rate every cosine cycle anneals down to.
+    lr_min: float = 0.0
 
     @overridable_property
     def num_epochs(self) -> int:

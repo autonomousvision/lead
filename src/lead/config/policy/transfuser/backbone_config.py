@@ -6,16 +6,14 @@ from lead.config.node import ConfigNode
 class TransfuserBackboneConfig(ConfigNode):
     """Image/LiDAR encoders and the GPT fusion layers."""
 
-    # Backbone class as "module:ClassName"; the throughput variants under
-    # lead.policy.transfuser.encoder swap in here.
-    backbone_target: str = (
-        "lead.policy.transfuser.encoder.transfuser_backbone:TransfuserBackbone"
-    )
     # If true freeze the backbone weights during training.
     freeze_backbone: bool = False
     # If true run all normalization layers in fp32 under autocast; if false they
     # follow the autocast dtype.
     norm_layers_in_fp32: bool = True
+    # How the fusion and perspective up-samples resample: "bilinear" or
+    # "nearest"; the top-down and BEV heads stay bilinear either way.
+    upsample_mode: str = "bilinear"
     # Architecture name for image encoder backbone.
     image_architecture: str = "resnet34"
     # Architecture name for LiDAR encoder backbone.

@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from lead.config import LeadConfig, load_lead_config
-from lead.policy.transfuser.decoder.bev_decoder import BEVDecoder
+from lead.policy.transfuser.network.bev_decoder import BEVDecoder
 
 
 @pytest.fixture

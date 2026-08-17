@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 
 from lead.config.policy.transfuser.label_classes import BoundingBoxIndex
-from lead.policy.transfuser.decoder.center_net_decoder import PredictedBoundingBox
+from lead.policy.transfuser.network.center_net_decoder import PredictedBoundingBox
 
 MARKER_MIN_RADIUS_PIXEL = 3
 MARKER_STROKE_RATIO = 0.25
@@ -31,6 +31,24 @@ def depth_to_color(
         cv2.COLORMAP_TURBO,
     )
     return cv2.cvtColor(colored, cv2.COLOR_BGR2RGB)
+
+
+def color_by_class(
+    labels: jt.UInt8[npt.NDArray, "h w"],
+    class_colors: jt.UInt8[npt.NDArray, "n 3"],
+) -> jt.UInt8[npt.NDArray, "h w 3"]:
+    """Map class labels to their colors through a lookup table.
+
+    Args:
+        labels: Class index per pixel.
+        class_colors: One RGB color per class, indexed by the class.
+
+    Returns:
+        The colorized label map (RGB).
+    """
+    lookup_table = np.zeros((256, 1, 3), dtype=np.uint8)
+    lookup_table[: len(class_colors), 0] = class_colors
+    return cv2.LUT(cv2.cvtColor(labels, cv2.COLOR_GRAY2RGB), lookup_table)
 
 
 def _marker_geometry(size: int) -> tuple[int, int]:

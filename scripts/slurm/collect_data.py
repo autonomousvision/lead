@@ -1,9 +1,4 @@
-"""Submit a Slurm job array that drives the expert agent to collect one route each.
-
-Resubmits jobs that fail or get preempted, up to a per-job attempt cap, and
-skips routes whose result file already shows a completed run.
-"""
-
+#!/usr/bin/env python3
 import argparse
 import glob
 import json
@@ -334,7 +329,7 @@ if __name__ == "__main__":
     username = os.environ["USER"]
     code_root = str(runtime_variables.project_root())
     carla_root = read_dotenv("CARLA_ROOT")
-    max_route_per_scenario_type = 5  # -1 means no limit
+    max_route_per_scenario_type = -1  # -1 means no limit
 
     agent = f"{code_root}/src/lead/expert/expert_agent.py"
 
@@ -506,7 +501,7 @@ if __name__ == "__main__":
                     data_save_directory,
                     job_name,
                     username,
-                    read_dotenv_int("MAX_NUM_PARALLEL_JOBS_COLLECT_DATA"),
+                    read_dotenv_int("COLLECT_DATA_MAX_NUM_PARALLEL_JOBS"),
                 )
 
                 # Generate the job script right before submitting so it picks up the
@@ -549,7 +544,7 @@ if __name__ == "__main__":
         time.sleep(5)
 
         # resubmit unfinished jobs
-        max_attempts = read_dotenv_int("MAX_NUM_ATTEMPTS_COLLECT_DATA")
+        max_attempts = read_dotenv_int("COLLECT_DATA_MAX_NUM_ATTEMPTS")
         for jobid in list(meta_jobs.keys()):
             job_finished, job_file, result_file, attempts = meta_jobs[jobid]
             if job_finished or is_job_queued(jobid):
@@ -569,7 +564,7 @@ if __name__ == "__main__":
                 data_save_directory,
                 job_name,
                 username,
-                read_dotenv_int("MAX_NUM_PARALLEL_JOBS_COLLECT_DATA"),
+                read_dotenv_int("COLLECT_DATA_MAX_NUM_PARALLEL_JOBS"),
             )
 
             # SLURM appends to the same stdout/stderr logs (--open-mode=append),

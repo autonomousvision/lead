@@ -4,7 +4,7 @@ requires = [ "setuptools==81" ]
 
 [project]
 name = "lead"
-version = "1.4.0"
+version = "1.5.0"
 description = "LEAD: Minimizing Learner-Expert Asymmetry in End-to-End Driving"
 readme = "README.md"
 license-files = [ "LICENSE" ]
@@ -24,6 +24,8 @@ dependencies = [
   "ephem==4.1.5",
   "filterpy==1.4.5",
   "flask==3.1.1",
+  # <1.0: transformers (imported by torchmetrics' text metrics) rejects hub 1.x.
+  "huggingface-hub[hf_xet]==0.36.2",
   "imagecodecs==2025.3.30",
   "import-linter==2.3",
   "jaxtyping==0.3.2",
@@ -47,7 +49,7 @@ dependencies = [
   "pre-commit==4.2",
   "psutil==5.9.8",
   "py-trees==0.8.3",
-  "py123d @ git+https://github.com/kesai-labs/py123d@dev_v0.7.0",
+  "py123d @ git+https://github.com/kesai-labs/py123d@4d20a6cfd50f7966647448084f6482c0b65effff",
   "pydoclint==0.8.3",
   "pyqt5",
   "pytest==9.0.2",
@@ -81,10 +83,6 @@ packages.find.include = [ "lead*", "slurm*" ]
 packages.find.exclude = [ "data*", "outputs*", "3rd_party*", "common*", "tests*" ]
 
 [tool.uv]
-# The cluster's driver caps at CUDA 12.x while the CI RTX 5090 needs sm_120
-# kernels; cu128 covers both. torch 2.13 breaks torch.compile on our model
-# (FakeTensor data-pointer access in the DDP graph compiler), so the pins stay
-# on 2.8 until that is resolved.
 sources.torch = [ { index = "pytorch-cu128" } ]
 sources.torchvision = [ { index = "pytorch-cu128" } ]
 index = [ { name = "pytorch-cu128", url = "https://download.pytorch.org/whl/cu128", explicit = true } ]

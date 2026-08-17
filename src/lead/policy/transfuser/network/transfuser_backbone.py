@@ -12,6 +12,47 @@ from lead.policy.transfuser.dataloader.sample import TransfuserForwardBatch
 from lead.policy.transfuser.utils import ops
 
 
+def _pool_to_grid(
+    features: jt.Float[torch.Tensor, "B C H W"],
+    grid: tuple[int, int],
+) -> jt.Float[torch.Tensor, "B C H2 W2"]:
+    """Average-pool to ``grid``, passing through when the map already matches.
+
+    Args:
+        features: The map to pool.
+        grid: Target token grid as (rows, columns).
+
+    Returns:
+        The pooled map, or ``features`` unchanged.
+    """
+    if tuple(features.shape[2:]) == grid:
+        return features
+    return F.adaptive_avg_pool2d(features, grid)
+
+
+def _resample_to(
+    features: jt.Float[torch.Tensor, "B C H W"],
+    size: torch.Size,
+    mode: str,
+) -> jt.Float[torch.Tensor, "B C H2 W2"]:
+    """Resample to ``size``, passing through when it matches.
+
+    A backbone stage whose stride equals the token grid's makes this resample a
+    bitwise identity that would otherwise still run a full kernel.
+
+    Args:
+        features: The map to resample.
+        size: Target spatial size.
+        mode: Interpolation mode, e.g. "bilinear" or "nearest".
+
+    Returns:
+        The resampled map, or ``features`` unchanged.
+    """
+    if features.shape[2:] == size:
+        return features
+    return F.interpolate(features, size=tuple(size), mode=mode)
+
+
 class TransfuserBackbone(nn.Module):
     """TransFuser backbone network for multi-modal sensor fusion.
 
@@ -41,8 +82,9 @@ class TransfuserBackbone(nn.Module):
             pretrained=True,
             features_only=True,
         )
-        self.avgpool_img = nn.AdaptiveAvgPool2d(
-            (self.config.img_vert_anchors, self.config.img_horz_anchors),
+        self.image_token_grid = (
+            self.config.img_vert_anchors,
+            self.config.img_horz_anchors,
         )
         image_start_index = 0
         if len(self.image_encoder.return_layers) > 4:
@@ -64,6 +106,7 @@ class TransfuserBackbone(nn.Module):
         self.num_lidar_features = self.lidar_encoder.feature_info.info[
             lidar_start_index + 3
         ]["num_chs"]
+
         self.lidar_channel_to_img = nn.ModuleList(
             [
                 nn.Conv2d(
@@ -92,8 +135,9 @@ class TransfuserBackbone(nn.Module):
                 for i in range(4)
             ],
         )
-        self.avgpool_lidar = nn.AdaptiveAvgPool2d(
-            (self.config.lidar_bev_grid_rows, self.config.lidar_bev_grid_cols),
+        self.bev_token_grid = (
+            self.config.lidar_bev_grid_rows,
+            self.config.lidar_bev_grid_cols,
         )
 
         # Fusion transformers
@@ -310,8 +354,8 @@ class TransfuserBackbone(nn.Module):
         Returns:
             image_features and lidar_features with added features from the other branch.
         """
-        image_embd_layer = self.avgpool_img(image_features)
-        lidar_embd_layer = self.avgpool_lidar(lidar_features)
+        image_embd_layer = _pool_to_grid(image_features, self.image_token_grid)
+        lidar_embd_layer = _pool_to_grid(lidar_features, self.bev_token_grid)
         lidar_embd_layer = self.lidar_channel_to_img[layer_idx](lidar_embd_layer)
 
         image_features_layer, lidar_features_layer = self.transformers[layer_idx](
@@ -322,17 +366,15 @@ class TransfuserBackbone(nn.Module):
         lidar_features_layer = self.img_channel_to_lidar[layer_idx](
             lidar_features_layer,
         )
-        image_features_layer = F.interpolate(
+        image_features_layer = _resample_to(
             image_features_layer,
-            size=(image_features.shape[2], image_features.shape[3]),
-            mode="bilinear",
-            align_corners=False,
+            image_features.shape[2:],
+            self.config.upsample_mode,
         )
-        lidar_features_layer = F.interpolate(
+        lidar_features_layer = _resample_to(
             lidar_features_layer,
-            size=(lidar_features.shape[2], lidar_features.shape[3]),
-            mode="bilinear",
-            align_corners=False,
+            lidar_features.shape[2:],
+            self.config.upsample_mode,
         )
 
         image_features = image_features + image_features_layer

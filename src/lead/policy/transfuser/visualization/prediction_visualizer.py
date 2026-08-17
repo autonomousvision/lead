@@ -132,7 +132,7 @@ class PredictionVisualizer(GroundTruthVisualizer):
         if pred_bev_semantic is None:
             return
         labels = pred_bev_semantic.argmax(dim=1)[0].detach().cpu().numpy()
-        self._overlay_bev_semantic(labels)
+        self._overlay_bev_semantic(labels.astype(np.uint8))
 
     def _route(self) -> None:
         """Draw the predicted route as circles."""

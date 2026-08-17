@@ -1,4 +1,11 @@
 #!/bin/bash
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=4
+#SBATCH --cpus-per-task=16
+#SBATCH --gres=gpu:4
+#SBATCH --time=48:00:00
+#SBATCH --mem=400gb
+
 cd "$(dirname "$(realpath "${BASH_SOURCE:-$0}")")/../.."
 
 export LEAD_OUTPUT_DIR_ROOT=$(dotenv LEAD_OUTPUT_DIR_ROOT)
@@ -16,7 +23,7 @@ if [[ -z "$_initial_weights_file" ]]; then
 	exit 1
 fi
 
-python3 src/lead/training/train.py \
+srun --kill-on-bad-exit=1 python3 src/lead/training/train.py \
 	training.experiment.output_dir=$LEAD_OUTPUT_DIR_ROOT/local_training/posttrain \
 	training.experiment.initial_weights_file=$_initial_weights_file \
 	policy.transfuser.use_planning_decoder=true \

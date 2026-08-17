@@ -14,7 +14,7 @@ it exercises:
 │   │       └── <log_name>/          # e.g. Town13_Rep-1_1073_1_route0_07_20_13_10_39
 │   │           └── *.arrow          # one file per modality stream, see table below
 │   └── perturbated_view/            # same tree, sensors re-rendered from a perturbated rig
-├── maps/
+└── maps/
     └── carla/carla_<town>.arrow     # converted OpenDRIVE map, one per town
 ```
 
@@ -29,8 +29,6 @@ from py123d.api.scene.scene_filter import SceneFilter
 from py123d.common.execution.thread_pool_executor import ThreadPoolExecutor
 from py123d.datatypes import LidarID
 
-# "normal_view" is the nominal sensor rig; the perturbated rig is a separate,
-# opt-in split "perturbated_view", specific for CARLA Leaderboard.
 scenes = ArrowSceneBuilder(
     logs_root="/path/to/lead-data/logs",
     maps_root="/path/to/lead-data/maps",
@@ -38,7 +36,6 @@ scenes = ArrowSceneBuilder(
     SceneFilter(
         split_names=["normal_view"],
         future_num_iterations=40,
-        # The camera streams only exist on save ticks; anchor the scenes there.
         required_scene_modalities=["camera:all@initial"],
     ),
     ThreadPoolExecutor(),
@@ -46,21 +43,21 @@ scenes = ArrowSceneBuilder(
 
 scene = scenes[0]
 
-ego = scene.get_ego_state_se3_at_iteration(0)  # EgoStateSE3
-boxes = scene.get_box_detections_se3_at_iteration(0)  # BoxDetectionsSE3
-lights = scene.get_traffic_light_detections_at_iteration(0)  # TrafficLightDetections
-lidar = scene.get_lidar_at_iteration(0, LidarID.LIDAR_TOP)  # Lidar
-camera_ids = scene.get_camera_metadatas()  # {CameraID: metadata}
-camera = scene.get_camera_at_iteration(0, next(iter(camera_ids)))  # Camera
-map_api = scene.get_map_api()  # MapAPI
+ego = scene.get_ego_state_se3_at_iteration(0)
+boxes = scene.get_box_detections_se3_at_iteration(0)
+lights = scene.get_traffic_light_detections_at_iteration(0)
+lidar = scene.get_lidar_at_iteration(0, LidarID.LIDAR_TOP)
+camera_ids = scene.get_camera_metadatas()
+camera = scene.get_camera_at_iteration(0, next(iter(camera_ids)))
+map_api = scene.get_map_api()
 
-# LEAD's expert state is just a py123d custom modality, read as a raw dict:
+# LEAD's expert state is a py123d custom modality:
 meta = scene.get_custom_modality_at_iteration(0, "driving_meta").data
 ```
 
 ## Data-loader for CARLA Leaderboard
 
-For E2E driving policy, we provide `SceneLoader`, which assembles temporal and
+For E2E driving policies, we provide `SceneLoader`, which assembles temporal and
 novel view features into a `SceneData`:
 
 ```python
@@ -71,7 +68,7 @@ from lead.log_reader import SceneLoader
 loader = SceneLoader(
     "/path/to/lead-data",
     SceneFilter(future_num_iterations=40),
-    perturbation_probability=0.0,  # chance of the perturbated rig instead of the nominal one
+    perturbation_probability=0.0,
 )
 
 scene_data = loader[0]  # len(loader) scenes, indexed like a sequence
@@ -110,13 +107,10 @@ iteration past the anchor (up to the filter's `future_num_iterations`). The
 same reads are also available directly on the loader, by sample index:
 
 ```python
-# Future ego states 0.25 s apart over 2 s — e.g. waypoint labels.
 states = loader.read_future_ego_states(0, iterations=[5, 10, 15, 20, 25, 30, 35, 40])
 states[40]  # EgoStateSE3 2 s after the anchor of sample 0
 
-metas = loader.read_future_driving_metas(
-    0, iterations=[5, 10]
-)  # future driving_meta dicts
+metas = loader.read_future_driving_metas(0, iterations=[5, 10])
 ```
 
 ## Storage frequencies

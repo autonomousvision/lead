@@ -171,17 +171,18 @@ class PerspectiveDecoder(nn.Module):
         x = F.interpolate(
             x,
             scale_factor=self.scale_factor_0,
-            mode="bilinear",
-            align_corners=False,
+            mode=self.config.upsample_mode,
         )
         x = self.deconv2(x)
+        if self.config.upsample_perspective_logits:
+            x = self.deconv3(x)
         x = F.interpolate(
             x,
             scale_factor=self.scale_factor_1,
-            mode="bilinear",
-            align_corners=False,
+            mode=self.config.upsample_mode,
         )
-        x = self.deconv3(x)
+        if not self.config.upsample_perspective_logits:
+            x = self.deconv3(x)
 
         # Ensure output size matches expected size
         expected_h = self.config.final_image_height
@@ -196,8 +197,7 @@ class PerspectiveDecoder(nn.Module):
             x = F.interpolate(
                 x,
                 size=(expected_h, expected_w),
-                mode="bilinear",
-                align_corners=False,
+                mode=self.config.upsample_mode,
             )
 
         if self.modality == "depth":

@@ -8,7 +8,7 @@ def read_dotenv(key: str, default: str | None = None) -> str:
     """Read one value from ``.env``, freshly from disk on every call.
 
     Args:
-        key: Variable name, e.g. ``"MAX_NUM_PARALLEL_JOBS_COLLECT_DATA"``.
+        key: Variable name, e.g. ``"COLLECT_DATA_MAX_NUM_PARALLEL_JOBS"``.
         default: Value returned when the key is missing.
 
     Returns:
