@@ -5,6 +5,7 @@ import shutil
 import typing
 from collections import deque
 from copy import deepcopy
+from pathlib import Path
 
 import carla
 import cv2
@@ -55,7 +56,7 @@ def get_entry_point():  # dead: disable
 
 class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
     @beartype
-    def setup(self, path_to_conf_file: str, _=None, __=None):
+    def setup(self, path_to_conf_file: str, route_index=None, __=None):
         # Set up test time training default parameters
         self.config_closed_loop = ClosedLoopConfig()
         super().setup(sensor_agent=True)
@@ -63,6 +64,11 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
         self.step = -1
         self.initialized = False
         self.device = torch.device("cuda:0")
+        self.route_run_id = (
+            str(route_index)
+            if route_index is not None
+            else os.environ.get("BENCHMARK_ROUTE_ID")
+        )
 
         # Load the config saved during training
         if self.config_closed_loop.is_bench2drive:
@@ -89,6 +95,16 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
             device=self.device,
             prefix="model",
         )
+        self.planning_queries_save_path = self._planning_queries_save_path()
+        if self.planning_queries_save_path is not None:
+            self.planning_queries_save_path.mkdir(parents=True, exist_ok=True)
+            LOG.info(
+                "Saving planner queries to %s (shape: [1, num_queries, token_dim])",
+                self.planning_queries_save_path,
+            )
+        self.activation_action_log = self._activation_action_log_path()
+        if self.activation_action_log is not None:
+            LOG.info("Saving activation actions to %s", self.activation_action_log)
 
         # Post-processing heuristics
         self.bb_buffer = deque(maxlen=1)
@@ -119,6 +135,86 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
             raise RuntimeError(
                 "ffmpeg is not installed or not found in PATH. Please install ffmpeg to use video compression.",
             )
+
+    @staticmethod
+    def _env_flag(name: str) -> bool:
+        return os.environ.get(name, "").lower() in {"1", "true", "t", "yes", "y"}
+
+    def _planning_queries_save_path(self) -> Path | None:
+        """Resolve the feature directory using the TransFuser collector contract."""
+        if not self._env_flag("SAVE_FUSED_FEATURES"):
+            return None
+
+        root = os.environ.get("FUSED_FEATURES_PATH")
+        if root is not None:
+            save_path = Path(root)
+        elif self.config_closed_loop.save_path is not None:
+            save_path = self.config_closed_loop.save_path / "fused_features"
+        else:
+            save_path = Path("fused_features")
+
+        if self.route_run_id:
+            save_path /= self.route_run_id
+        return save_path
+
+    def _activation_action_log_path(self) -> Path | None:
+        if self.config_closed_loop.save_path is None or not self.route_run_id:
+            return None
+        log_dir = self.config_closed_loop.save_path / self.route_run_id
+        log_dir.mkdir(parents=True, exist_ok=True)
+        return log_dir / "activation_actions.jsonl"
+
+    def _planning_queries_path(self, frame_idx: int, model_idx: int = 0) -> Path | None:
+        if self.planning_queries_save_path is None:
+            return None
+        save_path = self.planning_queries_save_path
+        if len(self.closed_loop_inference.nets) > 1:
+            save_path /= f"model_{model_idx:02d}"
+        return save_path / f"{int(frame_idx):06d}.pt"
+
+    def _save_planning_queries(self, frame_idx: int) -> None:
+        """Save each ensemble member's post-transformer planner queries."""
+        if self.planning_queries_save_path is None:
+            return
+
+        nets = self.closed_loop_inference.nets
+        for model_idx, net in enumerate(nets):
+            planning_decoder = getattr(net, "planning_decoder", None)
+            queries = getattr(planning_decoder, "last_queries", None)
+            if queries is None:
+                continue
+
+            feature_path = self._planning_queries_path(frame_idx, model_idx)
+            if feature_path is None:
+                continue
+            feature_path.parent.mkdir(parents=True, exist_ok=True)
+            torch.save(queries.cpu(), feature_path)
+
+    def _log_activation_action(
+        self,
+        frame_idx: int,
+        control: carla.VehicleControl,
+        speed: float,
+        pred_target_speed: float,
+        stop_for_stop_sign: bool,
+    ) -> None:
+        if self.activation_action_log is None:
+            return
+
+        feature_path = self._planning_queries_path(frame_idx)
+        record = {
+            "frame": int(frame_idx),
+            "speed": float(speed),
+            "pred_target_speed": float(pred_target_speed),
+            "steer": float(control.steer),
+            "throttle": float(control.throttle),
+            "brake": float(control.brake),
+            "stop_for_stop_sign": bool(stop_for_stop_sign),
+            "activation_alpha": None,
+            "feature_path": str(feature_path) if feature_path is not None else None,
+        }
+        with self.activation_action_log.open("a", encoding="utf-8") as log_file:
+            log_file.write(json.dumps(record) + "\n")
 
     @beartype
     def set_global_plan(
@@ -505,6 +601,7 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
         closed_loop_prediction: ClosedLoopPrediction = (
             self.closed_loop_inference.forward(data=input_data_tensors)
         )
+        self._save_planning_queries(self.step)
         # Update bounding boxes
         if (
             closed_loop_prediction.pred_bounding_box_vehicle_system is not None
@@ -537,6 +634,10 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
                 closed_loop_prediction.brake,
             )
         )
+        stop_for_stop_sign = bool(
+            len(self.stop_sign_post_processor.stop_sign_buffer) > 0
+            and closed_loop_prediction.brake
+        )
         self.meters_travelled += (
             input_data["speed"].item() * self.config_closed_loop.carla_frame_rate
         )
@@ -551,6 +652,20 @@ class SensorAgent(BaseAgent, autonomous_agent.AutonomousAgent):
         # CARLA will not let the car drive in the initial frames. This help the filter not get confused.
         if self.step < self.training_config.inital_frames_delay:
             self.control = carla.VehicleControl(0.0, 0.0, 1.0)
+
+        pred_target_speed = closed_loop_prediction.pred_target_speed_scalar
+        pred_target_speed_value = (
+            float(pred_target_speed.reshape(-1)[0].item())
+            if pred_target_speed is not None
+            else 0.0
+        )
+        self._log_activation_action(
+            frame_idx=self.step,
+            control=self.control,
+            speed=float(input_data["speed"].item()),
+            pred_target_speed=pred_target_speed_value,
+            stop_for_stop_sign=stop_for_stop_sign,
+        )
 
         # Check for infractions at this step
         self.check_infractions()

@@ -26,6 +26,7 @@ class PlanningDecoder(nn.Module):
         super().__init__()
         self.device = device
         self.config = config
+        self.last_queries: torch.Tensor | None = None
         self.planning_context_encoder = PlanningContextEncoder(
             config=self.config,
             input_bev_channels=input_bev_channels,
@@ -131,6 +132,10 @@ class PlanningDecoder(nn.Module):
         bs = context_tokens.shape[0]
 
         queries = self.transformer_decoder(self.query.repeat(bs, 1, 1), context_tokens)
+        # Expose the complete planner representation for closed-loop feature
+        # collection. Detaching avoids retaining a training graph; the heads below
+        # still consume the original tensor.
+        self.last_queries = queries.detach()
 
         # Split the queries flexibly based on what we're predicting
         query_idx = 0

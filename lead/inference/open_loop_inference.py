@@ -51,23 +51,46 @@ class OpenLoopInference:
 
         # Loading models
         self.nets: list[torch.nn.Module] = []
-        for file in sorted(os.listdir(model_path)):
-            if file.startswith(prefix) and file.endswith(".pth"):
-                LOG.info(f"Loading model weight from {os.path.join(model_path, file)}")
-                net = create_model(self.config_training)
-                if self.config_training.sync_batchnorm:
-                    net = torch.nn.SyncBatchNorm.convert_sync_batchnorm(net)
-                state_dict = torch.load(
-                    os.path.join(model_path, file),
-                    map_location=self.device,
-                    weights_only=True,
-                )
-                net.load_state_dict(
-                    state_dict,
-                    strict=config_open_loop.strict_weight_load,
-                )
-                net.cuda(device=self.device).eval()
-                self.nets.append(net)
+        model_files = sorted(
+            file
+            for file in os.listdir(model_path)
+            if file.startswith(prefix) and file.endswith(".pth")
+        )
+        model_index = os.environ.get("TFV6_MODEL_INDEX")
+        if model_index is not None:
+            try:
+                selected_index = int(model_index)
+                if selected_index < 0:
+                    raise IndexError
+                selected_file = model_files[selected_index]
+            except (ValueError, IndexError) as error:
+                raise ValueError(
+                    "TFV6_MODEL_INDEX must select an available model by its "
+                    f"zero-based index; got {model_index!r} for {model_files}",
+                ) from error
+            model_files = [selected_file]
+            LOG.info(
+                "TFV6_MODEL_INDEX=%d selected checkpoint %s",
+                selected_index,
+                selected_file,
+            )
+
+        for file in model_files:
+            LOG.info(f"Loading model weight from {os.path.join(model_path, file)}")
+            net = create_model(self.config_training)
+            if self.config_training.sync_batchnorm:
+                net = torch.nn.SyncBatchNorm.convert_sync_batchnorm(net)
+            state_dict = torch.load(
+                os.path.join(model_path, file),
+                map_location=self.device,
+                weights_only=True,
+            )
+            net.load_state_dict(
+                state_dict,
+                strict=config_open_loop.strict_weight_load,
+            )
+            net.cuda(device=self.device).eval()
+            self.nets.append(net)
         self.step = 4  # Constant so produced images start with 5, not really important
 
     @beartype

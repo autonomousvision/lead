@@ -1,6 +1,7 @@
 import io
 import os
 from copy import deepcopy
+from pathlib import Path
 
 import cv2
 import matplotlib.pyplot as plt
@@ -26,6 +27,8 @@ from lead.tfv6.center_net_decoder import PredictedBoundingBox
 from lead.tfv6.tfv6 import Prediction
 from lead.training.config_training import TrainingConfig
 from lead.visualization import viz_utils
+
+_FONT_DIR = Path(__file__).resolve().parents[2] / "3rd_party"
 
 
 class Visualizer:
@@ -1306,8 +1309,14 @@ class Visualizer:
         text_lines = sorted(text_lines)
 
         # Load fonts once
-        font_regular = ImageFont.truetype("3rd_party/Roboto-Regular.ttf", 17)
-        font_bold = ImageFont.truetype("3rd_party/Roboto-Bold.ttf", 17)
+        font_regular = ImageFont.truetype(
+            str(_FONT_DIR / "Roboto-Regular.ttf"),
+            17,
+        )
+        font_bold = ImageFont.truetype(
+            str(_FONT_DIR / "Roboto-Bold.ttf"),
+            17,
+        )
 
         img_pil = Image.fromarray(self.meta_panel)
         draw = ImageDraw.Draw(img_pil)
